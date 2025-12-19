@@ -33,7 +33,7 @@ const PostTimelineCard = ({ post }) => {
   };
 
   const renderSocialBadge = (platform) => {
-    const postId = post.postIds.find(
+    const postId = post.postIds?.find(
       (p) => p.platform.toLowerCase() === platform.toLowerCase()
     );
     const content = (
