@@ -1,62 +1,51 @@
 import React from "react";
-import {
-  Box,
-  Container,
-  Flex,
-  Heading,
-  Text,
-  useColorModeValue,
-  Image
-} from "@chakra-ui/react";
-import SocialPostingForm from "./components/SocialPostingForm";
-import RightSideNav from "./components/RightSideNav";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "./contexts/AuthContext";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { LoginPage } from "./components/auth/LoginPage";
+import { SignUpPage } from "./components/auth/SignUpPage";
+import { Sidebar } from "./components/layout/Sidebar";
+import { TopHeader } from "./components/layout/TopHeader";
+import { MainContent } from "./components/layout/MainContent";
+import { DashboardContent } from "./components/DashboardContent";
+import { ComposeContent } from "./components/ComposeContent";
+import { PostsContent } from "./components/PostsContent";
+import "./App.css";
 
 function App() {
-  const bgColor = useColorModeValue("gray.50", "gray.900");
-  const headerBgColor = useColorModeValue("white", "gray.800");
-  const headerColor = useColorModeValue("gray.800", "white");
-
   return (
-    <Box bg={bgColor} minHeight="100vh">
-      <Box
-        bg={headerBgColor}
-        boxShadow="sm"
-        position="fixed"
-        width="full"
-        zIndex="banner"
-      >
-        <Container maxW="container.xl">
-          <Flex alignItems="center" height="16" justifyContent="space-between">
-            <Heading as="h1" size="xl" color={headerColor}>
-              Social API Demo
-            </Heading>
-            <Image
-              src="https://img.ayrshare.com/012/your-logo.jpg"
-              alt="Ayrshare Logo"
-              height="40px"
-              objectFit="contain"
-            />
-          </Flex>
-        </Container>
-      </Box>
-      <Container maxW="container.xl" pt="24" pb="8">
-        <Flex direction={{ base: "column", md: "row" }} gap="8">
-          <Box flex="1">
-            <Heading as="h2" size="lg" mb="4">
-              Create Post
-            </Heading>
-            <Text color="gray.600" mb="8">
-              Compose and schedule your social media posts across multiple
-              platforms.
-            </Text>
-            <SocialPostingForm />
-          </Box>
-          <Box w={{ base: "full", md: "320px" }}>
-            <RightSideNav />
-          </Box>
-        </Flex>
-      </Container>
-    </Box>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignUpPage />} />
+
+          {/* Protected routes */}
+          <Route
+            path="/*"
+            element={
+              <ProtectedRoute>
+                <div className="app-container">
+                  <Sidebar />
+                  <TopHeader />
+                  <MainContent>
+                    <Routes>
+                      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                      <Route path="/dashboard" element={<DashboardContent />} />
+                      <Route path="/compose" element={<ComposeContent />} />
+                      <Route path="/posts" element={<PostsContent />} />
+                      <Route path="/team" element={<div>Team Page - Coming Soon</div>} />
+                      <Route path="/settings" element={<div>Settings Page - Coming Soon</div>} />
+                    </Routes>
+                  </MainContent>
+                </div>
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 

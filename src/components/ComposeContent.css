@@ -1,0 +1,1272 @@
+.compose-content {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  width: 100%;
+}
+
+/* Top Row - Create Post and Socials side by side */
+.compose-top-row {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 24px;
+  width: 100%;
+}
+
+/* Left Column - Create Post */
+.compose-left {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.compose-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.compose-title {
+  font-size: 40px;
+  font-weight: 600;
+  color: #000000;
+  margin: 0;
+}
+
+.compose-subtitle {
+  font-size: 20px;
+  color: #000000;
+  margin: 0;
+}
+
+.compose-form {
+  background-color: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.textarea-container {
+  padding: 14px 17px;
+}
+
+.compose-textarea {
+  width: 100%;
+  min-height: 220px;
+  border: none;
+  outline: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  resize: vertical;
+  background: transparent;
+}
+
+.compose-textarea::placeholder {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.form-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background-color: #f5f5f5;
+  border-top: 1px solid rgba(0, 0, 0, 0.4);
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.media-upload-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.media-upload-btn:hover {
+  opacity: 1;
+}
+
+.form-buttons {
+  display: flex;
+  gap: 27px;
+}
+
+.btn-schedule,
+.btn-post {
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+}
+
+.btn-schedule {
+  background-color: transparent;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.btn-schedule:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.btn-post {
+  background-color: #FFC801;
+  color: #000000;
+  border-color: #FFC801;
+}
+
+.btn-post:hover {
+  background-color: #E6B400;
+}
+
+/* Right Column - Socials */
+.compose-socials {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.socials-title {
+  font-size: 20px;
+  font-weight: 400;
+  color: #000000;
+  margin: 0;
+}
+
+.socials-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
+
+.social-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 80px;
+  padding: 5px 8px;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-color: #d9d9d9;
+}
+
+.social-button:not(.disabled):hover {
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+.social-button.selected {
+  opacity: 1;
+}
+
+.social-button:not(.selected):not(.disabled) {
+  opacity: 0.7;
+}
+
+.social-button.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.social-icon {
+  font-size: 36px;
+}
+
+.social-name {
+  font-size: 11px;
+  font-weight: 100;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* Bottom Row - Preview and Comments side by side */
+.compose-bottom-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  width: 100%;
+}
+
+/* Left - Preview */
+.compose-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.preview-header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.preview-title {
+  font-size: 40px;
+  font-weight: 600;
+  color: #000000;
+  margin: 0;
+}
+
+.platform-selector {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background-color: white;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.platform-selector:hover {
+  border-color: #6465f1;
+}
+
+.platform-selector:focus {
+  border-color: #6465f1;
+}
+
+.preview-container {
+  background-color: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  border-radius: 10px;
+  padding: 24px;
+  min-height: 500px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.phone-mockup {
+  width: 100%;
+  max-width: 280px;
+  aspect-ratio: 9 / 19.5;
+  background-color: #d9d9d9;
+  border-radius: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.phone-notch {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 39px;
+  height: 21px;
+  border: 1px solid black;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  z-index: 10;
+}
+
+.notch-line {
+  width: 11px;
+  height: 11px;
+  border-bottom: 2px solid black;
+}
+
+.phone-content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow-y: auto;
+  background: #d9d9d9;
+}
+
+.preview-post {
+  background-color: white;
+  padding: 12px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.preview-text {
+  font-size: 12px;
+  color: black;
+  margin: 0;
+  word-wrap: break-word;
+}
+
+.preview-media {
+  border-radius: 8px;
+  overflow: hidden;
+  max-height: 200px;
+}
+
+.preview-media img,
+.preview-media video {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+
+.preview-placeholder {
+  text-align: center;
+  color: #666;
+  font-size: 12px;
+  margin-top: 40px;
+}
+
+/* Right - Comments */
+.compose-comments {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.comments-title {
+  font-size: 40px;
+  font-weight: 600;
+  color: #000000;
+  margin: 0;
+}
+
+.comments-container {
+  background-color: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  border-radius: 10px;
+  padding: 24px;
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.comments-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  font-size: 16px;
+}
+
+.comment-input-wrapper {
+  margin-top: 20px;
+}
+
+.comment-input {
+  width: 100%;
+  min-height: 100px;
+  padding: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  resize: vertical;
+  outline: none;
+}
+
+.comment-input::placeholder {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.comment-input:focus {
+  border-color: #6465f1;
+}
+
+/* Platform Preview Styles */
+.platform-preview {
+  background: #f5f5f5;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  font-size: 11px;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+}
+
+.preview-profile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preview-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #d9d9d9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.preview-username {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.preview-menu {
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.preview-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.preview-timestamp {
+  font-size: 10px;
+  color: #666;
+}
+
+.preview-text-content {
+  padding: 0 10px 10px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+.preview-media {
+  width: 100%;
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+
+.preview-media img,
+.preview-media video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.preview-actions {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.action-icons {
+  display: flex;
+  gap: 12px;
+}
+
+/* Status Bar - Universal */
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: white;
+  font-size: 11px;
+  color: #000;
+}
+
+.status-time {
+  font-weight: 600;
+}
+
+.status-icons {
+  display: flex;
+  gap: 4px;
+  font-size: 10px;
+}
+
+/* Bottom Navigation - Universal */
+.instagram-nav,
+.facebook-nav,
+.twitter-nav,
+.linkedin-nav,
+.threads-nav,
+.tiktok-nav {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 8px 0;
+  background: white;
+  border-top: 1px solid #dbdbdb;
+  font-size: 18px;
+  margin-top: auto;
+}
+
+/* INSTAGRAM STYLES */
+.instagram-preview {
+  background: #fafafa;
+}
+
+.instagram-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: white;
+  border-bottom: 1px solid #dbdbdb;
+}
+
+.header-logo {
+  font-family: 'Brush Script MT', cursive;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.header-icons {
+  display: flex;
+  gap: 16px;
+  font-size: 20px;
+}
+
+.instagram-stories {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background: white;
+  border-bottom: 1px solid #dbdbdb;
+  overflow-x: auto;
+}
+
+.story-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 60px;
+}
+
+.story-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #d9d9d9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  border: 2px solid #dbdbdb;
+}
+
+.story-avatar.active {
+  border-color: #c13584;
+}
+
+.story-name {
+  font-size: 10px;
+  color: #262626;
+}
+
+.instagram-post {
+  background: white;
+  margin-bottom: 12px;
+}
+
+.post-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+}
+
+.post-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.post-media {
+  width: 100%;
+  aspect-ratio: 1;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.post-media img,
+.post-media video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.post-actions {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 12px;
+  font-size: 20px;
+}
+
+.action-icons {
+  display: flex;
+  gap: 12px;
+}
+
+.post-likes {
+  padding: 0 12px 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.post-caption {
+  padding: 0 12px 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.caption-username {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.post-time {
+  padding: 0 12px 12px;
+  font-size: 10px;
+  color: #8e8e8e;
+}
+
+/* FACEBOOK STYLES */
+.facebook-preview {
+  background: #f0f2f5;
+}
+
+.facebook-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: white;
+  border-bottom: 1px solid #dadde1;
+}
+
+.fb-logo {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1877f2;
+}
+
+.fb-header-icons {
+  display: flex;
+  gap: 12px;
+  font-size: 18px;
+}
+
+.facebook-tabs {
+  display: flex;
+  background: white;
+  border-bottom: 1px solid #dadde1;
+}
+
+.fb-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
+  font-size: 10px;
+  color: #65676b;
+  border-bottom: 2px solid transparent;
+}
+
+.fb-tab.active {
+  color: #1877f2;
+  border-bottom-color: #1877f2;
+}
+
+.facebook-feed {
+  padding: 8px 0;
+}
+
+.fb-post {
+  background: white;
+  margin-bottom: 8px;
+}
+
+.fb-post-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+}
+
+.fb-post-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fb-post-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.fb-post-text {
+  padding: 0 12px 12px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.fb-post-media {
+  width: 100%;
+  background: #000;
+}
+
+.fb-post-media img,
+.fb-post-media video {
+  width: 100%;
+  display: block;
+}
+
+.fb-post-engagement {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #65676b;
+  border-bottom: 1px solid #dadde1;
+}
+
+.fb-post-actions {
+  display: flex;
+  justify-content: space-around;
+  padding: 4px 0;
+}
+
+.fb-post-actions button {
+  background: none;
+  border: none;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #65676b;
+  cursor: pointer;
+}
+
+/* TWITTER STYLES */
+.twitter-preview {
+  background: #fff;
+}
+
+.twitter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: white;
+  border-bottom: 1px solid #eff3f4;
+}
+
+.twitter-avatar-small {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #d9d9d9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.twitter-logo {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.twitter-settings {
+  font-size: 16px;
+}
+
+.twitter-tabs {
+  display: flex;
+  background: white;
+  border-bottom: 1px solid #eff3f4;
+}
+
+.twitter-tab {
+  flex: 1;
+  text-align: center;
+  padding: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #536471;
+  border-bottom: 2px solid transparent;
+}
+
+.twitter-tab.active {
+  font-weight: 700;
+  color: #0f1419;
+  border-bottom-color: #1d9bf0;
+}
+
+.twitter-feed {
+  background: white;
+}
+
+.tweet {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid #eff3f4;
+}
+
+.tweet-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #d9d9d9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.tweet-content {
+  flex: 1;
+}
+
+.tweet-header {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.tweet-name {
+  font-weight: 700;
+}
+
+.tweet-handle {
+  color: #536471;
+}
+
+.tweet-text {
+  font-size: 13px;
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+
+.tweet-media {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  margin-bottom: 12px;
+}
+
+.tweet-media img,
+.tweet-media video {
+  width: 100%;
+  display: block;
+}
+
+.tweet-actions {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #536471;
+  max-width: 425px;
+}
+
+/* LINKEDIN STYLES */
+.linkedin-preview {
+  background: #f3f2ef;
+}
+
+.linkedin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: white;
+  border-bottom: 1px solid #e0dfdc;
+}
+
+.linkedin-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: #eef3f8;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #666;
+}
+
+.linkedin-header-icons {
+  font-size: 18px;
+}
+
+.linkedin-feed {
+  padding: 8px 0;
+}
+
+.linkedin-post {
+  background: white;
+  margin-bottom: 8px;
+  border: 1px solid #e0dfdc;
+  border-radius: 8px;
+}
+
+.linkedin-post-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px;
+}
+
+.linkedin-profile {
+  display: flex;
+  gap: 8px;
+}
+
+.linkedin-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.linkedin-headline {
+  font-size: 10px;
+  color: #666;
+}
+
+.linkedin-post-text {
+  padding: 0 12px 12px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.linkedin-post-media {
+  width: 100%;
+  background: #000;
+}
+
+.linkedin-post-media img,
+.linkedin-post-media video {
+  width: 100%;
+  display: block;
+}
+
+.linkedin-post-stats {
+  padding: 8px 12px;
+  font-size: 10px;
+  color: #666;
+  border-bottom: 1px solid #e0dfdc;
+}
+
+.linkedin-post-actions {
+  display: flex;
+  justify-content: space-around;
+  padding: 4px 0;
+}
+
+.linkedin-post-actions button {
+  background: none;
+  border: none;
+  padding: 8px;
+  font-size: 11px;
+  color: #666;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.linkedin-nav {
+  font-size: 10px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* THREADS STYLES */
+.threads-preview {
+  background: #fff;
+}
+
+.threads-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: white;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.threads-logo {
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.threads-header-icons {
+  font-size: 20px;
+}
+
+.threads-feed {
+  background: white;
+}
+
+.thread-post {
+  padding: 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.thread-post-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.thread-profile {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.thread-meta {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.thread-verified {
+  color: #0095f6;
+}
+
+.thread-time {
+  font-size: 10px;
+  color: #999;
+}
+
+.thread-text {
+  font-size: 13px;
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+
+.thread-media {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  margin-bottom: 12px;
+}
+
+.thread-media img,
+.thread-media video {
+  width: 100%;
+  display: block;
+}
+
+.thread-actions {
+  display: flex;
+  gap: 16px;
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.thread-stats {
+  font-size: 11px;
+  color: #999;
+}
+
+/* TIKTOK STYLES */
+.tiktok-preview {
+  background: #000;
+  position: relative;
+}
+
+.tiktok-status {
+  background: transparent;
+  color: white;
+}
+
+.tiktok-header {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  padding: 8px;
+  background: transparent;
+  color: white;
+  font-size: 14px;
+}
+
+.tiktok-tab-active {
+  font-weight: 700;
+  border-bottom: 2px solid white;
+}
+
+.tiktok-video {
+  position: relative;
+  flex: 1;
+  background: #000;
+}
+
+.tiktok-video-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.tiktok-video-bg img,
+.tiktok-video-bg video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tiktok-info {
+  position: absolute;
+  bottom: 80px;
+  left: 12px;
+  right: 70px;
+  color: white;
+  z-index: 2;
+}
+
+.tiktok-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.tiktok-username {
+  font-size: 13px;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+
+.tiktok-follow {
+  padding: 4px 16px;
+  background: transparent;
+  border: 1px solid white;
+  border-radius: 4px;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tiktok-caption {
+  font-size: 12px;
+  line-height: 1.4;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  margin-bottom: 8px;
+}
+
+.tiktok-sound {
+  font-size: 11px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+
+.tiktok-sidebar {
+  position: absolute;
+  right: 12px;
+  bottom: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  z-index: 2;
+}
+
+.tiktok-sidebar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: white;
+}
+
+.tiktok-sidebar-item span {
+  font-size: 28px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+
+.tiktok-sidebar-item .count {
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.tiktok-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #d9d9d9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  border: 2px solid white;
+}
+
+.tiktok-nav {
+  font-size: 10px;
+  text-align: center;
+  line-height: 1.2;
+  background: #000;
+  color: white;
+  border-top-color: #333;
+}
+
+.tiktok-create {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: white;
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+/* Responsive */
+@media (max-width: 1400px) {
+  .compose-top-row {
+    grid-template-columns: 1fr;
+  }
+
+  .compose-socials {
+    max-width: 420px;
+  }
+
+  .compose-bottom-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .compose-title,
+  .preview-title,
+  .comments-title {
+    font-size: 28px;
+  }
+
+  .socials-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}

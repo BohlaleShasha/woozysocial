@@ -88,11 +88,52 @@ const RightSideNav = () => {
         const height = 800;
         const left = window.screen.width / 2 - width / 2;
         const top = window.screen.height / 2 - height / 2;
-        window.open(
+        // Open the Ayrshare linking URL in a centered popup
+        const popup = window.open(
           data.url,
           "LinkSocialAccounts",
           `toolbar=no, location=no, directories=no, status=no, menubar=no, scrollbars=no, resizable=no, copyhistory=no, width=${width}, height=${height}, top=${top}, left=${left}`
         );
+
+        // Poll the user accounts endpoint until a new account appears or timeout.
+        const start = Date.now();
+        const timeoutMs = 60_000; // 60 seconds
+        const pollInterval = 2000; // 2 seconds
+
+        const initialLen = activeAccounts.length;
+
+        const poll = setInterval(async () => {
+          // If popup closed, stop polling and refresh once more
+          if (popup && popup.closed) {
+            clearInterval(poll);
+            await fetchActiveAccounts();
+            return;
+          }
+
+          try {
+            const r = await fetch(`${baseURL}/api/user-accounts`);
+            if (r.ok) {
+              const d = await r.json();
+              if (Array.isArray(d.activeSocialAccounts)) {
+                // If new accounts found, update and stop polling
+                if (d.activeSocialAccounts.length > initialLen) {
+                  setActiveAccounts(d.activeSocialAccounts);
+                  clearInterval(poll);
+                  if (popup && !popup.closed) popup.close();
+                }
+              }
+            }
+          } catch (err) {
+            console.warn("Polling user accounts failed:", err);
+          }
+
+          if (Date.now() - start > timeoutMs) {
+            clearInterval(poll);
+            // final refresh
+            await fetchActiveAccounts();
+            if (popup && !popup.closed) popup.close();
+          }
+        }, pollInterval);
       } else {
         throw new Error("Failed to generate JWT URL");
       }

@@ -1,0 +1,271 @@
+import React, { useState, useEffect, useCallback } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { baseURL } from "../utils/constants";
+import { supabase } from "../utils/supabaseClient";
+import { useNavigate } from "react-router-dom";
+import { FaSearch, FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaReddit, FaTelegram, FaPinterest, FaSnapchat, FaTrash } from "react-icons/fa";
+import { FaTiktok } from "react-icons/fa6";
+import { SiX, SiBluesky } from "react-icons/si";
+import "./PostsContent.css";
+
+const PLATFORM_ICONS = {
+  facebook: FaFacebookF,
+  instagram: FaInstagram,
+  linkedin: FaLinkedinIn,
+  youtube: FaYoutube,
+  reddit: FaReddit,
+  telegram: FaTelegram,
+  pinterest: FaPinterest,
+  snapchat: FaSnapchat,
+  tiktok: FaTiktok,
+  twitter: SiX,
+  "x/twitter": SiX,
+  bluesky: SiBluesky,
+};
+
+export const PostsContent = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("drafts");
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Fetch posts based on active tab
+  const fetchPosts = useCallback(async () => {
+    if (!user) return;
+
+    setLoading(true);
+    try {
+      if (activeTab === "drafts") {
+        // Fetch drafts from Supabase
+        const { data, error } = await supabase
+          .from("post_drafts")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        setPosts(data || []);
+      } else {
+        // Fetch from Ayrshare API for scheduled, history, and failed
+        const response = await fetch(`${baseURL}/api/post-history?userId=${user.id}`);
+        if (!response.ok) throw new Error("Failed to fetch post history");
+
+        const data = await response.json();
+
+        // Filter based on tab
+        let filteredPosts = [];
+        if (activeTab === "scheduled") {
+          filteredPosts = (data.posts || []).filter(post => post.status === "scheduled");
+        } else if (activeTab === "history") {
+          filteredPosts = (data.posts || []).filter(post =>
+            post.status === "success" || post.status === "posted"
+          );
+        } else if (activeTab === "failed") {
+          filteredPosts = (data.posts || []).filter(post => post.status === "error");
+        }
+
+        setPosts(filteredPosts);
+      }
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+      setPosts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user, activeTab]);
+
+  useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]);
+
+  // Filter posts based on search query
+  const filteredPosts = posts.filter(post => {
+    if (!searchQuery) return true;
+
+    const query = searchQuery.toLowerCase();
+    const content = (post.post || post.caption || "").toLowerCase();
+    const platforms = Array.isArray(post.platforms)
+      ? post.platforms.join(" ").toLowerCase()
+      : "";
+
+    return content.includes(query) ||
+           content.match(new RegExp(`#\\w*${query}\\w*`, 'i')) ||
+           platforms.includes(query);
+  });
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getPlatformIcons = (platforms) => {
+    if (!platforms || !Array.isArray(platforms)) return null;
+
+    return platforms.map((platform, idx) => {
+      const Icon = PLATFORM_ICONS[platform.toLowerCase()];
+      if (!Icon) return null;
+
+      return (
+        <div key={idx} className="platform-icon-small" title={platform}>
+          <Icon size={16} />
+        </div>
+      );
+    }).filter(Boolean);
+  };
+
+  const getMediaPreview = (post) => {
+    const mediaUrls = post.mediaUrls || post.media_urls || [];
+    if (!mediaUrls.length) return <span className="no-media">No media</span>;
+
+    return (
+      <div className="media-preview">
+        <img src={mediaUrls[0]} alt="Post media" />
+        {mediaUrls.length > 1 && (
+          <span className="media-count">+{mediaUrls.length - 1}</span>
+        )}
+      </div>
+    );
+  };
+
+  const handleDeleteDraft = async (e, draftId) => {
+    e.stopPropagation(); // Prevent row click
+
+    if (!window.confirm("Delete this draft?")) return;
+
+    try {
+      const { error } = await supabase
+        .from("post_drafts")
+        .delete()
+        .eq("id", draftId)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+
+      // Refresh posts
+      fetchPosts();
+    } catch (error) {
+      console.error("Error deleting draft:", error);
+    }
+  };
+
+  const handleLoadDraft = (draft) => {
+    // Store draft in sessionStorage to load in Compose page
+    sessionStorage.setItem("loadDraft", JSON.stringify(draft));
+    navigate("/compose");
+  };
+
+  return (
+    <div className="posts-content">
+      {/* Search Bar */}
+      <div className="posts-search-container">
+        <div className="posts-search-wrapper">
+          <div className="posts-search-input">
+            <FaSearch className="search-icon" />
+            <input
+              type="text"
+              placeholder="Search by caption, hashtags, or platform..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="posts-tabs-container">
+        <div className="posts-tabs">
+          <button
+            className={`posts-tab ${activeTab === "drafts" ? "active" : ""}`}
+            onClick={() => setActiveTab("drafts")}
+          >
+            Drafts
+          </button>
+          <button
+            className={`posts-tab ${activeTab === "scheduled" ? "active" : ""}`}
+            onClick={() => setActiveTab("scheduled")}
+          >
+            Scheduled
+          </button>
+          <button
+            className={`posts-tab ${activeTab === "history" ? "active" : ""}`}
+            onClick={() => setActiveTab("history")}
+          >
+            History
+          </button>
+          <button
+            className={`posts-tab ${activeTab === "failed" ? "active" : ""}`}
+            onClick={() => setActiveTab("failed")}
+          >
+            Failed
+          </button>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="posts-table-container">
+        <div className="posts-table-header">
+          <div className="posts-checkbox-col">
+            <input type="checkbox" />
+          </div>
+          <div className="posts-date-col">Date</div>
+          <div className="posts-content-col">Content</div>
+          <div className="posts-media-col">Media</div>
+          <div className="posts-socials-col">Socials</div>
+        </div>
+
+        <div className="posts-table-body">
+          {loading ? (
+            <div className="posts-loading">Loading posts...</div>
+          ) : filteredPosts.length === 0 ? (
+            <div className="posts-empty">
+              {searchQuery ? "No posts match your search" : `No ${activeTab} posts yet`}
+            </div>
+          ) : (
+            filteredPosts.map((post, idx) => (
+              <div
+                key={post.id || idx}
+                className={`posts-table-row ${activeTab === 'drafts' ? 'clickable' : ''}`}
+                onClick={() => activeTab === 'drafts' && handleLoadDraft(post)}
+                style={{ cursor: activeTab === 'drafts' ? 'pointer' : 'default' }}
+              >
+                <div className="posts-checkbox-col">
+                  {activeTab === 'drafts' ? (
+                    <button
+                      className="delete-draft-btn"
+                      onClick={(e) => handleDeleteDraft(e, post.id)}
+                      title="Delete draft"
+                    >
+                      <FaTrash size={14} />
+                    </button>
+                  ) : (
+                    <input type="checkbox" />
+                  )}
+                </div>
+                <div className="posts-date-col">
+                  {formatDate(post.scheduleDate || post.scheduled_date || post.created_at || post.postDate)}
+                </div>
+                <div className="posts-content-col">
+                  <div className="post-content-preview">
+                    {(post.post || post.caption || "").substring(0, 100)}
+                    {(post.post || post.caption || "").length > 100 && "..."}
+                  </div>
+                </div>
+                <div className="posts-media-col">
+                  {getMediaPreview(post)}
+                </div>
+                <div className="posts-socials-col">
+                  <div className="platform-icons-container">
+                    {getPlatformIcons(post.platforms)}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};

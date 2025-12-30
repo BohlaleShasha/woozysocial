@@ -1,0 +1,16 @@
+.main-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-left: 277px;
+  margin-top: 70px;
+  padding: 40px;
+  overflow-y: auto;
+  min-height: calc(100vh - 70px);
+  z-index: 1;
+}
+
+.main-content::-webkit-scrollbar {
+  display: none;
+  width: 0;
+}
