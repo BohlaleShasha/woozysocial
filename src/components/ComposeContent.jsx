@@ -9,9 +9,10 @@ import "react-datepicker/dist/react-datepicker.css";
 import { baseURL } from "../utils/constants";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../utils/supabaseClient";
+import { formatDateInTimezone } from "../utils/timezones";
 
 export const ComposeContent = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [post, setPost] = useState({ text: "", media: null });
   const [networks, setNetworks] = useState({
     threads: false,
@@ -1492,14 +1493,7 @@ export const ComposeContent = () => {
               }}>
                 <strong>Selected Date & Time:</strong>
                 <div style={{ marginTop: '8px', fontSize: '16px', color: '#6465f1' }}>
-                  {tempScheduledDate.toLocaleString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
+                  {formatDateInTimezone(tempScheduledDate, profile?.timezone || 'UTC')}
                 </div>
               </div>
             )}

@@ -4,6 +4,7 @@ import { baseURL } from "../utils/constants";
 import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube } from "react-icons/fa";
 import { FaTiktok } from "react-icons/fa6";
 import { SiX } from "react-icons/si";
+import { formatTimeInTimezone, formatDateOnlyInTimezone } from "../utils/timezones";
 import "./ScheduleContent.css";
 
 const PLATFORM_ICONS = {
@@ -17,7 +18,7 @@ const PLATFORM_ICONS = {
 };
 
 export const ScheduleContent = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState("week"); // week, month, kanban
   const [posts, setPosts] = useState([]);
@@ -36,11 +37,12 @@ export const ScheduleContent = () => {
       const allPosts = data.history || [];
 
       // Map posts with their schedule dates
+      // Keep scheduleDate as ISO string to prevent timezone conversion issues
       const mappedPosts = allPosts.map(post => ({
         id: post.id,
         content: post.post || "",
         platforms: post.platforms || [],
-        scheduleDate: post.scheduleDate ? new Date(post.scheduleDate) : null,
+        scheduleDate: post.scheduleDate,  // Keep as string
         status: post.status,
         type: post.type,
         mediaUrls: post.mediaUrls || [],
@@ -138,11 +140,7 @@ export const ScheduleContent = () => {
 
     posts.forEach(post => {
       if (post.scheduleDate) {
-        const dateKey = post.scheduleDate.toLocaleDateString("en-US", {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        });
+        const dateKey = formatDateOnlyInTimezone(post.scheduleDate, profile?.timezone || 'UTC');
 
         if (!grouped[dateKey]) {
           grouped[dateKey] = [];
@@ -182,7 +180,7 @@ export const ScheduleContent = () => {
         <div className="post-card-meta">
           {Icon && <Icon size={14} />}
           <span className="post-time">
-            {post.scheduleDate?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {formatTimeInTimezone(post.scheduleDate, profile?.timezone || 'UTC')}
           </span>
         </div>
       </div>

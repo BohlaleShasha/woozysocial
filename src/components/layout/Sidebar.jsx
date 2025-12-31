@@ -1,9 +1,11 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
 import "./Sidebar.css";
 
 export const Sidebar = () => {
   const location = useLocation();
+  const { profile } = useAuth();
 
   const menuItems = [
     { name: "Dashboard", path: "/dashboard" },
@@ -21,7 +23,11 @@ export const Sidebar = () => {
     <div className="sidebar">
       <div className="sidebar-content">
         <div className="sidebar-logo">
-          <div className="sidebar-logo-text">[LOGO]</div>
+          {profile?.logo_url ? (
+            <img src={profile.logo_url} alt="Logo" className="sidebar-logo-image" />
+          ) : (
+            <div className="sidebar-logo-text">[LOGO]</div>
+          )}
         </div>
 
         <div className="sidebar-menu">

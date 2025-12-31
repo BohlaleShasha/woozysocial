@@ -103,6 +103,7 @@ app.post("/api/post", upload.single("media"), async (req, res) => {
 
     if (scheduledDate) {
       // Ayrshare requires Unix timestamp in SECONDS (not milliseconds)
+      // Parse the ISO string - it's already in UTC format from the client
       const dateObj = new Date(scheduledDate);
       const timestampSeconds = Math.floor(dateObj.getTime() / 1000);
       const currentTimeSeconds = Math.floor(Date.now() / 1000);
