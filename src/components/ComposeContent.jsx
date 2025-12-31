@@ -394,8 +394,103 @@ export const ComposeContent = () => {
     }));
   }, []);
 
-  const handleSchedule = (date) => {
-    setScheduledDate(date);
+  const [tempScheduledDate, setTempScheduledDate] = useState(null);
+
+  const handleDateSelect = (date) => {
+    setTempScheduledDate(date);
+  };
+
+  const handleConfirmSchedule = async () => {
+    if (!tempScheduledDate || !user) return;
+
+    setIsLoading(true);
+    onClose();
+
+    const formData = new FormData();
+    formData.append("text", post.text);
+    formData.append("userId", user.id);
+
+    // Handle media: either a new file upload or existing URL from draft
+    if (post.media) {
+      formData.append("media", post.media);
+    } else if (mediaPreview && typeof mediaPreview === 'string' && mediaPreview.startsWith('http')) {
+      formData.append("mediaUrl", mediaPreview);
+    }
+
+    formData.append("networks", JSON.stringify(networks));
+    formData.append("scheduledDate", tempScheduledDate.toISOString());
+
+    try {
+      const response = await fetch(`${baseURL}/api/post`, {
+        method: "POST",
+        body: formData
+      });
+
+      if (response.ok) {
+        // Delete draft if this was loaded from a draft
+        if (currentDraftId) {
+          try {
+            await supabase
+              .from("post_drafts")
+              .delete()
+              .eq("id", currentDraftId)
+              .eq("user_id", user.id);
+          } catch (error) {
+            console.error("Error deleting draft:", error);
+          }
+        }
+
+        toast({
+          title: "Post scheduled!",
+          description: `Your post will be published on ${tempScheduledDate.toLocaleString()}`,
+          status: "success",
+          duration: 4000,
+          isClosable: true
+        });
+
+        // Reset form completely
+        setPost({ text: "", media: null });
+        setNetworks({
+          threads: false,
+          telegram: false,
+          twitter: false,
+          googleBusiness: false,
+          pinterest: false,
+          tiktok: false,
+          snapchat: false,
+          instagram: false,
+          bluesky: false,
+          youtube: false,
+          linkedin: false,
+          facebook: false,
+          reddit: false
+        });
+        setMediaPreview(null);
+        setMediaType(null);
+        setScheduledDate(null);
+        setTempScheduledDate(null);
+        setCurrentDraftId(null);
+        setLastSaved(null);
+      } else {
+        throw new Error("Failed to schedule post");
+      }
+    } catch (error) {
+      console.error("Error scheduling post:", error);
+      toast({
+        title: "Error scheduling post",
+        description: "Unable to schedule your post. Please try again.",
+        status: "error",
+        duration: 3000,
+        isClosable: true
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancelSchedule = () => {
+    setTempScheduledDate(null);
+    setScheduledDate(null);
     onClose();
   };
 
@@ -1269,45 +1364,58 @@ export const ComposeContent = () => {
       </div>
 
       {/* Schedule Modal */}
-      <Modal isOpen={isOpen} onClose={onClose}>
+      <Modal isOpen={isOpen} onClose={handleCancelSchedule}>
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>Schedule Post</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
             <DatePicker
-              selected={scheduledDate}
-              onChange={handleSchedule}
+              selected={tempScheduledDate}
+              onChange={handleDateSelect}
               showTimeSelect
+              timeIntervals={1}
               dateFormat="Pp"
               minDate={new Date()}
               inline
             />
+            {tempScheduledDate && (
+              <div style={{
+                marginTop: '20px',
+                padding: '15px',
+                backgroundColor: '#f0f4ff',
+                borderRadius: '8px',
+                border: '1px solid #6465f1'
+              }}>
+                <strong>Selected Date & Time:</strong>
+                <div style={{ marginTop: '8px', fontSize: '16px', color: '#6465f1' }}>
+                  {tempScheduledDate.toLocaleString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </div>
+              </div>
+            )}
           </ModalBody>
           <ModalFooter>
-            <Button variant="ghost" onClick={onClose}>
+            <Button variant="ghost" onClick={handleCancelSchedule} mr={3}>
               Cancel
+            </Button>
+            <Button
+              colorScheme="blue"
+              onClick={handleConfirmSchedule}
+              isDisabled={!tempScheduledDate}
+            >
+              Confirm Schedule
             </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
 
-      {/* Scheduled Date Display */}
-      {scheduledDate && (
-        <div style={{
-          position: 'fixed',
-          bottom: '20px',
-          right: '20px',
-          backgroundColor: '#6465f1',
-          color: 'white',
-          padding: '12px 20px',
-          borderRadius: '10px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          zIndex: 1000
-        }}>
-          Scheduled for: {scheduledDate.toLocaleString()}
-        </div>
-      )}
     </div>
   );
 };

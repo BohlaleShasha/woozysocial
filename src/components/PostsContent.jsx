@@ -3,7 +3,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { baseURL } from "../utils/constants";
 import { supabase } from "../utils/supabaseClient";
 import { useNavigate } from "react-router-dom";
-import { FaSearch, FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaReddit, FaTelegram, FaPinterest, FaSnapchat, FaTrash } from "react-icons/fa";
+import { FaSearch, FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaReddit, FaTelegram, FaPinterest, FaSnapchat, FaTrash, FaSyncAlt } from "react-icons/fa";
 import { FaTiktok } from "react-icons/fa6";
 import { SiX, SiBluesky } from "react-icons/si";
 import "./PostsContent.css";
@@ -28,8 +28,53 @@ export const PostsContent = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("drafts");
   const [posts, setPosts] = useState([]);
+  const [allAyrsharePosts, setAllAyrsharePosts] = useState([]); // Cache Ayrshare data
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Fetch Ayrshare history once and cache it
+  const fetchAyrshareHistory = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const response = await fetch(`${baseURL}/api/post-history?userId=${user.id}`);
+      if (!response.ok) throw new Error("Failed to fetch post history");
+
+      const data = await response.json();
+      const allPosts = data.history || [];
+      setAllAyrsharePosts(allPosts);
+
+      console.log("Ayrshare history fetched:", allPosts.length, "posts");
+      return allPosts;
+    } catch (error) {
+      console.error("Error fetching Ayrshare history:", error);
+      return [];
+    }
+  }, [user]);
+
+  // Filter posts based on active tab (uses cached data)
+  const filterPosts = useCallback((tabName, ayrsharePosts) => {
+    const now = new Date();
+
+    if (tabName === "scheduled") {
+      return ayrsharePosts.filter(post => {
+        if (post.status === "scheduled") return true;
+        if (post.type === "schedule" || post.type === "scheduled") return true;
+        if (post.scheduleDate) {
+          const scheduleTime = new Date(post.scheduleDate);
+          return scheduleTime > now;
+        }
+        return false;
+      });
+    } else if (tabName === "history") {
+      return ayrsharePosts.filter(post => {
+        return post.status === "success" && post.type !== "schedule" && post.type !== "scheduled";
+      });
+    } else if (tabName === "failed") {
+      return ayrsharePosts.filter(post => post.status === "error");
+    }
+    return [];
+  }, []);
 
   // Fetch posts based on active tab
   const fetchPosts = useCallback(async () => {
@@ -48,36 +93,13 @@ export const PostsContent = () => {
         if (error) throw error;
         setPosts(data || []);
       } else {
-        // Fetch from Ayrshare API for scheduled, history, and failed
-        const response = await fetch(`${baseURL}/api/post-history?userId=${user.id}`);
-        if (!response.ok) throw new Error("Failed to fetch post history");
-
-        const data = await response.json();
-        console.log("Ayrshare history response:", JSON.stringify(data, null, 2));
-
-        // Ayrshare returns posts in 'history' array, not 'posts'
-        const allPosts = data.history || [];
-
-        // Log all posts with their status values
-        if (allPosts.length > 0) {
-          console.log("All post statuses:", allPosts.map(p => ({
-            id: p.id,
-            status: p.status,
-            platforms: p.platforms
-          })));
+        // Use cached Ayrshare data if available, otherwise fetch
+        let ayrsharePosts = allAyrsharePosts;
+        if (ayrsharePosts.length === 0) {
+          ayrsharePosts = await fetchAyrshareHistory();
         }
 
-        // Filter based on tab
-        let filteredPosts = [];
-        if (activeTab === "scheduled") {
-          filteredPosts = allPosts.filter(post => post.status === "scheduled");
-        } else if (activeTab === "history") {
-          filteredPosts = allPosts.filter(post => post.status === "success");
-        } else if (activeTab === "failed") {
-          filteredPosts = allPosts.filter(post => post.status === "error");
-        }
-
-        console.log(`Filtered posts for ${activeTab}:`, filteredPosts);
+        const filteredPosts = filterPosts(activeTab, ayrsharePosts);
         setPosts(filteredPosts);
       }
     } catch (error) {
@@ -86,7 +108,7 @@ export const PostsContent = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, activeTab]);
+  }, [user, activeTab, allAyrsharePosts, fetchAyrshareHistory, filterPosts]);
 
   useEffect(() => {
     fetchPosts();
@@ -169,6 +191,11 @@ export const PostsContent = () => {
     navigate("/compose");
   };
 
+  const handleRefresh = async () => {
+    setAllAyrsharePosts([]); // Clear cache
+    await fetchPosts(); // Refetch
+  };
+
   return (
     <div className="posts-content">
       {/* Search Bar */}
@@ -214,6 +241,14 @@ export const PostsContent = () => {
             Failed
           </button>
         </div>
+        <button
+          onClick={handleRefresh}
+          className="refresh-button"
+          disabled={loading}
+          title="Refresh posts"
+        >
+          <FaSyncAlt className={loading ? 'spinning' : ''} size={20} />
+        </button>
       </div>
 
       {/* Table */}
