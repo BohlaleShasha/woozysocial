@@ -24,10 +24,6 @@ export const Sidebar = () => {
           <div className="sidebar-logo-text">[LOGO]</div>
         </div>
 
-        <Link to="/compose" className="add-post-button">
-          +Add Post
-        </Link>
-
         <div className="sidebar-menu">
           {menuItems.map((item, index) => (
             <Link
