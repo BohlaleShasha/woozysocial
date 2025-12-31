@@ -80,7 +80,7 @@ async function uploadMediaToAyrshare(file) {
 
 app.post("/api/post", upload.single("media"), async (req, res) => {
   try {
-    const { text, networks, scheduledDate, userId } = req.body;
+    const { text, networks, scheduledDate, userId, mediaUrl } = req.body;
     const media = req.file;
 
     // Get user's profile key from database, or fall back to env variable
@@ -102,12 +102,43 @@ app.post("/api/post", upload.single("media"), async (req, res) => {
     };
 
     if (scheduledDate) {
-      // Ayrshare accepts ISO 8601 format or Unix timestamp
-      // Using Unix timestamp (seconds since epoch)
-      postData.scheduleDate = Math.floor(new Date(scheduledDate).getTime() / 1000);
+      // Ayrshare requires Unix timestamp in SECONDS (not milliseconds)
+      // Parse the ISO string - it's already in UTC format from the client
+      const dateObj = new Date(scheduledDate);
+      const timestampSeconds = Math.floor(dateObj.getTime() / 1000);
+      const currentTimeSeconds = Math.floor(Date.now() / 1000);
+      const secondsUntilPost = timestampSeconds - currentTimeSeconds;
+
+      console.log("=== SCHEDULING DEBUG ===");
+      console.log("Schedule Date Input (ISO):", scheduledDate);
+      console.log("Schedule Date Object:", dateObj.toISOString());
+      console.log("Schedule Date Timestamp (seconds):", timestampSeconds);
+      console.log("Current Time (seconds):", currentTimeSeconds);
+      console.log("Time until post (seconds):", secondsUntilPost);
+      console.log("Time until post (minutes):", (secondsUntilPost / 60).toFixed(2));
+      console.log("Is in future?:", secondsUntilPost > 0);
+
+      // Validate that the time is in the future
+      if (secondsUntilPost <= 0) {
+        console.error("ERROR: Scheduled time is in the past!");
+        return res.status(400).json({
+          error: "Scheduled time must be in the future",
+          details: `Time difference: ${secondsUntilPost} seconds (must be positive)`
+        });
+      }
+
+      // Ayrshare requires at least 10 minutes in the future for some platforms
+      if (secondsUntilPost < 60) {
+        console.warn("WARNING: Scheduled time is less than 1 minute in future");
+      }
+
+      postData.scheduleDate = timestampSeconds;
+      console.log("=== END SCHEDULING DEBUG ===");
     }
 
+    // Handle media: either a new upload or existing URL from draft
     if (media) {
+      // New file upload - upload to Ayrshare
       try {
         const mediaUrl = await uploadMediaToAyrshare(media);
         postData.mediaUrls = [mediaUrl];
@@ -124,6 +155,16 @@ app.post("/api/post", upload.single("media"), async (req, res) => {
           error: "Failed to upload media",
           details: error.response?.data || error.message
         });
+      }
+    } else if (mediaUrl) {
+      // Existing media URL from draft - use it directly
+      postData.mediaUrls = [mediaUrl];
+
+      // For video URLs, add videoOptions if needed
+      if (mediaUrl.toLowerCase().includes('video') || mediaUrl.match(/\.(mp4|mov|avi|webm)$/i)) {
+        postData.videoOptions = {
+          title: text?.substring(0, 100) || 'Video Post',
+        };
       }
     }
 
@@ -301,17 +342,18 @@ app.get("/api/user-accounts", async (req, res) => {
 
     const { displayNames } = response.data;
 
+    console.log(`[DIAGNOSTIC] Ayrshare response displayNames:`, displayNames);
+
     // Handle case where user has no connected accounts
     if (!displayNames || !Array.isArray(displayNames)) {
-      return res.json({ activeSocialAccounts: [] });
+      return res.json({ accounts: [] });
     }
 
-    const accountsWithUrls = displayNames.map((account) => ({
-      name: account.platform,
-      profileUrl: account.profileUrl
-    }));
+    // Extract just the platform names for the frontend
+    const platformNames = displayNames.map((account) => account.platform);
+    console.log(`[DIAGNOSTIC] Returning platform names:`, platformNames);
 
-    res.json({ activeSocialAccounts: accountsWithUrls });
+    res.json({ accounts: platformNames });
   } catch (error) {
     console.error(
       "Error fetching user accounts:",
@@ -394,6 +436,195 @@ app.post("/api/create-user-profile", async (req, res) => {
     );
     res.status(500).json({
       error: "Failed to create Ayrshare profile",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
+// Endpoint to get analytics and best posting times
+app.get("/api/analytics/best-time", async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    // Get user's profile key from database, or fall back to env variable
+    let profileKey = env.AYRSHARE_PROFILE_KEY;
+    if (userId) {
+      const userProfileKey = await getUserProfileKey(userId);
+      if (userProfileKey) {
+        profileKey = userProfileKey;
+      }
+    }
+
+    // Try to get analytics from Ayrshare - note: this requires a paid plan
+    try {
+      const response = await axios.get(`${BASE_AYRSHARE}/analytics/post`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${env.AYRSHARE_API_KEY}`,
+          "Profile-Key": profileKey
+        },
+        params: {
+          lastDays: 30 // Get last 30 days of data
+        }
+      });
+
+      // Analyze post times and engagement to find best times
+      const posts = response.data.posts || [];
+      const hourlyEngagement = {};
+
+      posts.forEach(post => {
+        if (post.created && post.likes !== undefined) {
+          const date = new Date(post.created);
+          const hour = date.getHours();
+
+          if (!hourlyEngagement[hour]) {
+            hourlyEngagement[hour] = { totalEngagement: 0, count: 0 };
+          }
+
+          const engagement = (post.likes || 0) + (post.comments || 0) + (post.shares || 0);
+          hourlyEngagement[hour].totalEngagement += engagement;
+          hourlyEngagement[hour].count += 1;
+        }
+      });
+
+      // Calculate average engagement per hour
+      const bestHours = Object.keys(hourlyEngagement)
+        .map(hour => ({
+          hour: parseInt(hour),
+          avgEngagement: hourlyEngagement[hour].totalEngagement / hourlyEngagement[hour].count
+        }))
+        .sort((a, b) => b.avgEngagement - a.avgEngagement)
+        .slice(0, 3); // Top 3 hours
+
+      res.json({
+        bestHours,
+        totalPosts: posts.length,
+        hasData: posts.length > 0
+      });
+    } catch (apiError) {
+      // Analytics API might not be available on free tier
+      console.log("Analytics API not available (may require paid plan):", apiError.response?.status);
+
+      // Return default best times based on general social media research
+      res.json({
+        bestHours: [
+          { hour: 9, avgEngagement: 0 },  // 9 AM
+          { hour: 13, avgEngagement: 0 }, // 1 PM
+          { hour: 18, avgEngagement: 0 }  // 6 PM
+        ],
+        totalPosts: 0,
+        hasData: false,
+        isDefault: true
+      });
+    }
+  } catch (error) {
+    console.error(
+      "Error in best-time endpoint:",
+      error.message
+    );
+
+    // Return default times even on error
+    res.json({
+      bestHours: [
+        { hour: 9, avgEngagement: 0 },
+        { hour: 13, avgEngagement: 0 },
+        { hour: 18, avgEngagement: 0 }
+      ],
+      totalPosts: 0,
+      hasData: false,
+      isDefault: true
+    });
+  }
+});
+
+// AI Post Generation endpoint
+app.post("/api/generate-post", async (req, res) => {
+  try {
+    const { userId, prompt, platforms } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+
+    // Fetch brand profile from Supabase
+    const { data: brandProfile, error: profileError } = await supabase
+      .from('brand_profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (profileError && profileError.code !== 'PGRST116') {
+      console.error("Error fetching brand profile:", profileError);
+    }
+
+    // Build AI prompt with brand context
+    let systemPrompt = "You are a social media content expert. Generate engaging social media posts.";
+    let userPrompt = prompt || "Generate an engaging social media post";
+
+    if (brandProfile) {
+      systemPrompt += `\n\nBrand Context:`;
+      if (brandProfile.brand_name) systemPrompt += `\n- Brand: ${brandProfile.brand_name}`;
+      if (brandProfile.brand_description) systemPrompt += `\n- About: ${brandProfile.brand_description}`;
+      if (brandProfile.tone_of_voice) systemPrompt += `\n- Tone: ${brandProfile.tone_of_voice}`;
+      if (brandProfile.target_audience) systemPrompt += `\n- Audience: ${brandProfile.target_audience}`;
+      if (brandProfile.key_topics) systemPrompt += `\n- Topics: ${brandProfile.key_topics}`;
+      if (brandProfile.brand_values) systemPrompt += `\n- Values: ${brandProfile.brand_values}`;
+      if (brandProfile.sample_posts) systemPrompt += `\n- Style Examples:\n${brandProfile.sample_posts}`;
+    }
+
+    if (platforms && platforms.length > 0) {
+      systemPrompt += `\n\nOptimize for these platforms: ${platforms.join(', ')}`;
+    }
+
+    systemPrompt += `\n\nGenerate 3 short variations. Separate each with "---" on a new line. Be concise. Include hashtags.`;
+
+    // Call OpenAI API
+    const openaiResponse = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 350
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.OPENAI_API_KEY}`
+        }
+      }
+    );
+
+    const generatedText = openaiResponse.data.choices[0].message.content;
+
+    // Split variations using the --- delimiter
+    let variations = generatedText.split(/\n---\n|\n\n---\n\n/).map(v => v.trim()).filter(v => v.length > 0);
+
+    // Fallback: if splitting didn't work, try other common patterns
+    if (variations.length === 1) {
+      variations = generatedText.split(/\n\n(?=\d+\.|\*\*Variation|\*Variation)/).map(v => v.trim()).filter(v => v.length > 0);
+    }
+
+    // If still only one variation, split by double line breaks as last resort
+    if (variations.length === 1) {
+      const parts = generatedText.split(/\n\n+/).map(v => v.trim()).filter(v => v.length > 20);
+      if (parts.length >= 3) {
+        variations = parts.slice(0, 3);
+      }
+    }
+
+    res.json({
+      success: true,
+      variations: variations.length > 1 ? variations : [generatedText],
+      brandProfileUsed: !!brandProfile
+    });
+  } catch (error) {
+    console.error("Error generating post:", error.response?.data || error.message);
+    res.status(500).json({
+      error: "Failed to generate post",
       details: error.response?.data || error.message
     });
   }

@@ -9,9 +9,10 @@ import "react-datepicker/dist/react-datepicker.css";
 import { baseURL } from "../utils/constants";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../utils/supabaseClient";
+import { formatDateInTimezone } from "../utils/timezones";
 
 export const ComposeContent = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [post, setPost] = useState({ text: "", media: null });
   const [networks, setNetworks] = useState({
     threads: false,
@@ -37,8 +38,18 @@ export const ComposeContent = () => {
   const [currentDraftId, setCurrentDraftId] = useState(null);
   const [lastSaved, setLastSaved] = useState(null);
   const autoSaveTimerRef = useRef(null);
+  const isSavingRef = useRef(false); // Lock to prevent concurrent saves
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen: isAiOpen, onOpen: onAiOpen, onClose: onAiClose } = useDisclosure();
+  const [engagementScore, setEngagementScore] = useState(0);
+  const [bestPostingTime, setBestPostingTime] = useState("2:00 PM");
+  const [hasRealData, setHasRealData] = useState(false);
+
+  // AI Generation state
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiVariations, setAiVariations] = useState([]);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Fetch connected accounts from Ayrshare on component mount
   useEffect(() => {
@@ -59,6 +70,35 @@ export const ComposeContent = () => {
     fetchAccounts();
   }, [user]);
 
+  // Fetch real analytics data for best posting time
+  useEffect(() => {
+    const fetchBestTime = async () => {
+      if (!user) return;
+
+      try {
+        const res = await fetch(`${baseURL}/api/analytics/best-time?userId=${user.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.hasData && data.bestHours && data.bestHours.length > 0) {
+            const bestHour = data.bestHours[0].hour;
+            const period = bestHour >= 12 ? 'PM' : 'AM';
+            const displayHour = bestHour > 12 ? bestHour - 12 : (bestHour === 0 ? 12 : bestHour);
+            setBestPostingTime(`${displayHour}:00 ${period}`);
+            setHasRealData(true);
+            console.log("Best posting time from analytics:", `${displayHour}:00 ${period}`);
+          } else {
+            console.log("No analytics data available, using default times");
+            setHasRealData(false);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching analytics:", err);
+        setHasRealData(false);
+      }
+    };
+    fetchBestTime();
+  }, [user]);
+
   // Load draft from sessionStorage if coming from Posts page
   useEffect(() => {
     const loadDraftData = sessionStorage.getItem("loadDraft");
@@ -76,12 +116,24 @@ export const ComposeContent = () => {
 
         // Load media preview
         if (draft.media_urls && draft.media_urls.length > 0) {
-          setMediaPreview(draft.media_urls[0]);
-          const url = draft.media_urls[0].toLowerCase();
+          const mediaUrl = draft.media_urls[0];
+          setMediaPreview(mediaUrl);
+
+          // Determine media type
+          const url = mediaUrl.toLowerCase();
           if (url.includes('video') || url.endsWith('.mp4') || url.endsWith('.mov')) {
             setMediaType('video');
           } else {
             setMediaType('image');
+          }
+
+          // If it's a data URL, we need to convert it back to a File object for upload
+          if (mediaUrl.startsWith('data:')) {
+            convertDataUrlToFile(mediaUrl).then(file => {
+              if (file) {
+                setPost(prev => ({ ...prev, media: file }));
+              }
+            });
           }
         }
 
@@ -115,15 +167,36 @@ export const ComposeContent = () => {
     }
   }, []); // Run once on mount
 
+  // Helper function to convert data URL back to File object
+  const convertDataUrlToFile = async (dataUrl) => {
+    try {
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const filename = `draft-media-${Date.now()}.${blob.type.split('/')[1]}`;
+      return new File([blob], filename, { type: blob.type });
+    } catch (error) {
+      console.error("Error converting data URL to file:", error);
+      return null;
+    }
+  };
+
   // Auto-save draft functionality
   const saveDraft = useCallback(async () => {
     if (!user) return;
+
+    // Prevent concurrent saves
+    if (isSavingRef.current) {
+      console.log("Save already in progress, skipping...");
+      return;
+    }
 
     // Don't save if there's no content
     const selectedPlatforms = Object.keys(networks).filter(key => networks[key]);
     if (!post.text && !mediaPreview && selectedPlatforms.length === 0) {
       return;
     }
+
+    isSavingRef.current = true;
 
     try {
       const draftData = {
@@ -159,6 +232,8 @@ export const ComposeContent = () => {
       setLastSaved(new Date());
     } catch (error) {
       console.error("Error saving draft:", error);
+    } finally {
+      isSavingRef.current = false;
     }
   }, [user, post.text, mediaPreview, networks, scheduledDate, currentDraftId]);
 
@@ -193,6 +268,66 @@ export const ComposeContent = () => {
       saveDraft();
     };
   }, [saveDraft]);
+
+  // Calculate engagement score based on post content
+  useEffect(() => {
+    const calculateEngagementScore = () => {
+      let score = 0;
+      const text = post.text || "";
+      const textLength = text.length;
+
+      // Text length score (max 30 points)
+      // Optimal: 100-150 characters
+      if (textLength >= 100 && textLength <= 150) {
+        score += 30;
+      } else if (textLength >= 50 && textLength < 100) {
+        score += 20;
+      } else if (textLength > 150 && textLength <= 200) {
+        score += 20;
+      } else if (textLength > 0 && textLength < 50) {
+        score += 10;
+      } else if (textLength > 200) {
+        score += 15;
+      }
+
+      // Hashtag count score (max 25 points)
+      const hashtagCount = (text.match(/#\w+/g) || []).length;
+      if (hashtagCount >= 5 && hashtagCount <= 10) {
+        score += 25;
+      } else if (hashtagCount >= 3 && hashtagCount < 5) {
+        score += 20;
+      } else if (hashtagCount > 10 && hashtagCount <= 15) {
+        score += 15;
+      } else if (hashtagCount > 0 && hashtagCount < 3) {
+        score += 10;
+      }
+
+      // Media presence score (max 20 points)
+      if (mediaPreview) {
+        score += 20;
+      }
+
+      // Platform selection score (max 15 points)
+      const selectedPlatforms = Object.values(networks).filter(v => v).length;
+      if (selectedPlatforms >= 2 && selectedPlatforms <= 4) {
+        score += 15;
+      } else if (selectedPlatforms === 1) {
+        score += 10;
+      } else if (selectedPlatforms > 4) {
+        score += 8;
+      }
+
+      // Call-to-action score (max 10 points)
+      const hasCallToAction = /\b(click|link|check|visit|shop|buy|learn|sign up|join|follow|subscribe)\b/i.test(text);
+      if (hasCallToAction) {
+        score += 10;
+      }
+
+      setEngagementScore(Math.min(score, 100));
+    };
+
+    calculateEngagementScore();
+  }, [post.text, mediaPreview, networks]);
 
   // Map Ayrshare platform names to our internal names
   const platformNameMap = {
@@ -266,8 +401,103 @@ export const ComposeContent = () => {
     }));
   }, []);
 
-  const handleSchedule = (date) => {
-    setScheduledDate(date);
+  const [tempScheduledDate, setTempScheduledDate] = useState(null);
+
+  const handleDateSelect = (date) => {
+    setTempScheduledDate(date);
+  };
+
+  const handleConfirmSchedule = async () => {
+    if (!tempScheduledDate || !user) return;
+
+    setIsLoading(true);
+    onClose();
+
+    const formData = new FormData();
+    formData.append("text", post.text);
+    formData.append("userId", user.id);
+
+    // Handle media: either a new file upload or existing URL from draft
+    if (post.media) {
+      formData.append("media", post.media);
+    } else if (mediaPreview && typeof mediaPreview === 'string' && mediaPreview.startsWith('http')) {
+      formData.append("mediaUrl", mediaPreview);
+    }
+
+    formData.append("networks", JSON.stringify(networks));
+    formData.append("scheduledDate", tempScheduledDate.toISOString());
+
+    try {
+      const response = await fetch(`${baseURL}/api/post`, {
+        method: "POST",
+        body: formData
+      });
+
+      if (response.ok) {
+        // Delete draft if this was loaded from a draft
+        if (currentDraftId) {
+          try {
+            await supabase
+              .from("post_drafts")
+              .delete()
+              .eq("id", currentDraftId)
+              .eq("user_id", user.id);
+          } catch (error) {
+            console.error("Error deleting draft:", error);
+          }
+        }
+
+        toast({
+          title: "Post scheduled!",
+          description: `Your post will be published on ${tempScheduledDate.toLocaleString()}`,
+          status: "success",
+          duration: 4000,
+          isClosable: true
+        });
+
+        // Reset form completely
+        setPost({ text: "", media: null });
+        setNetworks({
+          threads: false,
+          telegram: false,
+          twitter: false,
+          googleBusiness: false,
+          pinterest: false,
+          tiktok: false,
+          snapchat: false,
+          instagram: false,
+          bluesky: false,
+          youtube: false,
+          linkedin: false,
+          facebook: false,
+          reddit: false
+        });
+        setMediaPreview(null);
+        setMediaType(null);
+        setScheduledDate(null);
+        setTempScheduledDate(null);
+        setCurrentDraftId(null);
+        setLastSaved(null);
+      } else {
+        throw new Error("Failed to schedule post");
+      }
+    } catch (error) {
+      console.error("Error scheduling post:", error);
+      toast({
+        title: "Error scheduling post",
+        description: "Unable to schedule your post. Please try again.",
+        status: "error",
+        duration: 3000,
+        isClosable: true
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancelSchedule = () => {
+    setTempScheduledDate(null);
+    setScheduledDate(null);
     onClose();
   };
 
@@ -793,12 +1023,40 @@ export const ComposeContent = () => {
     const formData = new FormData();
     formData.append("text", post.text);
     formData.append("userId", user.id);
+
+    // Handle media: either a new file upload or existing URL from draft
     if (post.media) {
+      // New file upload
       formData.append("media", post.media);
+    } else if (mediaPreview && typeof mediaPreview === 'string' && mediaPreview.startsWith('http')) {
+      // Existing media URL from draft - send as mediaUrl
+      formData.append("mediaUrl", mediaPreview);
     }
+
     formData.append("networks", JSON.stringify(networks));
     if (scheduledDate) {
-      formData.append("scheduledDate", scheduledDate.toISOString());
+      // Ensure the scheduled date is in the future
+      const now = new Date();
+      const scheduledTime = new Date(scheduledDate);
+
+      if (scheduledTime <= now) {
+        toast({
+          title: "Invalid schedule time",
+          description: "Please select a time in the future.",
+          status: "error",
+          duration: 3000,
+          isClosable: true
+        });
+        setIsPosting(false);
+        return;
+      }
+
+      console.log("Scheduling post:");
+      console.log("  Current time:", now.toISOString());
+      console.log("  Scheduled time:", scheduledTime.toISOString());
+      console.log("  Time difference (minutes):", (scheduledTime - now) / 1000 / 60);
+
+      formData.append("scheduledDate", scheduledTime.toISOString());
     }
 
     try {
@@ -869,6 +1127,126 @@ export const ComposeContent = () => {
     }
   };
 
+  // AI Post Generation
+  const handleGenerateWithAI = async () => {
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to use AI generation",
+        status: "error",
+        duration: 3000,
+        isClosable: true
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const selectedPlatforms = Object.keys(networks).filter(key => networks[key]);
+
+      const response = await fetch(`${baseURL}/api/generate-post`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          prompt: aiPrompt,
+          platforms: selectedPlatforms
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate post");
+      }
+
+      const data = await response.json();
+      setAiVariations(data.variations || []);
+
+      if (!data.brandProfileUsed) {
+        toast({
+          title: "Tip",
+          description: "Complete your Brand Profile for better AI suggestions!",
+          status: "info",
+          duration: 4000,
+          isClosable: true
+        });
+      }
+    } catch (error) {
+      console.error("Error generating post:", error);
+      toast({
+        title: "Error generating post",
+        description: error.message,
+        status: "error",
+        duration: 3000,
+        isClosable: true
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleSelectVariation = (variation) => {
+    // Clean up variation text (remove numbering if present)
+    const cleanText = variation.replace(/^\d+\.\s*/, '').replace(/^\*\*Variation\s+\d+:?\*\*\s*/i, '').trim();
+    setPost({ ...post, text: cleanText });
+    onAiClose();
+    setAiPrompt("");
+    setAiVariations([]);
+  };
+
+  // Calculate best posting time based on real analytics or selected platforms
+  const getBestPostingTime = () => {
+    // If we have real analytics data, use it
+    if (hasRealData) {
+      return bestPostingTime;
+    }
+
+    // Otherwise, fall back to platform-specific optimal times
+    const selectedPlatformNames = Object.keys(networks).filter(key => networks[key]);
+
+    // Platform-specific optimal times (industry averages)
+    const platformTimes = {
+      instagram: "11:00 AM - 1:00 PM",
+      facebook: "1:00 PM - 3:00 PM",
+      twitter: "12:00 PM - 1:00 PM",
+      linkedin: "10:00 AM - 12:00 PM",
+      tiktok: "6:00 PM - 9:00 PM",
+      youtube: "2:00 PM - 4:00 PM",
+      pinterest: "8:00 PM - 11:00 PM",
+      threads: "12:00 PM - 1:00 PM"
+    };
+
+    if (selectedPlatformNames.length === 0) {
+      return "2:00 PM";
+    }
+
+    // Return the time for the first selected platform
+    const firstPlatform = selectedPlatformNames[0];
+    return platformTimes[firstPlatform] || "2:00 PM";
+  };
+
+  // Get hashtag count from post text
+  const getHashtagCount = () => {
+    const text = post.text || "";
+    const hashtags = text.match(/#\w+/g) || [];
+    return hashtags.length;
+  };
+
+  // Get color based on engagement score
+  const getScoreColor = () => {
+    if (engagementScore >= 80) return "#10b981"; // Green
+    if (engagementScore >= 60) return "#f59e0b"; // Orange
+    if (engagementScore >= 40) return "#f97316"; // Dark orange
+    return "#ef4444"; // Red
+  };
+
+  // Calculate stroke offset for circular progress
+  const getStrokeOffset = () => {
+    const circumference = 2 * Math.PI * 50;
+    return circumference - (engagementScore / 100) * circumference;
+  };
+
   return (
     <div className="compose-content">
       {/* Top Row - Create Post and Socials */}
@@ -906,6 +1284,14 @@ export const ComposeContent = () => {
                   accept="image/*,video/*"
                   style={{ display: "none" }}
                 />
+                <button
+                  className="media-upload-btn"
+                  onClick={onAiOpen}
+                  title="Generate with AI"
+                  style={{ marginLeft: '8px' }}
+                >
+                  ✨
+                </button>
               </div>
 
               <div className="form-buttons">
@@ -1001,43 +1387,224 @@ export const ComposeContent = () => {
           </div>
         </div>
 
-        {/* Right - Comments */}
-        <div className="compose-comments">
-          <h3 className="comments-title">Comment</h3>
-          <div className="comments-container">
-            <div className="comments-empty">
-              <p>No comments yet.</p>
+        {/* Right - Performance Prediction */}
+        <div className="compose-prediction">
+          <div className="prediction-header-section">
+            <h3 className="prediction-title">Performance Prediction</h3>
+          </div>
+          <div className="prediction-container">
+            {/* Engagement Score Circle */}
+            <div className="engagement-score">
+              <svg width="120" height="120" viewBox="0 0 120 120">
+                <circle
+                  cx="60"
+                  cy="60"
+                  r="50"
+                  fill="none"
+                  stroke="#e5e7eb"
+                  strokeWidth="10"
+                />
+                <circle
+                  cx="60"
+                  cy="60"
+                  r="50"
+                  fill="none"
+                  stroke={getScoreColor()}
+                  strokeWidth="10"
+                  strokeDasharray="314"
+                  strokeDashoffset={getStrokeOffset()}
+                  transform="rotate(-90 60 60)"
+                  strokeLinecap="round"
+                  style={{ transition: 'stroke-dashoffset 0.3s ease, stroke 0.3s ease' }}
+                />
+                <text
+                  x="60"
+                  y="70"
+                  textAnchor="middle"
+                  fontSize="36"
+                  fontWeight="bold"
+                  fill={getScoreColor()}
+                >
+                  {engagementScore}
+                </text>
+              </svg>
+              <p className="score-label">Engagement Score</p>
             </div>
-            <div className="comment-input-wrapper">
-              <textarea
-                className="comment-input"
-                placeholder="Type a comment..."
-              />
+
+            {/* Prediction Details */}
+            <div className="prediction-details">
+              <div className="prediction-item">
+                <span className="prediction-icon">🕐</span>
+                <div className="prediction-info">
+                  <span className="prediction-label">
+                    Best time: {hasRealData ? "📊" : "📈"}
+                  </span>
+                  <span className="prediction-value">{getBestPostingTime()}</span>
+                  {hasRealData && (
+                    <span style={{ fontSize: '10px', color: '#10b981' }}>
+                      Based on your analytics
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="prediction-item">
+                <span className="prediction-icon">#</span>
+                <div className="prediction-info">
+                  <span className="prediction-label">Hashtags:</span>
+                  <span className="prediction-value">{getHashtagCount()} / 5-10</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="quick-actions">
+              <h4 className="quick-actions-title">⚡ Quick Actions</h4>
+              <button className="quick-action-btn">🔥 Trending Hashtags</button>
+              <button className="quick-action-btn">♻️ Recycle Top Post</button>
             </div>
           </div>
         </div>
       </div>
 
       {/* Schedule Modal */}
-      <Modal isOpen={isOpen} onClose={onClose}>
+      <Modal isOpen={isOpen} onClose={handleCancelSchedule}>
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>Schedule Post</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
             <DatePicker
-              selected={scheduledDate}
-              onChange={handleSchedule}
+              selected={tempScheduledDate}
+              onChange={handleDateSelect}
               showTimeSelect
+              timeIntervals={15}
               dateFormat="Pp"
               minDate={new Date()}
               inline
             />
+            {tempScheduledDate && (
+              <div style={{
+                marginTop: '20px',
+                padding: '15px',
+                backgroundColor: '#f0f4ff',
+                borderRadius: '8px',
+                border: '1px solid #6465f1'
+              }}>
+                <strong>Selected Date & Time:</strong>
+                <div style={{ marginTop: '8px', fontSize: '16px', color: '#6465f1' }}>
+                  {formatDateInTimezone(tempScheduledDate, profile?.timezone || 'UTC')}
+                </div>
+              </div>
+            )}
           </ModalBody>
           <ModalFooter>
-            <Button variant="ghost" onClick={onClose}>
+            <Button variant="ghost" onClick={handleCancelSchedule} mr={3}>
               Cancel
             </Button>
+            <Button
+              colorScheme="blue"
+              onClick={handleConfirmSchedule}
+              isDisabled={!tempScheduledDate}
+            >
+              Confirm Schedule
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* AI Generation Modal */}
+      <Modal isOpen={isAiOpen} onClose={onAiClose} size="xl">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>✨ Generate Post with AI</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            {aiVariations.length === 0 ? (
+              <div>
+                <p style={{ marginBottom: '10px', color: '#666' }}>
+                  What would you like to post about?
+                </p>
+                <textarea
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  placeholder="E.g., Announce our new product launch, share a customer success story, promote our upcoming webinar..."
+                  rows="4"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: '1px solid #ddd',
+                    fontSize: '14px',
+                    fontFamily: 'inherit',
+                    resize: 'vertical'
+                  }}
+                />
+                <p style={{ marginTop: '10px', fontSize: '12px', color: '#999' }}>
+                  💡 Tip: Complete your Brand Profile for better AI-generated content
+                </p>
+              </div>
+            ) : (
+              <div>
+                <p style={{ marginBottom: '15px', fontWeight: 'bold' }}>
+                  Select a variation:
+                </p>
+                {aiVariations.map((variation, index) => (
+                  <div
+                    key={index}
+                    onClick={() => handleSelectVariation(variation)}
+                    style={{
+                      padding: '15px',
+                      marginBottom: '10px',
+                      border: '2px solid #e5e7eb',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      backgroundColor: '#f9fafb'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#6465f1';
+                      e.currentTarget.style.backgroundColor = '#f5f3ff';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#e5e7eb';
+                      e.currentTarget.style.backgroundColor = '#f9fafb';
+                    }}
+                  >
+                    <div style={{ fontSize: '14px', whiteSpace: 'pre-wrap' }}>
+                      {variation.replace(/^\d+\.\s*/, '').replace(/^\*\*Variation\s+\d+:?\*\*\s*/i, '')}
+                    </div>
+                  </div>
+                ))}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setAiVariations([]);
+                    setAiPrompt("");
+                  }}
+                  style={{ marginTop: '10px' }}
+                >
+                  ← Generate Again
+                </Button>
+              </div>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" onClick={onAiClose} mr={3}>
+              Cancel
+            </Button>
+            {aiVariations.length === 0 && (
+              <Button
+                colorScheme="purple"
+                onClick={handleGenerateWithAI}
+                isLoading={isGenerating}
+                loadingText="Generating..."
+                disabled={!aiPrompt.trim()}
+              >
+                Generate
+              </Button>
+            )}
           </ModalFooter>
         </ModalContent>
       </Modal>

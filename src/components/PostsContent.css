@@ -48,6 +48,48 @@
   color: rgba(0, 0, 0, 0.5);
 }
 
+/* Refresh Button */
+.refresh-button {
+  width: 40px;
+  height: 40px;
+  background-color: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.refresh-button:hover:not(:disabled) {
+  opacity: 0.7;
+}
+
+.refresh-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.refresh-button svg {
+  color: white;
+}
+
+/* Spinning animation for refresh icon */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
 /* Tabs Container */
 .posts-tabs-container {
   backdrop-filter: blur(25px) brightness(100%);
@@ -57,6 +99,9 @@
   box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.02);
   padding: 0 28px;
   margin: 0 60px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .posts-tabs {
