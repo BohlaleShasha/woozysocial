@@ -47,9 +47,10 @@
 }
 
 .view-btn.active {
-  background: white;
-  color: #6366f1;
+  background: #FFC801;
+  color: #114C5A;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-weight: 600;
 }
 
 /* Date Navigation */
@@ -239,8 +240,6 @@
 /* Schedule List View */
 .schedule-list-view {
   padding: 20px;
-  max-height: 700px;
-  overflow-y: auto;
 }
 
 .schedule-day-section {
@@ -252,7 +251,7 @@
 
 .schedule-day-header {
   padding: 16px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #114C5A;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -266,8 +265,8 @@
 }
 
 .schedule-day-count {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
+  background: #FFC801;
+  color: #114C5A;
   padding: 4px 12px;
   border-radius: 12px;
   font-size: 13px;

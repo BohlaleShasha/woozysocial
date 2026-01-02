@@ -416,20 +416,6 @@ export const SettingsContent = () => {
             </div>
           </div>
         </div>
-
-        {/* API & Integrations Section */}
-        <div className="settings-section">
-          <div className="section-header">
-            <h2 className="section-title">API & Integrations</h2>
-            <p className="section-subtitle">Manage your API keys and integrations</p>
-          </div>
-          <div className="settings-form">
-            <div className="api-info-box">
-              <p className="api-info-text">No API keys configured</p>
-              <button className="api-button">Generate API Key</button>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

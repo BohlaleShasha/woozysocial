@@ -7,6 +7,7 @@ import fs from "fs";
 import FormData from "form-data";
 import cors from "cors";
 import { createClient } from "@supabase/supabase-js";
+import { Resend } from "resend";
 
 const BASE_AYRSHARE = "https://api.ayrshare.com/api";
 
@@ -14,6 +15,9 @@ config(); // Load environment variables
 
 // Initialize Supabase client
 const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+
+// Initialize Resend client
+const resend = new Resend(env.RESEND_API_KEY);
 
 const corsOptions = {};
 
@@ -627,6 +631,203 @@ app.post("/api/generate-post", async (req, res) => {
       error: "Failed to generate post",
       details: error.response?.data || error.message
     });
+  }
+});
+
+// Team Invitation endpoint
+app.post("/api/send-team-invite", async (req, res) => {
+  try {
+    const { email, role, userId } = req.body;
+
+    // Validate input
+    if (!email || !role || !userId) {
+      return res.status(400).json({ error: "Email, role, and userId are required" });
+    }
+
+    // Validate role
+    const validRoles = ['admin', 'editor', 'view_only'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({ error: 'Invalid role. Must be admin, editor, or view_only' });
+    }
+
+    // Check if email is already a team member
+    const { data: existingMember } = await supabase
+      .from('team_members')
+      .select('id')
+      .eq('owner_id', userId)
+      .eq('email', email.toLowerCase())
+      .single();
+
+    if (existingMember) {
+      return res.status(400).json({ error: 'This user is already a team member' });
+    }
+
+    // Check if there's already a pending invitation
+    const { data: existingInvite } = await supabase
+      .from('team_invitations')
+      .select('id, status')
+      .eq('owner_id', userId)
+      .eq('email', email.toLowerCase())
+      .single();
+
+    if (existingInvite && existingInvite.status === 'pending') {
+      return res.status(400).json({ error: 'An invitation has already been sent to this email' });
+    }
+
+    // Create the invitation
+    const { data: invitation, error: inviteError } = await supabase
+      .from('team_invitations')
+      .insert({
+        owner_id: userId,
+        email: email.toLowerCase(),
+        role: role,
+        status: 'pending',
+      })
+      .select()
+      .single();
+
+    if (inviteError) {
+      console.error('Error creating invitation:', inviteError);
+      return res.status(500).json({ error: 'Failed to create invitation' });
+    }
+
+    console.log('Invitation created successfully:', invitation.id);
+
+    // Get inviter's email/name
+    const { data: userData } = await supabase.auth.admin.getUserById(userId);
+    const inviterName = userData?.user?.email || 'A team member';
+
+    // Generate invitation link
+    const appUrl = env.APP_URL || 'http://localhost:5173';
+    const inviteLink = `${appUrl}/accept-invite?token=${invitation.invite_token}`;
+
+    // Helper function to get role label
+    const getRoleLabel = (role) => {
+      const labels = {
+        admin: 'Admin',
+        editor: 'Editor',
+        view_only: 'View Only',
+      };
+      return labels[role] || role;
+    };
+
+    // Helper function to get role description
+    const getRoleDescription = (role) => {
+      const descriptions = {
+        admin: 'Full access - can invite, remove members, and manage all posts',
+        editor: 'Can create, edit, and delete posts',
+        view_only: 'Read-only access - can view posts and team members',
+      };
+      return descriptions[role] || '';
+    };
+
+    // Send email via Resend
+    try {
+      const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Invitation</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #F1F6F4;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 0;">
+        <table role="presentation" style="width: 600px; max-width: 100%; background-color: #ffffff; border-radius: 16px; border: 2px solid rgba(0, 0, 0, 0.4); box-shadow: 0 4px 12px rgba(17, 76, 90, 0.08);">
+          <!-- Header -->
+          <tr>
+            <td style="padding: 40px; text-align: center; background-color: #114C5A; border-radius: 14px 14px 0 0;">
+              <h1 style="margin: 0; color: #FFC801; font-size: 28px; font-weight: 700;">You're Invited!</h1>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px;">
+              <p style="margin: 0 0 20px 0; font-size: 16px; color: #114C5A; line-height: 1.6;">
+                Hi there,
+              </p>
+
+              <p style="margin: 0 0 20px 0; font-size: 16px; color: #114C5A; line-height: 1.6;">
+                <strong>${inviterName}</strong> has invited you to join their team as a <strong>${getRoleLabel(role)}</strong>.
+              </p>
+
+              <div style="background-color: #F1F6F4; border: 2px solid rgba(0, 0, 0, 0.1); border-radius: 10px; padding: 20px; margin: 30px 0;">
+                <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 600; color: #114C5A;">Your Role:</p>
+                <p style="margin: 0; font-size: 14px; color: #114C5A; opacity: 0.8;">${getRoleDescription(role)}</p>
+              </div>
+
+              <p style="margin: 0 0 30px 0; font-size: 16px; color: #114C5A; line-height: 1.6;">
+                Click the button below to accept this invitation and get started:
+              </p>
+
+              <!-- CTA Button -->
+              <table role="presentation" style="margin: 0 auto;">
+                <tr>
+                  <td style="border-radius: 10px; background-color: #FFC801;">
+                    <a href="${inviteLink}" style="display: inline-block; padding: 16px 40px; font-size: 16px; font-weight: 600; color: #114C5A; text-decoration: none; border-radius: 10px;">
+                      Accept Invitation
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 30px 0 0 0; font-size: 14px; color: #114C5A; opacity: 0.7; line-height: 1.6;">
+                This invitation will expire in <strong>7 days</strong>. If you didn't expect this invitation, you can safely ignore this email.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 20px 40px; text-align: center; background-color: #F1F6F4; border-radius: 0 0 14px 14px; border-top: 2px solid rgba(0, 0, 0, 0.1);">
+              <p style="margin: 0; font-size: 12px; color: #114C5A; opacity: 0.6;">
+                If the button doesn't work, copy and paste this link into your browser:<br>
+                <a href="${inviteLink}" style="color: #114C5A; word-break: break-all;">${inviteLink}</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+      `.trim();
+
+      const { data: emailData, error: emailError } = await resend.emails.send({
+        from: 'Social Media Team <hello@woozysocial.com>',
+        to: [email],
+        subject: `${inviterName} invited you to join their team`,
+        html: emailHtml,
+      });
+
+      if (emailError) {
+        console.error('Error sending email:', emailError);
+        // Don't fail the whole request if email fails
+      } else {
+        console.log('Email sent successfully:', emailData);
+      }
+    } catch (emailError) {
+      console.error('Error sending email:', emailError);
+      // Don't fail the whole request if email fails
+    }
+
+    res.json({
+      success: true,
+      message: 'Invitation sent successfully',
+      invitation: {
+        id: invitation.id,
+        email: invitation.email,
+        role: invitation.role,
+        status: invitation.status,
+      },
+    });
+  } catch (error) {
+    console.error("Error in send-team-invite:", error.message);
+    res.status(500).json({ error: "Failed to send invitation", details: error.message });
   }
 });
 

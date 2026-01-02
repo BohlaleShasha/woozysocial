@@ -1,15 +1,74 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { InviteMemberModal } from "./InviteMemberModal";
+import { supabase } from "../utils/supabaseClient";
 import "./TeamContent.css";
 
 export const TeamContent = () => {
-  const [teamMembers] = useState([
-    { name: "John Doe", role: "Admin", email: "john@example.com", avatar: "👤" },
-    { name: "Jane Smith", role: "Editor", email: "jane@example.com", avatar: "👤" }
-  ]);
+  const { user } = useAuth();
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchTeamMembers();
+    }
+  }, [user]);
+
+  const fetchTeamMembers = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('team_members')
+        .select('*')
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching team members:', error);
+      } else {
+        setTeamMembers(data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching team members:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddMember = () => {
-    console.log("Add team member clicked");
-    // TODO: Implement add member functionality
+    setIsModalOpen(true);
+  };
+
+  const handleInvite = async (inviteData) => {
+    try {
+      // Call the server API to send invitation
+      const response = await fetch('http://localhost:3001/api/send-team-invite', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: inviteData.email,
+          role: inviteData.role,
+          userId: user.id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send invitation');
+      }
+
+      console.log('Invitation sent successfully:', data);
+      // The modal will close automatically on success
+    } catch (error) {
+      console.error('Error in handleInvite:', error);
+      // Re-throw the error so the modal can display it
+      throw error;
+    }
   };
 
   return (
@@ -32,31 +91,59 @@ export const TeamContent = () => {
 
         <div className="team-content">
           <div className="members-list">
-            {teamMembers.map((member, index) => (
-              <div key={index} className="member-card">
-                <div className="member-info">
-                  <div className="member-avatar">{member.avatar}</div>
-                  <div className="member-details">
-                    <h3 className="member-name">{member.name}</h3>
-                    <p className="member-email">{member.email}</p>
-                  </div>
-                </div>
-                <div className="member-actions">
-                  <span className="member-role">{member.role}</span>
-                  <button className="remove-button">Remove</button>
-                </div>
+            {loading ? (
+              <div className="team-info-box">
+                <p className="info-text">Loading team members...</p>
               </div>
-            ))}
-          </div>
+            ) : teamMembers.length === 0 ? (
+              <div className="team-info-box">
+                <p className="info-text">No team members yet</p>
+                <p className="info-subtext">
+                  Click "+ Add Member" to invite your first team member
+                </p>
+              </div>
+            ) : (
+              teamMembers.map((member) => {
+                const getInitials = (email) => {
+                  return email.substring(0, 2).toUpperCase();
+                };
 
-          <div className="team-info-box">
-            <p className="info-text">Team management interface would go here...</p>
-            <p className="info-subtext">
-              Add team members, assign roles, and manage permissions to collaborate effectively
-            </p>
+                const getRoleLabel = (role) => {
+                  const labels = {
+                    admin: 'Admin',
+                    editor: 'Editor',
+                    view_only: 'View Only',
+                  };
+                  return labels[role] || role;
+                };
+
+                return (
+                  <div key={member.id} className="member-card">
+                    <div className="member-info">
+                      <div className="member-avatar">{getInitials(member.email)}</div>
+                      <div className="member-details">
+                        <h3 className="member-name">{member.email}</h3>
+                        <p className="member-email">Joined {new Date(member.created_at).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    <div className="member-actions">
+                      <span className="member-role">{getRoleLabel(member.role)}</span>
+                      <button className="remove-button">Remove</button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
+
+      <InviteMemberModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onInvite={handleInvite}
+        currentUserEmail={user?.email}
+      />
     </div>
   );
 };
