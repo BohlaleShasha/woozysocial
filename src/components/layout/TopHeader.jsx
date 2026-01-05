@@ -1,7 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { WorkspaceSwitcher } from "../workspace/WorkspaceSwitcher";
 import { baseURL } from "../../utils/constants";
 import "./TopHeader.css";
 import notificationIcon from "./vector-15.svg";
@@ -11,6 +10,22 @@ export const TopHeader = () => {
   const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
+  const profileRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener('click', handleClickOutside);
+    }
+
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showDropdown]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -47,16 +62,16 @@ export const TopHeader = () => {
 
   return (
     <div className="top-header">
+      <div className="logo-container">
+      </div>
+
       <div className="header-right">
-        <div className="notification-wrapper">
-          <img className="notification-icon" alt="Notifications" src={notificationIcon} />
-        </div>
-        <div className="profile-section">
+        <div className="profile-section" ref={profileRef}>
           <div
             className="profile-avatar"
             onClick={() => setShowDropdown(!showDropdown)}
           >
-            {profile?.full_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
+            {profile?.full_name || user?.email || 'User'}
           </div>
           {showDropdown && (
             <div className="profile-dropdown">
@@ -78,10 +93,6 @@ export const TopHeader = () => {
             </div>
           )}
         </div>
-      </div>
-
-      <div className="logo-container">
-        <WorkspaceSwitcher />
       </div>
     </div>
   );

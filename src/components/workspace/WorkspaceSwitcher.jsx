@@ -18,10 +18,10 @@ export const WorkspaceSwitcher = () => {
     };
 
     if (showDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('click', handleClickOutside);
     }
 
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
   }, [showDropdown]);
 
   const handleWorkspaceSwitch = async (workspaceId) => {
