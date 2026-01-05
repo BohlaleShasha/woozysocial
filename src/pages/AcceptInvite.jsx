@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../utils/supabaseClient';
+import { baseURL } from '../utils/constants';
 import './AcceptInvite.css';
 
 export const AcceptInvite = () => {
@@ -29,7 +30,7 @@ export const AcceptInvite = () => {
       setLoading(true);
 
       // Fetch invitation by token via API (to bypass RLS)
-      const response = await fetch(`http://localhost:3001/api/team/validate-invite?token=${token}`);
+      const response = await fetch(`${baseURL}/api/team/validate-invite?token=${token}`);
 
       if (!response.ok) {
         const result = await response.json();
@@ -107,7 +108,7 @@ export const AcceptInvite = () => {
       setAccepting(true);
 
       // Call the API endpoint to accept invitation
-      const response = await fetch('http://localhost:3001/api/team/accept-invite', {
+      const response = await fetch(`${baseURL}/api/team/accept-invite`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

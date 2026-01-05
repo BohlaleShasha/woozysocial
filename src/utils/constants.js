@@ -1,4 +1,3 @@
-const baseURL = "http://localhost:3001";
+const baseURL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
-const _baseURL = baseURL;
-export { _baseURL as baseURL };
+export { baseURL };

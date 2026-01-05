@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { InviteMemberModal } from "./InviteMemberModal";
+import { baseURL } from "../utils/constants";
 import "./TeamContent.css";
 
 export const TeamContent = () => {
@@ -21,7 +22,7 @@ export const TeamContent = () => {
   const fetchTeamMembers = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:3001/api/team/members?userId=${user.id}`);
+      const response = await fetch(`${baseURL}/api/team/members?userId=${user.id}`);
       const payload = await response.json();
 
       if (!response.ok) {
@@ -39,7 +40,7 @@ export const TeamContent = () => {
   const fetchPendingInvites = async () => {
     try {
       setInvitesLoading(true);
-      const response = await fetch(`http://localhost:3001/api/team/pending-invites?userId=${user.id}`);
+      const response = await fetch(`${baseURL}/api/team/pending-invites?userId=${user.id}`);
       const payload = await response.json();
 
       if (!response.ok) {
@@ -61,7 +62,7 @@ export const TeamContent = () => {
   const handleInvite = async (inviteData) => {
     try {
       // Call the server API to send invitation
-      const response = await fetch('http://localhost:3001/api/send-team-invite', {
+      const response = await fetch(`${baseURL}/api/send-team-invite`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -96,7 +97,7 @@ export const TeamContent = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:3001/api/team/cancel-invite', {
+      const response = await fetch(`${baseURL}/api/team/cancel-invite`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -124,7 +125,7 @@ export const TeamContent = () => {
   const handleResendInvite = async (invite) => {
     try {
       // Call the same endpoint to resend
-      const response = await fetch('http://localhost:3001/api/send-team-invite', {
+      const response = await fetch(`${baseURL}/api/send-team-invite`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
