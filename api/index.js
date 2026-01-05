@@ -1,8 +1,8 @@
-import express from "express";
-import axios from "axios";
-import cors from "cors";
-import { createClient } from "@supabase/supabase-js";
-import { Resend } from "resend";
+const express = require("express");
+const axios = require("axios");
+const cors = require("cors");
+const { createClient } = require("@supabase/supabase-js");
+const { Resend } = require("resend");
 
 const BASE_AYRSHARE = "https://api.ayrshare.com/api";
 
@@ -766,4 +766,4 @@ app.post("/api/hashtag/generate", async (req, res) => {
 });
 
 // Export for Vercel
-export default app;
+module.exports = app;
