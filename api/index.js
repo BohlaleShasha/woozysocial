@@ -6,20 +6,6 @@ import { Resend } from "resend";
 
 const BASE_AYRSHARE = "https://api.ayrshare.com/api";
 
-// Initialize Supabase client (with defensive check)
-let supabase = null;
-if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
-} else {
-  console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables");
-}
-
-// Initialize Resend client (optional - only if API key is provided)
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-
 const app = express();
 
 // CORS configuration
@@ -40,8 +26,30 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
+// Lazy initialization of Supabase client
+let _supabase = null;
+function getSupabase() {
+  if (!_supabase && process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    _supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+  }
+  return _supabase;
+}
+
+// Lazy initialization of Resend client
+let _resend = null;
+function getResend() {
+  if (!_resend && process.env.RESEND_API_KEY) {
+    _resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return _resend;
+}
+
 // Helper function to get user's profile key from database
 async function getUserProfileKey(userId) {
+  const supabase = getSupabase();
   if (!supabase) {
     console.error('Supabase not initialized');
     return null;
@@ -62,6 +70,7 @@ async function getUserProfileKey(userId) {
 
 // Helper function to get workspace's profile key from database
 async function getWorkspaceProfileKey(workspaceId) {
+  const supabase = getSupabase();
   if (!supabase) {
     console.error('Supabase not initialized');
     return null;
@@ -79,6 +88,23 @@ async function getWorkspaceProfileKey(workspaceId) {
     return null;
   }
 }
+
+// ============================================================
+// HEALTH CHECK ENDPOINT
+// ============================================================
+
+app.get("/api/health", (req, res) => {
+  const envStatus = {
+    SUPABASE_URL: !!process.env.SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    AYRSHARE_API_KEY: !!process.env.AYRSHARE_API_KEY,
+    AYRSHARE_PROFILE_KEY: !!process.env.AYRSHARE_PROFILE_KEY,
+    AYRSHARE_PRIVATE_KEY: !!process.env.AYRSHARE_PRIVATE_KEY,
+    AYRSHARE_DOMAIN: !!process.env.AYRSHARE_DOMAIN,
+    OPENAI_API_KEY: !!process.env.OPENAI_API_KEY
+  };
+  res.json({ status: "ok", env: envStatus });
+});
 
 // ============================================================
 // POST ENDPOINTS
@@ -203,21 +229,6 @@ app.get("/api/user-accounts", async (req, res) => {
 // JWT GENERATION
 // ============================================================
 
-// Health check endpoint for debugging
-app.get("/api/health", (req, res) => {
-  const envStatus = {
-    SUPABASE_URL: !!process.env.SUPABASE_URL,
-    SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-    AYRSHARE_API_KEY: !!process.env.AYRSHARE_API_KEY,
-    AYRSHARE_PROFILE_KEY: !!process.env.AYRSHARE_PROFILE_KEY,
-    AYRSHARE_PRIVATE_KEY: !!process.env.AYRSHARE_PRIVATE_KEY,
-    AYRSHARE_DOMAIN: !!process.env.AYRSHARE_DOMAIN,
-    OPENAI_API_KEY: !!process.env.OPENAI_API_KEY,
-    supabaseConnected: supabase !== null
-  };
-  res.json({ status: "ok", env: envStatus });
-});
-
 app.get("/api/generate-jwt", async (req, res) => {
   try {
     const { userId, workspaceId } = req.query;
@@ -231,7 +242,6 @@ app.get("/api/generate-jwt", async (req, res) => {
       if (userProfileKey) profileKey = userProfileKey;
     }
 
-    // Private key should be stored as environment variable in Vercel
     if (!process.env.AYRSHARE_PRIVATE_KEY) {
       return res.status(500).json({ error: "AYRSHARE_PRIVATE_KEY not configured" });
     }
@@ -270,26 +280,29 @@ app.get("/api/generate-jwt", async (req, res) => {
 app.post("/api/generate-post", async (req, res) => {
   try {
     const { userId, workspaceId, prompt, platforms } = req.body;
+    const supabase = getSupabase();
 
     if (!workspaceId && !userId) {
       return res.status(400).json({ error: "workspaceId or userId is required" });
     }
 
     let brandProfile = null;
-    if (workspaceId) {
-      const result = await supabase
-        .from('brand_profiles')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .single();
-      brandProfile = result.data;
-    } else if (userId) {
-      const result = await supabase
-        .from('brand_profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-      brandProfile = result.data;
+    if (supabase) {
+      if (workspaceId) {
+        const result = await supabase
+          .from('brand_profiles')
+          .select('*')
+          .eq('workspace_id', workspaceId)
+          .single();
+        brandProfile = result.data;
+      } else if (userId) {
+        const result = await supabase
+          .from('brand_profiles')
+          .select('*')
+          .eq('user_id', userId)
+          .single();
+        brandProfile = result.data;
+      }
     }
 
     let systemPrompt = "You are a social media content expert. Generate engaging social media posts.";
@@ -349,6 +362,12 @@ app.post("/api/generate-post", async (req, res) => {
 app.post("/api/send-team-invite", async (req, res) => {
   try {
     const { email, role, userId } = req.body;
+    const supabase = getSupabase();
+    const resend = getResend();
+
+    if (!supabase) {
+      return res.status(500).json({ error: "Database not configured" });
+    }
 
     if (!email || !role || !userId) {
       return res.status(400).json({ error: "Email, role, and userId are required" });
@@ -385,7 +404,6 @@ app.post("/api/send-team-invite", async (req, res) => {
       return res.status(500).json({ error: 'Failed to create invitation' });
     }
 
-    // Send email if Resend is configured
     if (resend) {
       const { data: userData } = await supabase.auth.admin.getUserById(userId);
       const inviterName = userData?.user?.email || 'A team member';
@@ -414,6 +432,11 @@ app.post("/api/send-team-invite", async (req, res) => {
 app.get("/api/team/validate-invite", async (req, res) => {
   try {
     const { token } = req.query;
+    const supabase = getSupabase();
+
+    if (!supabase) {
+      return res.status(500).json({ error: "Database not configured" });
+    }
 
     if (!token) {
       return res.status(400).json({ error: "Token is required" });
@@ -439,6 +462,11 @@ app.get("/api/team/validate-invite", async (req, res) => {
 app.post("/api/team/accept-invite", async (req, res) => {
   try {
     const { token, userId } = req.body;
+    const supabase = getSupabase();
+
+    if (!supabase) {
+      return res.status(500).json({ error: "Database not configured" });
+    }
 
     if (!token || !userId) {
       return res.status(400).json({ error: "Token and userId are required" });
@@ -497,6 +525,11 @@ app.post("/api/team/accept-invite", async (req, res) => {
 app.get("/api/team/members", async (req, res) => {
   try {
     const { userId } = req.query;
+    const supabase = getSupabase();
+
+    if (!supabase) {
+      return res.status(500).json({ error: "Database not configured" });
+    }
 
     if (!userId) {
       return res.status(400).json({ error: "userId is required" });
@@ -542,6 +575,11 @@ app.get("/api/team/members", async (req, res) => {
 app.get("/api/team/pending-invites", async (req, res) => {
   try {
     const { userId } = req.query;
+    const supabase = getSupabase();
+
+    if (!supabase) {
+      return res.status(500).json({ error: "Database not configured" });
+    }
 
     if (!userId) {
       return res.status(400).json({ error: "userId is required" });
@@ -568,6 +606,11 @@ app.get("/api/team/pending-invites", async (req, res) => {
 app.post("/api/team/cancel-invite", async (req, res) => {
   try {
     const { inviteId, userId } = req.body;
+    const supabase = getSupabase();
+
+    if (!supabase) {
+      return res.status(500).json({ error: "Database not configured" });
+    }
 
     if (!inviteId || !userId) {
       return res.status(400).json({ error: "inviteId and userId are required" });
@@ -603,6 +646,11 @@ app.post("/api/team/cancel-invite", async (req, res) => {
 app.post("/api/team/remove-member", async (req, res) => {
   try {
     const { memberId, userId } = req.body;
+    const supabase = getSupabase();
+
+    if (!supabase) {
+      return res.status(500).json({ error: "Database not configured" });
+    }
 
     if (!memberId || !userId) {
       return res.status(400).json({ error: "memberId and userId are required" });
@@ -638,6 +686,11 @@ app.post("/api/team/remove-member", async (req, res) => {
 app.post("/api/team/update-role", async (req, res) => {
   try {
     const { memberId, newRole, userId } = req.body;
+    const supabase = getSupabase();
+
+    if (!supabase) {
+      return res.status(500).json({ error: "Database not configured" });
+    }
 
     if (!memberId || !newRole || !userId) {
       return res.status(400).json({ error: "memberId, newRole, and userId are required" });
