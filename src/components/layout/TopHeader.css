@@ -4,8 +4,8 @@
   background-color: #ffffff;
   border-bottom: 1px solid rgba(0, 0, 0, 0.25);
   display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
   height: 70px;
   padding: 18px 25px;
   position: fixed;
@@ -127,26 +127,10 @@
   cursor: not-allowed;
 }
 
-.top-header .logo-container {
+.logo-container {
   display: flex;
   align-items: center;
-  justify-content: center;
-  background-color: rgba(217, 217, 217, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-  height: 47px;
-  width: 245px;
-  padding: 17px 61px;
-  position: absolute;
-  left: 16px;
-  top: 12px;
+  min-width: 200px;
+  max-width: 300px;
 }
 
-.top-header .logo-text {
-  color: #000000;
-  font-family: "Inter", Helvetica, sans-serif;
-  font-size: 24px;
-  font-weight: 400;
-  letter-spacing: 0;
-  line-height: normal;
-}

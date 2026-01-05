@@ -207,6 +207,42 @@
   transform: scale(1.1);
 }
 
+.delete-post-btn {
+  background: none;
+  border: none;
+  color: #ff4444;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-post-btn:hover {
+  background-color: rgba(255, 68, 68, 0.1);
+  transform: scale(1.1);
+}
+
+.retry-post-btn {
+  background: none;
+  border: none;
+  color: #FFC801;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.retry-post-btn:hover {
+  background-color: rgba(255, 200, 1, 0.1);
+  transform: scale(1.1);
+}
+
 .posts-table-row.clickable:hover {
   background-color: rgba(100, 101, 241, 0.05);
   cursor: pointer;

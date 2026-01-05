@@ -49,6 +49,14 @@
   object-fit: contain;
 }
 
+.sidebar .sidebar-workspace-switcher {
+  width: 100%;
+  padding: 0 14px;
+  box-sizing: border-box;
+  margin-top: -6px;
+  margin-bottom: 14px;
+}
+
 .sidebar .sidebar-menu {
   display: flex;
   flex-direction: column;

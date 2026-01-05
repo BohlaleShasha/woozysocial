@@ -187,6 +187,61 @@ export const PostsContent = () => {
     }
   };
 
+  const handleDeletePost = async (e, postId) => {
+    e.stopPropagation(); // Prevent row click
+
+    if (!window.confirm("Delete this post from all platforms? This cannot be undone.")) return;
+
+    try {
+      const response = await fetch(`${baseURL}/api/post/${postId}?workspaceId=${activeWorkspace.id}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.details || "Failed to delete post");
+      }
+
+      // Clear cache and refresh
+      setAllAyrsharePosts([]);
+      await fetchPosts();
+    } catch (error) {
+      console.error("Error deleting post:", error);
+      alert("Failed to delete post: " + error.message);
+    }
+  };
+
+  const handleRetryPost = async (e, postId) => {
+    e.stopPropagation(); // Prevent row click
+
+    if (!window.confirm("Retry posting this to all platforms?")) return;
+
+    try {
+      const response = await fetch(`${baseURL}/api/post/retry`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          workspaceId: activeWorkspace.id,
+          postId: postId
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.details || "Failed to retry post");
+      }
+
+      // Clear cache and refresh
+      setAllAyrsharePosts([]);
+      await fetchPosts();
+    } catch (error) {
+      console.error("Error retrying post:", error);
+      alert("Failed to retry post: " + error.message);
+    }
+  };
+
   const handleLoadDraft = (draft) => {
     // Store draft in sessionStorage to load in Compose page
     sessionStorage.setItem("loadDraft", JSON.stringify(draft));
@@ -286,6 +341,22 @@ export const PostsContent = () => {
                       className="delete-draft-btn"
                       onClick={(e) => handleDeleteDraft(e, post.id)}
                       title="Delete draft"
+                    >
+                      <FaTrash size={14} />
+                    </button>
+                  ) : activeTab === 'failed' ? (
+                    <button
+                      className="retry-post-btn"
+                      onClick={(e) => handleRetryPost(e, post.id)}
+                      title="Retry post"
+                    >
+                      <FaSyncAlt size={14} />
+                    </button>
+                  ) : activeTab === 'history' || activeTab === 'scheduled' ? (
+                    <button
+                      className="delete-post-btn"
+                      onClick={(e) => handleDeletePost(e, post.id)}
+                      title="Delete post"
                     >
                       <FaTrash size={14} />
                     </button>

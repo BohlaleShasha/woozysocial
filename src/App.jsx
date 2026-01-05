@@ -17,6 +17,7 @@ import { AssetsContent } from "./components/AssetsContent";
 import { SocialInboxContent } from "./components/SocialInboxContent";
 import { TeamContent } from "./components/TeamContent";
 import { SettingsContent } from "./components/SettingsContent";
+import { EngagementContent } from "./components/EngagementContent";
 import "./App.css";
 
 function App() {
@@ -46,6 +47,7 @@ function App() {
                         <Route path="/schedule" element={<ScheduleContent />} />
                         <Route path="/posts" element={<PostsContent />} />
                         <Route path="/assets" element={<AssetsContent />} />
+                        <Route path="/engagement" element={<EngagementContent />} />
                         <Route path="/social-inbox" element={<SocialInboxContent />} />
                         <Route path="/team" element={<TeamContent />} />
                         <Route path="/settings" element={<SettingsContent />} />

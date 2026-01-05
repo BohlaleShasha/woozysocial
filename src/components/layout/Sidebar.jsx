@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import "./Sidebar.css";
+import { WorkspaceSwitcher } from "../workspace/WorkspaceSwitcher";
 
 export const Sidebar = () => {
   const location = useLocation();
@@ -12,6 +13,7 @@ export const Sidebar = () => {
     { name: "Schedule", path: "/schedule" },
     { name: "Posts", path: "/posts" },
     { name: "Assets", path: "/assets" },
+    { name: "Engagement", path: "/engagement" },
     { name: "Social Inbox", path: "/social-inbox" },
     { name: "Team", path: "/team" },
     { name: "Settings", path: "/settings" }
@@ -22,6 +24,10 @@ export const Sidebar = () => {
       <div className="sidebar-content">
         <div className="sidebar-logo">
           <img src="/ChatGPT Image Dec 31, 2025, 04_19_09 PM.png" alt="Woozy Social" className="sidebar-logo-image" />
+        </div>
+
+        <div className="sidebar-workspace-switcher">
+          <WorkspaceSwitcher />
         </div>
 
         <div className="sidebar-menu">

@@ -16,8 +16,8 @@ config(); // Load environment variables
 // Initialize Supabase client
 const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
-// Initialize Resend client
-const resend = new Resend(env.RESEND_API_KEY);
+// Initialize Resend client (optional - only if API key is provided)
+const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
 const corsOptions = {};
 
@@ -592,6 +592,541 @@ app.get("/api/analytics/best-time", async (req, res) => {
   }
 });
 
+// ============================================================
+// AYRSHARE POST MANAGEMENT ENDPOINTS
+// ============================================================
+
+// Delete a published post
+app.delete("/api/post/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId, workspaceId } = req.query;
+
+    // Get workspace's profile key
+    let profileKey = env.AYRSHARE_PROFILE_KEY;
+    if (workspaceId) {
+      const workspaceProfileKey = await getWorkspaceProfileKey(workspaceId);
+      if (workspaceProfileKey) {
+        profileKey = workspaceProfileKey;
+      }
+    } else if (userId) {
+      const userProfileKey = await getUserProfileKey(userId);
+      if (userProfileKey) {
+        profileKey = userProfileKey;
+      }
+    }
+
+    // Delete post from Ayrshare
+    const response = await axios.delete(`${BASE_AYRSHARE}/post`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${env.AYRSHARE_API_KEY}`,
+        "Profile-Key": profileKey
+      },
+      data: {
+        id: id // Ayrshare post ID
+      }
+    });
+
+    res.json({
+      success: true,
+      message: "Post deleted successfully",
+      data: response.data
+    });
+  } catch (error) {
+    console.error("Error deleting post:", error.response?.data || error.message);
+    res.status(500).json({
+      error: "Failed to delete post",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
+// Update/Edit a scheduled post
+app.patch("/api/post/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId, workspaceId, updates } = req.body;
+
+    // Get workspace's profile key
+    let profileKey = env.AYRSHARE_PROFILE_KEY;
+    if (workspaceId) {
+      const workspaceProfileKey = await getWorkspaceProfileKey(workspaceId);
+      if (workspaceProfileKey) {
+        profileKey = workspaceProfileKey;
+      }
+    } else if (userId) {
+      const userProfileKey = await getUserProfileKey(userId);
+      if (userProfileKey) {
+        profileKey = userProfileKey;
+      }
+    }
+
+    // Update scheduled post on Ayrshare
+    const updateData = {
+      id: id,
+      ...updates
+    };
+
+    const response = await axios.patch(`${BASE_AYRSHARE}/post`, updateData, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${env.AYRSHARE_API_KEY}`,
+        "Profile-Key": profileKey
+      }
+    });
+
+    res.json({
+      success: true,
+      message: "Post updated successfully",
+      data: response.data
+    });
+  } catch (error) {
+    console.error("Error updating post:", error.response?.data || error.message);
+    res.status(500).json({
+      error: "Failed to update post",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
+// Retry a failed post
+app.put("/api/post/retry", async (req, res) => {
+  try {
+    const { userId, workspaceId, postId } = req.body;
+
+    // Get workspace's profile key
+    let profileKey = env.AYRSHARE_PROFILE_KEY;
+    if (workspaceId) {
+      const workspaceProfileKey = await getWorkspaceProfileKey(workspaceId);
+      if (workspaceProfileKey) {
+        profileKey = workspaceProfileKey;
+      }
+    } else if (userId) {
+      const userProfileKey = await getUserProfileKey(userId);
+      if (userProfileKey) {
+        profileKey = userProfileKey;
+      }
+    }
+
+    // Retry post on Ayrshare
+    const response = await axios.put(`${BASE_AYRSHARE}/post/retry`,
+      { id: postId },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${env.AYRSHARE_API_KEY}`,
+          "Profile-Key": profileKey
+        }
+      }
+    );
+
+    res.json({
+      success: true,
+      message: "Post retry initiated",
+      data: response.data
+    });
+  } catch (error) {
+    console.error("Error retrying post:", error.response?.data || error.message);
+    res.status(500).json({
+      error: "Failed to retry post",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
+// Get individual post details
+app.get("/api/post/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId, workspaceId } = req.query;
+
+    // Get workspace's profile key
+    let profileKey = env.AYRSHARE_PROFILE_KEY;
+    if (workspaceId) {
+      const workspaceProfileKey = await getWorkspaceProfileKey(workspaceId);
+      if (workspaceProfileKey) {
+        profileKey = workspaceProfileKey;
+      }
+    } else if (userId) {
+      const userProfileKey = await getUserProfileKey(userId);
+      if (userProfileKey) {
+        profileKey = userProfileKey;
+      }
+    }
+
+    // Get post details from Ayrshare
+    const response = await axios.get(`${BASE_AYRSHARE}/post/${id}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${env.AYRSHARE_API_KEY}`,
+        "Profile-Key": profileKey
+      }
+    });
+
+    res.json(response.data);
+  } catch (error) {
+    console.error("Error fetching post details:", error.response?.data || error.message);
+    res.status(500).json({
+      error: "Failed to fetch post details",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
+// Generate hashtags for a post
+app.post("/api/hashtag/generate", async (req, res) => {
+  try {
+    const { text, numHashtags } = req.body;
+
+    if (!text) {
+      return res.status(400).json({ error: "Text is required" });
+    }
+
+    // Call OpenAI to generate relevant hashtags
+    const openaiResponse = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a social media hashtag expert. Generate relevant, trending hashtags based on the content provided. Return ONLY the hashtags, one per line, without numbering or explanation.'
+          },
+          {
+            role: 'user',
+            content: `Generate ${numHashtags || 5} relevant hashtags for this social media post:\n\n${text}`
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 100
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${env.OPENAI_API_KEY}`
+        }
+      }
+    );
+
+    const hashtagText = openaiResponse.data.choices[0].message.content;
+    const hashtags = hashtagText
+      .split('\n')
+      .map(tag => tag.trim())
+      .filter(tag => tag.startsWith('#'))
+      .slice(0, numHashtags || 5);
+
+    res.json({
+      success: true,
+      hashtags
+    });
+  } catch (error) {
+    console.error("Error generating hashtags:", error.response?.data || error.message);
+    res.status(500).json({
+      error: "Failed to generate hashtags",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
+// ============================================================
+// COMMENTS MANAGEMENT ENDPOINTS
+// ============================================================
+
+// Get comments for a post
+app.get("/api/comments/:postId", async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const { userId, workspaceId } = req.query;
+
+    // Get workspace's profile key
+    let profileKey = env.AYRSHARE_PROFILE_KEY;
+    if (workspaceId) {
+      const workspaceProfileKey = await getWorkspaceProfileKey(workspaceId);
+      if (workspaceProfileKey) {
+        profileKey = workspaceProfileKey;
+      }
+    } else if (userId) {
+      const userProfileKey = await getUserProfileKey(userId);
+      if (userProfileKey) {
+        profileKey = userProfileKey;
+      }
+    }
+
+    // Get comments from Ayrshare
+    const response = await axios.get(`${BASE_AYRSHARE}/comments/${postId}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${env.AYRSHARE_API_KEY}`,
+        "Profile-Key": profileKey
+      }
+    });
+
+    res.json(response.data);
+  } catch (error) {
+    console.error("Error fetching comments:", error.response?.data || error.message);
+    res.status(500).json({
+      error: "Failed to fetch comments",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
+// Add a comment to a post
+app.post("/api/comments", async (req, res) => {
+  try {
+    const { userId, workspaceId, postId, comment, platform } = req.body;
+
+    if (!postId || !comment) {
+      return res.status(400).json({ error: "postId and comment are required" });
+    }
+
+    // Get workspace's profile key
+    let profileKey = env.AYRSHARE_PROFILE_KEY;
+    if (workspaceId) {
+      const workspaceProfileKey = await getWorkspaceProfileKey(workspaceId);
+      if (workspaceProfileKey) {
+        profileKey = workspaceProfileKey;
+      }
+    } else if (userId) {
+      const userProfileKey = await getUserProfileKey(userId);
+      if (userProfileKey) {
+        profileKey = userProfileKey;
+      }
+    }
+
+    // Post comment to Ayrshare
+    const response = await axios.post(`${BASE_AYRSHARE}/comments`,
+      {
+        id: postId,
+        comment: comment,
+        platform: platform // Optional: facebook, instagram, etc.
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${env.AYRSHARE_API_KEY}`,
+          "Profile-Key": profileKey
+        }
+      }
+    );
+
+    res.json({
+      success: true,
+      message: "Comment posted successfully",
+      data: response.data
+    });
+  } catch (error) {
+    console.error("Error posting comment:", error.response?.data || error.message);
+    res.status(500).json({
+      error: "Failed to post comment",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
+// Reply to a comment
+app.post("/api/comments/reply/:commentId", async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    const { userId, workspaceId, reply, platform } = req.body;
+
+    if (!reply) {
+      return res.status(400).json({ error: "reply is required" });
+    }
+
+    // Get workspace's profile key
+    let profileKey = env.AYRSHARE_PROFILE_KEY;
+    if (workspaceId) {
+      const workspaceProfileKey = await getWorkspaceProfileKey(workspaceId);
+      if (workspaceProfileKey) {
+        profileKey = workspaceProfileKey;
+      }
+    } else if (userId) {
+      const userProfileKey = await getUserProfileKey(userId);
+      if (userProfileKey) {
+        profileKey = userProfileKey;
+      }
+    }
+
+    // Reply to comment on Ayrshare
+    const response = await axios.post(`${BASE_AYRSHARE}/comments/reply/${commentId}`,
+      {
+        comment: reply,
+        platform: platform
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${env.AYRSHARE_API_KEY}`,
+          "Profile-Key": profileKey
+        }
+      }
+    );
+
+    res.json({
+      success: true,
+      message: "Reply posted successfully",
+      data: response.data
+    });
+  } catch (error) {
+    console.error("Error posting reply:", error.response?.data || error.message);
+    res.status(500).json({
+      error: "Failed to post reply",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
+// Delete a comment
+app.delete("/api/comments/:commentId", async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    const { userId, workspaceId, platform, deleteAll } = req.query;
+
+    // Get workspace's profile key
+    let profileKey = env.AYRSHARE_PROFILE_KEY;
+    if (workspaceId) {
+      const workspaceProfileKey = await getWorkspaceProfileKey(workspaceId);
+      if (workspaceProfileKey) {
+        profileKey = workspaceProfileKey;
+      }
+    } else if (userId) {
+      const userProfileKey = await getUserProfileKey(userId);
+      if (userProfileKey) {
+        profileKey = userProfileKey;
+      }
+    }
+
+    // Delete comment on Ayrshare
+    const response = await axios.delete(`${BASE_AYRSHARE}/comments/${commentId}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${env.AYRSHARE_API_KEY}`,
+        "Profile-Key": profileKey
+      },
+      data: {
+        platform: platform,
+        deleteAll: deleteAll === 'true' // Delete all comments under a post
+      }
+    });
+
+    res.json({
+      success: true,
+      message: "Comment deleted successfully",
+      data: response.data
+    });
+  } catch (error) {
+    console.error("Error deleting comment:", error.response?.data || error.message);
+    res.status(500).json({
+      error: "Failed to delete comment",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
+// ============================================================
+// LINK SHORTENING & TRACKING ENDPOINTS
+// ============================================================
+
+// Create a shortened link
+app.post("/api/links", async (req, res) => {
+  try {
+    const { userId, workspaceId, url, utmParams } = req.body;
+
+    if (!url) {
+      return res.status(400).json({ error: "URL is required" });
+    }
+
+    // Get workspace's profile key
+    let profileKey = env.AYRSHARE_PROFILE_KEY;
+    if (workspaceId) {
+      const workspaceProfileKey = await getWorkspaceProfileKey(workspaceId);
+      if (workspaceProfileKey) {
+        profileKey = workspaceProfileKey;
+      }
+    } else if (userId) {
+      const userProfileKey = await getUserProfileKey(userId);
+      if (userProfileKey) {
+        profileKey = userProfileKey;
+      }
+    }
+
+    // Create short link via Ayrshare
+    const linkData = {
+      url: url
+    };
+
+    // Add UTM parameters if provided
+    if (utmParams) {
+      linkData.utmParams = utmParams;
+    }
+
+    const response = await axios.post(`${BASE_AYRSHARE}/links`, linkData, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${env.AYRSHARE_API_KEY}`,
+        "Profile-Key": profileKey
+      }
+    });
+
+    res.json({
+      success: true,
+      shortLink: response.data.shortUrl || response.data.url,
+      linkId: response.data.id,
+      data: response.data
+    });
+  } catch (error) {
+    console.error("Error creating short link:", error.response?.data || error.message);
+    res.status(500).json({
+      error: "Failed to create short link",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
+// Get link analytics
+app.get("/api/links/:linkId", async (req, res) => {
+  try {
+    const { linkId } = req.params;
+    const { userId, workspaceId } = req.query;
+
+    // Get workspace's profile key
+    let profileKey = env.AYRSHARE_PROFILE_KEY;
+    if (workspaceId) {
+      const workspaceProfileKey = await getWorkspaceProfileKey(workspaceId);
+      if (workspaceProfileKey) {
+        profileKey = workspaceProfileKey;
+      }
+    } else if (userId) {
+      const userProfileKey = await getUserProfileKey(userId);
+      if (userProfileKey) {
+        profileKey = userProfileKey;
+      }
+    }
+
+    // Get link analytics from Ayrshare
+    const response = await axios.get(`${BASE_AYRSHARE}/links/${linkId}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${env.AYRSHARE_API_KEY}`,
+        "Profile-Key": profileKey
+      }
+    });
+
+    res.json({
+      success: true,
+      analytics: response.data
+    });
+  } catch (error) {
+    console.error("Error fetching link analytics:", error.response?.data || error.message);
+    res.status(500).json({
+      error: "Failed to fetch link analytics",
+      details: error.response?.data || error.message
+    });
+  }
+});
+
 // AI Post Generation endpoint
 app.post("/api/generate-post", async (req, res) => {
   try {
@@ -1050,9 +1585,10 @@ app.post("/api/send-team-invite", async (req, res) => {
       return descriptions[role] || '';
     };
 
-    // Send email via Resend
-    try {
-      const emailHtml = `
+    // Send email via Resend (only if configured)
+    if (resend) {
+      try {
+        const emailHtml = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -1124,24 +1660,27 @@ app.post("/api/send-team-invite", async (req, res) => {
   </table>
 </body>
 </html>
-      `.trim();
+        `.trim();
 
-      const { data: emailData, error: emailError } = await resend.emails.send({
-        from: 'Social Media Team <hello@woozysocial.com>',
-        to: [email],
-        subject: `${inviterName} invited you to join their team`,
-        html: emailHtml,
-      });
+        const { data: emailData, error: emailError } = await resend.emails.send({
+          from: 'Social Media Team <hello@woozysocial.com>',
+          to: [email],
+          subject: `${inviterName} invited you to join their team`,
+          html: emailHtml,
+        });
 
-      if (emailError) {
+        if (emailError) {
+          console.error('Error sending email:', emailError);
+          // Don't fail the whole request if email fails
+        } else {
+          console.log('Email sent successfully:', emailData);
+        }
+      } catch (emailError) {
         console.error('Error sending email:', emailError);
         // Don't fail the whole request if email fails
-      } else {
-        console.log('Email sent successfully:', emailData);
       }
-    } catch (emailError) {
-      console.error('Error sending email:', emailError);
-      // Don't fail the whole request if email fails
+    } else {
+      console.log('Resend not configured - skipping email send');
     }
 
     res.json({
