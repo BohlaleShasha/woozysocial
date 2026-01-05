@@ -151,6 +151,66 @@ export const TeamContent = () => {
     }
   };
 
+  const handleRemoveMember = async (memberId) => {
+    if (!window.confirm('Are you sure you want to remove this team member?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:3001/api/team/remove-member', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          memberId,
+          userId: user.id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to remove team member');
+      }
+
+      alert('Team member removed successfully!');
+      // Refresh team members list
+      fetchTeamMembers();
+    } catch (error) {
+      console.error('Error removing team member:', error);
+      alert(error.message || 'Failed to remove team member');
+    }
+  };
+
+  const handleUpdateRole = async (memberId, newRole) => {
+    try {
+      const response = await fetch('http://localhost:3001/api/team/update-role', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          memberId,
+          newRole,
+          userId: user.id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update member role');
+      }
+
+      // Refresh team members list to show new role
+      fetchTeamMembers();
+    } catch (error) {
+      console.error('Error updating member role:', error);
+      alert(error.message || 'Failed to update member role');
+    }
+  };
+
   return (
     <div className="team-container">
       <div className="team-header">
@@ -215,8 +275,21 @@ export const TeamContent = () => {
                       </div>
                     </div>
                     <div className="member-actions">
-                      <span className="member-role">{getRoleLabel(member.role)}</span>
-                      <button className="remove-button">Remove</button>
+                      <select
+                        className="role-dropdown"
+                        value={member.role}
+                        onChange={(e) => handleUpdateRole(member.id, e.target.value)}
+                      >
+                        <option value="admin">Admin</option>
+                        <option value="editor">Editor</option>
+                        <option value="view_only">View Only</option>
+                      </select>
+                      <button
+                        className="remove-button"
+                        onClick={() => handleRemoveMember(member.id)}
+                      >
+                        Remove
+                      </button>
                     </div>
                   </div>
                 );

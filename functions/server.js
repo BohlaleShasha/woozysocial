@@ -2025,6 +2025,103 @@ app.post("/api/team/cancel-invite", async (req, res) => {
   }
 });
 
+// Remove Team Member endpoint
+app.post("/api/team/remove-member", async (req, res) => {
+  try {
+    const { memberId, userId } = req.body;
+
+    if (!memberId || !userId) {
+      return res.status(400).json({ error: "memberId and userId are required" });
+    }
+
+    // Fetch the team member record
+    const { data: member, error: memberError } = await supabase
+      .from('team_members')
+      .select('id, owner_id, member_id')
+      .eq('id', memberId)
+      .single();
+
+    if (memberError || !member) {
+      return res.status(404).json({ error: 'Team member not found' });
+    }
+
+    // Verify the requester is the owner
+    if (member.owner_id !== userId) {
+      return res.status(403).json({ error: 'Only the team owner can remove members' });
+    }
+
+    // Prevent owner from removing themselves
+    if (member.member_id === userId) {
+      return res.status(400).json({ error: 'Cannot remove yourself from the team' });
+    }
+
+    // Delete the team member record
+    const { error: deleteError } = await supabase
+      .from('team_members')
+      .delete()
+      .eq('id', memberId);
+
+    if (deleteError) {
+      console.error('Error removing team member:', deleteError);
+      return res.status(500).json({ error: 'Failed to remove team member' });
+    }
+
+    res.json({ success: true, message: 'Team member removed successfully' });
+  } catch (error) {
+    console.error('Error removing team member:', error);
+    res.status(500).json({ error: 'Failed to remove team member' });
+  }
+});
+
+// Update Team Member Role endpoint
+app.post("/api/team/update-role", async (req, res) => {
+  try {
+    const { memberId, newRole, userId } = req.body;
+
+    if (!memberId || !newRole || !userId) {
+      return res.status(400).json({ error: "memberId, newRole, and userId are required" });
+    }
+
+    // Validate role
+    const validRoles = ['admin', 'editor', 'view_only'];
+    if (!validRoles.includes(newRole)) {
+      return res.status(400).json({ error: 'Invalid role. Must be admin, editor, or view_only' });
+    }
+
+    // Fetch the team member record
+    const { data: member, error: memberError } = await supabase
+      .from('team_members')
+      .select('id, owner_id, member_id, role')
+      .eq('id', memberId)
+      .single();
+
+    if (memberError || !member) {
+      return res.status(404).json({ error: 'Team member not found' });
+    }
+
+    // Verify the requester is the owner
+    if (member.owner_id !== userId) {
+      return res.status(403).json({ error: 'Only the team owner can change member roles' });
+    }
+
+    // Update the role
+    const { error: updateError } = await supabase
+      .from('team_members')
+      .update({ role: newRole })
+      .eq('id', memberId);
+
+    if (updateError) {
+      console.error('Error updating team member role:', updateError);
+      return res.status(500).json({ error: 'Failed to update member role' });
+    }
+
+    res.json({ success: true, message: 'Member role updated successfully', newRole });
+  } catch (error) {
+    console.error('Error updating team member role:', error);
+    res.status(500).json({ error: 'Failed to update member role' });
+  }
+});
+
 const PORT = env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
