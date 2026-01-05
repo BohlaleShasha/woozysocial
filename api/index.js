@@ -6,11 +6,16 @@ import { Resend } from "resend";
 
 const BASE_AYRSHARE = "https://api.ayrshare.com/api";
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+// Initialize Supabase client (with defensive check)
+let supabase = null;
+if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+} else {
+  console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables");
+}
 
 // Initialize Resend client (optional - only if API key is provided)
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
@@ -37,6 +42,10 @@ app.use(express.json());
 
 // Helper function to get user's profile key from database
 async function getUserProfileKey(userId) {
+  if (!supabase) {
+    console.error('Supabase not initialized');
+    return null;
+  }
   try {
     const { data, error } = await supabase
       .from('user_profiles')
@@ -53,6 +62,10 @@ async function getUserProfileKey(userId) {
 
 // Helper function to get workspace's profile key from database
 async function getWorkspaceProfileKey(workspaceId) {
+  if (!supabase) {
+    console.error('Supabase not initialized');
+    return null;
+  }
   try {
     const { data, error } = await supabase
       .from('workspaces')
@@ -190,6 +203,21 @@ app.get("/api/user-accounts", async (req, res) => {
 // JWT GENERATION
 // ============================================================
 
+// Health check endpoint for debugging
+app.get("/api/health", (req, res) => {
+  const envStatus = {
+    SUPABASE_URL: !!process.env.SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    AYRSHARE_API_KEY: !!process.env.AYRSHARE_API_KEY,
+    AYRSHARE_PROFILE_KEY: !!process.env.AYRSHARE_PROFILE_KEY,
+    AYRSHARE_PRIVATE_KEY: !!process.env.AYRSHARE_PRIVATE_KEY,
+    AYRSHARE_DOMAIN: !!process.env.AYRSHARE_DOMAIN,
+    OPENAI_API_KEY: !!process.env.OPENAI_API_KEY,
+    supabaseConnected: supabase !== null
+  };
+  res.json({ status: "ok", env: envStatus });
+});
+
 app.get("/api/generate-jwt", async (req, res) => {
   try {
     const { userId, workspaceId } = req.query;
@@ -204,6 +232,9 @@ app.get("/api/generate-jwt", async (req, res) => {
     }
 
     // Private key should be stored as environment variable in Vercel
+    if (!process.env.AYRSHARE_PRIVATE_KEY) {
+      return res.status(500).json({ error: "AYRSHARE_PRIVATE_KEY not configured" });
+    }
     const privateKey = process.env.AYRSHARE_PRIVATE_KEY.replace(/\\n/g, '\n');
 
     const jwtData = {
