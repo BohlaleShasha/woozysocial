@@ -443,24 +443,26 @@ export const ComposeContent = () => {
     setIsLoading(true);
     onClose();
 
-    const formData = new FormData();
-    formData.append("text", post.text);
-    formData.append("workspaceId", activeWorkspace.id);
+    const postData = {
+      text: post.text,
+      userId: user.id,
+      workspaceId: activeWorkspace.id,
+      networks: JSON.stringify(networks),
+      scheduledDate: tempScheduledDate.toISOString()
+    };
 
     // Handle media: either a new file upload or existing URL from draft
-    if (post.media) {
-      formData.append("media", post.media);
-    } else if (mediaPreview && typeof mediaPreview === 'string' && mediaPreview.startsWith('http')) {
-      formData.append("mediaUrl", mediaPreview);
+    if (mediaPreview && typeof mediaPreview === 'string' && mediaPreview.startsWith('http')) {
+      postData.mediaUrl = mediaPreview;
     }
-
-    formData.append("networks", JSON.stringify(networks));
-    formData.append("scheduledDate", tempScheduledDate.toISOString());
 
     try {
       const response = await fetch(`${baseURL}/api/post`, {
         method: "POST",
-        body: formData
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(postData)
       });
 
       if (response.ok) {
@@ -509,15 +511,16 @@ export const ComposeContent = () => {
         setCurrentDraftId(null);
         setLastSaved(null);
       } else {
-        throw new Error("Failed to schedule post");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.details || "Failed to schedule post");
       }
     } catch (error) {
       console.error("Error scheduling post:", error);
       toast({
         title: "Error scheduling post",
-        description: "Unable to schedule your post. Please try again.",
+        description: error.message || "Unable to schedule your post. Please try again.",
         status: "error",
-        duration: 3000,
+        duration: 5000,
         isClosable: true
       });
     } finally {
@@ -1191,20 +1194,18 @@ export const ComposeContent = () => {
 
     setIsLoading(true);
 
-    const formData = new FormData();
-    formData.append("text", post.text);
-    formData.append("workspaceId", activeWorkspace.id);
+    const postData = {
+      text: post.text,
+      userId: user.id,
+      workspaceId: activeWorkspace.id,
+      networks: JSON.stringify(networks)
+    };
 
-    // Handle media: either a new file upload or existing URL from draft
-    if (post.media) {
-      // New file upload
-      formData.append("media", post.media);
-    } else if (mediaPreview && typeof mediaPreview === 'string' && mediaPreview.startsWith('http')) {
-      // Existing media URL from draft - send as mediaUrl
-      formData.append("mediaUrl", mediaPreview);
+    // Handle media: existing URL from draft
+    if (mediaPreview && typeof mediaPreview === 'string' && mediaPreview.startsWith('http')) {
+      postData.mediaUrl = mediaPreview;
     }
 
-    formData.append("networks", JSON.stringify(networks));
     if (scheduledDate) {
       // Ensure the scheduled date is in the future
       const now = new Date();
@@ -1227,13 +1228,16 @@ export const ComposeContent = () => {
       console.log("  Scheduled time:", scheduledTime.toISOString());
       console.log("  Time difference (minutes):", (scheduledTime - now) / 1000 / 60);
 
-      formData.append("scheduledDate", scheduledTime.toISOString());
+      postData.scheduledDate = scheduledTime.toISOString();
     }
 
     try {
       const response = await fetch(`${baseURL}/api/post`, {
         method: "POST",
-        body: formData
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(postData)
       });
 
       if (response.ok) {
@@ -1282,15 +1286,16 @@ export const ComposeContent = () => {
         setCurrentDraftId(null);
         setLastSaved(null);
       } else {
-        throw new Error("Failed to submit post");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.details || "Failed to submit post");
       }
     } catch (error) {
       console.error("Error submitting post:", error);
       toast({
         title: "An error occurred.",
-        description: "Unable to submit your post.",
+        description: error.message || "Unable to submit your post.",
         status: "error",
-        duration: 3000,
+        duration: 5000,
         isClosable: true
       });
     } finally {

@@ -39,10 +39,32 @@ Verify that team members inherit the owner's Ayrshare profile key and can post u
      .then(console.log)
    ```
 
-3. **Note the owner's workspace ID:**
+3. **Note the owner's workspace ID (Multiple Methods):**
+
+   **Method 1: Browser Console (Easiest)**
+   - Open browser console (F12)
+   - Paste this code:
+   ```javascript
+   // This will log the workspace ID
+   console.log('Workspace ID:', window.location.pathname);
+   // Or fetch from API
+   fetch('http://localhost:3001/api/workspace/list?userId=' + localStorage.getItem('supabase.auth.token'))
+   ```
+
+   **Method 2: React DevTools**
    - Open React DevTools → Components tab
-   - Find `WorkspaceProvider`
-   - Copy `activeWorkspace.id` (you'll need this)
+   - Find `WorkspaceProvider` in the tree
+   - Look at the RIGHT panel under "hooks" section
+   - Find the hook with `activeWorkspace` object
+   - Expand it and copy the `id` field
+
+   **Method 3: User ID (Simplest for Owner)**
+   - For workspace owners, workspace ID = user ID
+   - Go to Settings page
+   - Your user ID is usually displayed there
+   - Or check browser console: `localStorage.getItem('userId')`
+
+   202c9c3e-fd81-4bec-ae09-4f9f008601bc - userID
 
 ---
 

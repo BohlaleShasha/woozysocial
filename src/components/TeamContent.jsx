@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { useWorkspace } from "../contexts/WorkspaceContext";
 import { InviteMemberModal } from "./InviteMemberModal";
 import { baseURL } from "../utils/constants";
 import "./TeamContent.css";
 
 export const TeamContent = () => {
   const { user } = useAuth();
+  const { activeWorkspace } = useWorkspace();
   const [teamMembers, setTeamMembers] = useState([]);
   const [pendingInvites, setPendingInvites] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -13,23 +15,29 @@ export const TeamContent = () => {
   const [invitesLoading, setInvitesLoading] = useState(true);
 
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && activeWorkspace?.id) {
       fetchTeamMembers();
       fetchPendingInvites();
     }
-  }, [user]);
+  }, [user, activeWorkspace]);
 
   const fetchTeamMembers = async () => {
     try {
+      if (!activeWorkspace?.id) {
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
-      const response = await fetch(`${baseURL}/api/team/members?userId=${user.id}`);
+      // Use workspace members endpoint
+      const response = await fetch(`${baseURL}/api/workspaces/${activeWorkspace.id}/members?userId=${user.id}`);
       const payload = await response.json();
 
       if (!response.ok) {
         throw new Error(payload.error || 'Failed to fetch team members');
       }
 
-      setTeamMembers(payload.data || []);
+      setTeamMembers(payload.members || []);
     } catch (error) {
       console.error('Error fetching team members:', error);
     } finally {
@@ -39,15 +47,21 @@ export const TeamContent = () => {
 
   const fetchPendingInvites = async () => {
     try {
+      if (!activeWorkspace?.id) {
+        setInvitesLoading(false);
+        return;
+      }
+
       setInvitesLoading(true);
-      const response = await fetch(`${baseURL}/api/team/pending-invites?userId=${user.id}`);
+      // Use workspace invitations endpoint
+      const response = await fetch(`${baseURL}/api/workspaces/${activeWorkspace.id}/invitations?userId=${user.id}`);
       const payload = await response.json();
 
       if (!response.ok) {
         throw new Error(payload.error || 'Failed to fetch pending invites');
       }
 
-      setPendingInvites(payload.data || []);
+      setPendingInvites(payload.invitations || []);
     } catch (error) {
       console.error('Error fetching pending invites:', error);
     } finally {
@@ -61,15 +75,19 @@ export const TeamContent = () => {
 
   const handleInvite = async (inviteData) => {
     try {
-      // Call the server API to send invitation
-      const response = await fetch(`${baseURL}/api/send-team-invite`, {
+      if (!activeWorkspace?.id) {
+        throw new Error('No active workspace');
+      }
+
+      // Call the workspace invite API (uses workspace_invitations table)
+      const response = await fetch(`${baseURL}/api/workspaces/${activeWorkspace.id}/invite`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           email: inviteData.email,
-          role: inviteData.role,
+          role: inviteData.role || 'member',
           userId: user.id,
         }),
       });

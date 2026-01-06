@@ -1526,20 +1526,47 @@ app.post("/api/workspaces/:id/invite", async (req, res) => {
       .eq('user_id', userId)
       .single();
 
-    if (!membership || !membership.can_manage_team) {
+    // Owners and admins always have permission, or explicit can_manage_team permission
+    const hasPermission = membership && (
+      membership.role === 'owner' ||
+      membership.role === 'admin' ||
+      membership.can_manage_team === true
+    );
+
+    if (!hasPermission) {
       return res.status(403).json({ error: "You do not have permission to invite members" });
     }
 
-    // Check if user is already a member
-    const { data: existingMember } = await supabase
-      .from('workspace_members')
-      .select('id')
+    // Check if there's already a pending invitation for this email
+    const { data: existingInvite } = await supabase
+      .from('workspace_invitations')
+      .select('id, status')
       .eq('workspace_id', id)
-      .eq('user_id', email) // This would need to be user ID, not email
+      .eq('email', email.toLowerCase())
       .single();
 
-    if (existingMember) {
-      return res.status(400).json({ error: "User is already a member of this workspace" });
+    if (existingInvite && existingInvite.status === 'pending') {
+      return res.status(400).json({ error: "An invitation has already been sent to this email" });
+    }
+
+    // Check if user with this email is already a member
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .eq('email', email.toLowerCase())
+      .single();
+
+    if (userProfile) {
+      const { data: existingMember } = await supabase
+        .from('workspace_members')
+        .select('id')
+        .eq('workspace_id', id)
+        .eq('user_id', userProfile.id)
+        .single();
+
+      if (existingMember) {
+        return res.status(400).json({ error: "User is already a member of this workspace" });
+      }
     }
 
     // Generate invitation token
@@ -1550,24 +1577,74 @@ app.post("/api/workspaces/:id/invite", async (req, res) => {
       .from('workspace_invitations')
       .insert({
         workspace_id: id,
-        email,
+        email: email.toLowerCase(),
         role: role || 'member',
         invited_by: userId,
         invitation_token: invitationToken,
+        status: 'pending',
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
       })
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Database error creating invitation:", error);
+      throw error;
+    }
 
     // TODO: Send invitation email
     console.log(`TODO: Send invitation email to ${email} with token ${invitationToken}`);
+    console.log(`Invitation URL: ${process.env.APP_URL || 'http://localhost:5173'}/accept-invite?token=${invitationToken}`);
 
     res.json({ success: true, invitation });
   } catch (error) {
     console.error("Error inviting member:", error);
-    res.status(500).json({ error: "Failed to invite member" });
+    res.status(500).json({
+      error: "Failed to invite member",
+      details: error.message || error.toString()
+    });
+  }
+});
+
+// Get pending invitations for a workspace
+app.get("/api/workspaces/:id/invitations", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.query;
+
+    // Verify user has permission to view invitations
+    const { data: membership } = await supabase
+      .from('workspace_members')
+      .select('role, can_manage_team')
+      .eq('workspace_id', id)
+      .eq('user_id', userId)
+      .single();
+
+    // Owners and admins always have permission, or explicit can_manage_team permission
+    const hasPermission = membership && (
+      membership.role === 'owner' ||
+      membership.role === 'admin' ||
+      membership.can_manage_team === true
+    );
+
+    if (!hasPermission) {
+      return res.status(403).json({ error: "You do not have permission to view invitations" });
+    }
+
+    // Fetch pending invitations
+    const { data: invitations, error } = await supabase
+      .from('workspace_invitations')
+      .select('*')
+      .eq('workspace_id', id)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    res.json({ invitations: invitations || [] });
+  } catch (error) {
+    console.error("Error fetching invitations:", error);
+    res.status(500).json({ error: "Failed to fetch invitations" });
   }
 });
 
@@ -2401,13 +2478,16 @@ app.post("/api/workspace/migrate", async (req, res) => {
       return res.status(500).json({ error: "Failed to create workspace" });
     }
 
-    // Add user as owner
+    // Add user as owner with full permissions
     const { error: memberError } = await supabase
       .from('workspace_members')
       .insert({
         workspace_id: workspace.id,
         user_id: userId,
-        role: 'owner'
+        role: 'owner',
+        can_manage_team: true,
+        can_manage_settings: true,
+        can_delete_posts: true
       });
 
     if (memberError) {
@@ -2508,13 +2588,16 @@ app.post("/api/workspace/create", async (req, res) => {
       return res.status(500).json({ error: "Failed to create workspace" });
     }
 
-    // Add user as owner
+    // Add user as owner with full permissions
     const { error: memberError } = await supabase
       .from('workspace_members')
       .insert({
         workspace_id: workspace.id,
         user_id: userId,
-        role: 'owner'
+        role: 'owner',
+        can_manage_team: true,
+        can_manage_settings: true,
+        can_delete_posts: true
       });
 
     if (memberError) {
