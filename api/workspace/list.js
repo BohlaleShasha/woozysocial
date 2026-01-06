@@ -51,9 +51,15 @@ module.exports = async function handler(req, res) {
       .eq('id', userId)
       .single();
 
-    // Transform the data
+    // Transform the data and deduplicate by workspace ID
+    const seen = new Set();
     const workspaces = (memberships || [])
       .filter(m => m.workspace)
+      .filter(m => {
+        if (seen.has(m.workspace.id)) return false;
+        seen.add(m.workspace.id);
+        return true;
+      })
       .map(m => ({
         ...m.workspace,
         membership: { role: m.role }

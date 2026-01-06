@@ -128,11 +128,10 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
+  padding: 4px;
   background: none;
   border: none;
   border-radius: 8px;
-  cursor: pointer;
   transition: background-color 0.2s ease;
   width: 100%;
   text-align: left;
@@ -140,6 +139,59 @@
 
 .workspace-item:hover {
   background-color: #F5F5F5;
+}
+
+.workspace-item-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+}
+
+.workspace-item-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  padding-right: 4px;
+}
+
+.workspace-item:hover .workspace-item-actions {
+  opacity: 1;
+}
+
+.workspace-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: #f0f0f0;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.workspace-action-btn:hover {
+  background: #e0e0e0;
+}
+
+.workspace-action-btn.edit:hover {
+  background: #FFF9E6;
+  color: #FFC801;
+}
+
+.workspace-action-btn.delete:hover {
+  background: #FFE8E8;
+  color: #dc3545;
 }
 
 .workspace-item.active {
@@ -354,4 +406,180 @@
     right: 0;
     left: auto;
   }
+}
+
+/* Edit/Delete Modal Styles */
+
+.workspace-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.workspace-modal {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
+  margin: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.2s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.workspace-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.workspace-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #000;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: #666;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+}
+
+.modal-close:hover {
+  background-color: #f0f0f0;
+}
+
+.workspace-modal-body {
+  padding: 20px;
+}
+
+.workspace-modal-body label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.workspace-modal-body input {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 14px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
+}
+
+.workspace-modal-body input:focus {
+  border-color: #FFC801;
+  box-shadow: 0 0 0 3px rgba(255, 200, 1, 0.15);
+}
+
+.delete-warning {
+  font-size: 15px;
+  color: #333;
+  margin: 0 0 12px 0;
+}
+
+.delete-info {
+  font-size: 13px;
+  color: #666;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.workspace-modal-actions {
+  display: flex;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid #eee;
+  justify-content: flex-end;
+}
+
+.modal-btn {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.modal-btn.secondary {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.modal-btn.secondary:hover {
+  background: #e0e0e0;
+}
+
+.modal-btn.primary {
+  background: #FFC801;
+  color: #000;
+}
+
+.modal-btn.primary:hover {
+  background: #e6b400;
+}
+
+.modal-btn.primary:disabled {
+  background: #ccc;
+  color: #666;
+  cursor: not-allowed;
+}
+
+.modal-btn.danger {
+  background: #dc3545;
+  color: white;
+}
+
+.modal-btn.danger:hover {
+  background: #c82333;
+}
+
+.modal-btn.danger:disabled {
+  background: #ccc;
+  color: #666;
+  cursor: not-allowed;
+}
+
+.delete-modal .workspace-modal-header h3 {
+  color: #dc3545;
 }

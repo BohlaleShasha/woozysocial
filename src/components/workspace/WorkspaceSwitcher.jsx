@@ -4,14 +4,19 @@ import { useWorkspace } from '../../contexts/WorkspaceContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { CreateWorkspaceModal } from './CreateWorkspaceModal';
 import { InviteClientModal } from './InviteClientModal';
+import { baseURL } from '../../utils/constants';
 import './WorkspaceSwitcher.css';
 
 export const WorkspaceSwitcher = () => {
-  const { activeWorkspace, userWorkspaces, switchWorkspace, loading } = useWorkspace();
-  const { user, profile } = useAuth();
+  const { activeWorkspace, userWorkspaces, switchWorkspace, loading, refreshWorkspaces } = useWorkspace();
+  const { user, profile, hasActiveProfile } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [editingWorkspace, setEditingWorkspace] = useState(null);
+  const [deletingWorkspace, setDeletingWorkspace] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
@@ -65,6 +70,78 @@ export const WorkspaceSwitcher = () => {
   const handleInviteClientClick = () => {
     setShowDropdown(false);
     setShowInviteModal(true);
+  };
+
+  const handleEditClick = (e, workspace) => {
+    e.stopPropagation();
+    setEditingWorkspace(workspace);
+    setEditName(workspace.name);
+    setShowDropdown(false);
+  };
+
+  const handleDeleteClick = (e, workspace) => {
+    e.stopPropagation();
+    setDeletingWorkspace(workspace);
+    setShowDropdown(false);
+  };
+
+  const handleRenameSubmit = async () => {
+    if (!editingWorkspace || !editName.trim() || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`${baseURL}/api/workspace/rename`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          workspaceId: editingWorkspace.id,
+          newName: editName.trim()
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        await refreshWorkspaces();
+        setEditingWorkspace(null);
+        setEditName('');
+      } else {
+        console.error('Failed to rename workspace:', data.error);
+      }
+    } catch (error) {
+      console.error('Error renaming workspace:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingWorkspace || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`${baseURL}/api/workspace/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          workspaceId: deletingWorkspace.id
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        await refreshWorkspaces();
+        setDeletingWorkspace(null);
+      } else {
+        console.error('Failed to delete workspace:', data.error);
+        alert(data.error || 'Failed to delete workspace');
+      }
+    } catch (error) {
+      console.error('Error deleting workspace:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Only show loading skeleton briefly while auth is loading
@@ -123,40 +200,71 @@ export const WorkspaceSwitcher = () => {
             <div className="section-label">Workspaces</div>
             <div className="workspaces-list">
               {userWorkspaces.length > 0 ? (
-                userWorkspaces.map((workspace) => (
-                  <button
-                    key={workspace.id}
-                    className={`workspace-item ${workspace.id === displayWorkspace.id ? 'active' : ''}`}
-                    onClick={() => handleWorkspaceSwitch(workspace.id)}
-                  >
-                    <div className="workspace-item-logo">
-                      {workspace.logo_url ? (
-                        <img src={workspace.logo_url} alt={workspace.name} />
-                      ) : (
-                        <span className="workspace-item-initial">
-                          {workspace.name[0]?.toUpperCase() || 'W'}
-                        </span>
+                userWorkspaces.map((workspace) => {
+                  const isOwner = workspace.membership?.role === 'owner';
+                  const canManage = hasActiveProfile && isOwner;
+
+                  return (
+                    <div
+                      key={workspace.id}
+                      className={`workspace-item ${workspace.id === displayWorkspace.id ? 'active' : ''}`}
+                    >
+                      <button
+                        className="workspace-item-main"
+                        onClick={() => handleWorkspaceSwitch(workspace.id)}
+                      >
+                        <div className="workspace-item-logo">
+                          {workspace.logo_url ? (
+                            <img src={workspace.logo_url} alt={workspace.name} />
+                          ) : (
+                            <span className="workspace-item-initial">
+                              {workspace.name[0]?.toUpperCase() || 'W'}
+                            </span>
+                          )}
+                        </div>
+                        <div className="workspace-item-info">
+                          <div className="workspace-item-name">{workspace.name}</div>
+                          <div className="workspace-item-role">
+                            {workspace.membership?.role?.toUpperCase() || 'MEMBER'}
+                          </div>
+                        </div>
+                        {workspace.id === displayWorkspace.id && (
+                          <svg className="check-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <path
+                              d="M13 4L6 11L3 8"
+                              stroke="#FFC801"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        )}
+                      </button>
+                      {canManage && (
+                        <div className="workspace-item-actions">
+                          <button
+                            className="workspace-action-btn edit"
+                            onClick={(e) => handleEditClick(e, workspace)}
+                            title="Edit business name"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                              <path d="M10.5 1.5L12.5 3.5L4.5 11.5H2.5V9.5L10.5 1.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </button>
+                          <button
+                            className="workspace-action-btn delete"
+                            onClick={(e) => handleDeleteClick(e, workspace)}
+                            title="Delete business"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                              <path d="M2 4H12M5 4V2.5C5 2.22386 5.22386 2 5.5 2H8.5C8.77614 2 9 2.22386 9 2.5V4M11 4V11.5C11 11.7761 10.7761 12 10.5 12H3.5C3.22386 12 3 11.7761 3 11.5V4H11Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </button>
+                        </div>
                       )}
                     </div>
-                    <div className="workspace-item-info">
-                      <div className="workspace-item-name">{workspace.name}</div>
-                      <div className="workspace-item-role">
-                        {workspace.membership?.role?.toUpperCase() || 'MEMBER'}
-                      </div>
-                    </div>
-                    {workspace.id === displayWorkspace.id && (
-                      <svg className="check-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <path
-                          d="M13 4L6 11L3 8"
-                          stroke="#FFC801"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    )}
-                  </button>
-                ))
+                  );
+                })
               ) : (
                 <div
                   className="workspace-item active"
@@ -244,6 +352,81 @@ export const WorkspaceSwitcher = () => {
         isOpen={showInviteModal}
         onClose={() => setShowInviteModal(false)}
       />
+
+      {/* Edit Workspace Modal */}
+      {editingWorkspace && (
+        <div className="workspace-modal-overlay" onClick={() => setEditingWorkspace(null)}>
+          <div className="workspace-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="workspace-modal-header">
+              <h3>Edit Business Name</h3>
+              <button className="modal-close" onClick={() => setEditingWorkspace(null)}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
+            <div className="workspace-modal-body">
+              <label htmlFor="workspace-name">Business Name</label>
+              <input
+                id="workspace-name"
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Enter business name"
+                autoFocus
+              />
+            </div>
+            <div className="workspace-modal-actions">
+              <button className="modal-btn secondary" onClick={() => setEditingWorkspace(null)}>
+                Cancel
+              </button>
+              <button
+                className="modal-btn primary"
+                onClick={handleRenameSubmit}
+                disabled={!editName.trim() || editName === editingWorkspace.name || isSubmitting}
+              >
+                {isSubmitting ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Workspace Confirmation Modal */}
+      {deletingWorkspace && (
+        <div className="workspace-modal-overlay" onClick={() => setDeletingWorkspace(null)}>
+          <div className="workspace-modal delete-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="workspace-modal-header">
+              <h3>Delete Business</h3>
+              <button className="modal-close" onClick={() => setDeletingWorkspace(null)}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
+            <div className="workspace-modal-body">
+              <p className="delete-warning">
+                Are you sure you want to delete <strong>{deletingWorkspace.name}</strong>?
+              </p>
+              <p className="delete-info">
+                This action cannot be undone. Your posts and connected accounts will be preserved but unlinked from this business.
+              </p>
+            </div>
+            <div className="workspace-modal-actions">
+              <button className="modal-btn secondary" onClick={() => setDeletingWorkspace(null)}>
+                Cancel
+              </button>
+              <button
+                className="modal-btn danger"
+                onClick={handleDeleteConfirm}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Deleting...' : 'Delete Business'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

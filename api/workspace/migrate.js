@@ -32,16 +32,21 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: "userId is required" });
     }
 
-    // 1. Check if user already has a workspace
-    const { data: existingMembership } = await supabase
+    // 1. Check if user already has a workspace (use maybeSingle to handle 0 rows)
+    const { data: existingMemberships, error: membershipError } = await supabase
       .from('workspace_members')
       .select('workspace_id, workspaces(*)')
       .eq('user_id', userId)
-      .limit(1)
-      .single();
+      .limit(1);
 
-    if (existingMembership?.workspace_id) {
-      // User already has a workspace, return it
+    if (membershipError) {
+      console.error("Error checking existing membership:", membershipError);
+      return res.status(500).json({ error: "Failed to check existing workspaces" });
+    }
+
+    if (existingMemberships && existingMemberships.length > 0) {
+      // User already has a workspace, return the first one
+      const existingMembership = existingMemberships[0];
       return res.status(200).json({
         success: true,
         migrated: false,
