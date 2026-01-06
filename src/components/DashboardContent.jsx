@@ -320,9 +320,7 @@ export const DashboardContent = () => {
                   return (
                     <div
                       key={account.name}
-                      className={`social-account-item ${!isConnected ? 'clickable' : ''}`}
-                      onClick={() => !isConnected && handleConnectPlatform(account.name)}
-                      style={{ cursor: !isConnected ? 'pointer' : 'default' }}
+                      className="social-account-item"
                     >
                       <div className="account-info">
                         <div
@@ -333,25 +331,24 @@ export const DashboardContent = () => {
                         </div>
                         <div className="account-details">
                           <div className="account-name">{account.name}</div>
-                          <div className="account-status">
-                            {connectingPlatform === account.name
-                              ? 'Connecting...'
-                              : isConnected ? 'Connected' : 'Not connected - Click to connect'}
+                          <div className="account-status" style={{ color: isConnected ? '#10b981' : '#999' }}>
+                            {isConnected ? 'Connected' : 'Not connected'}
                           </div>
                         </div>
                       </div>
-                      {isConnected ? (
-                        <span className="status-badge active">
-                          Active
-                        </span>
-                      ) : (
-                        <button
-                          className="connect-button"
-                          disabled={connectingPlatform === account.name}
-                        >
-                          {connectingPlatform === account.name ? 'Connecting...' : 'Connect'}
-                        </button>
-                      )}
+                      <span
+                        className={`status-badge ${isConnected ? 'active' : 'inactive'}`}
+                        style={{
+                          backgroundColor: isConnected ? '#FFC801' : '#fee2e2',
+                          color: isConnected ? '#114C5A' : '#dc2626',
+                          padding: '6px 16px',
+                          borderRadius: '20px',
+                          fontWeight: '600',
+                          fontSize: '13px'
+                        }}
+                      >
+                        {isConnected ? 'ACTIVE' : 'NO CONNECTION'}
+                      </span>
                     </div>
                   );
                 })
