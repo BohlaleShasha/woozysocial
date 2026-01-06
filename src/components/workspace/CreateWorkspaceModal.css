@@ -1,0 +1,159 @@
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-content {
+  background: #1a1a1a;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  border: 1px solid #333;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #333;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #888;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.modal-close:hover {
+  color: #fff;
+  background: #333;
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.modal-description {
+  color: #888;
+  font-size: 14px;
+  margin: 0 0 20px 0;
+  line-height: 1.5;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #ccc;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 14px;
+  border: 1px solid #444;
+  border-radius: 8px;
+  background: #222;
+  color: #fff;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #FFC801;
+}
+
+.form-group input::placeholder {
+  color: #666;
+}
+
+.form-group input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error-message {
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  color: #ff6b6b;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-top: 16px;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid #333;
+  justify-content: flex-end;
+}
+
+.btn-secondary,
+.btn-primary {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid #444;
+  color: #ccc;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #333;
+  color: #fff;
+}
+
+.btn-primary {
+  background: #FFC801;
+  border: none;
+  color: #000;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #e6b400;
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

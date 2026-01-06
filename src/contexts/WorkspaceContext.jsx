@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { supabase } from '../utils/supabaseClient';
+import { baseURL } from '../utils/constants';
 
 const WorkspaceContext = createContext({});
 
@@ -19,7 +20,7 @@ export const WorkspaceProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [workspaceMembership, setWorkspaceMembership] = useState(null);
 
-  // Fetch user's workspaces
+  // Fetch user's workspaces via API
   const fetchUserWorkspaces = useCallback(async () => {
     if (!user) {
       setUserWorkspaces([]);
@@ -32,53 +33,40 @@ export const WorkspaceProvider = ({ children }) => {
     try {
       setLoading(true);
 
-      // Get all workspaces user is a member of
-      const { data: memberships, error: memberError } = await supabase
-        .from('workspace_members')
-        .select(`
-          *,
-          workspace:workspaces(*)
-        `)
-        .eq('user_id', user.id)
-        .order('joined_at', { ascending: false });
+      // First, try to get workspaces via API
+      const listRes = await fetch(`${baseURL}/api/workspace/list?userId=${user.id}`);
+      const listData = await listRes.json();
 
-      if (memberError) throw memberError;
+      let workspaces = listData.workspaces || [];
 
-      // Transform the data to include membership info with each workspace
-      const workspaces = memberships
-        .map(m => ({
-          ...m.workspace,
-          membership: {
-            role: m.role,
-            permissions: {
-              canManageTeam: m.can_manage_team,
-              canManageSettings: m.can_manage_settings,
-              canDeletePosts: m.can_delete_posts
-            }
-          }
-        }))
-        .filter(w => w.id !== undefined); // Filter out any null workspaces
+      // If no workspaces, auto-migrate the user
+      if (workspaces.length === 0) {
+        console.log('No workspaces found, migrating user...');
+        const migrateRes = await fetch(`${baseURL}/api/workspace/migrate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id })
+        });
+        const migrateData = await migrateRes.json();
+
+        if (migrateData.success && migrateData.workspace) {
+          workspaces = [{
+            ...migrateData.workspace,
+            membership: { role: 'owner' }
+          }];
+        }
+      }
 
       setUserWorkspaces(workspaces);
 
       // Set active workspace
       if (workspaces.length > 0) {
-        // Try to use last_workspace_id from user_profiles
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('last_workspace_id')
-          .eq('id', user.id)
-          .single();
-
-        const lastWorkspace = workspaces.find(w => w.id === profile?.last_workspace_id);
+        const lastWorkspace = workspaces.find(w => w.id === listData.lastWorkspaceId);
         const workspace = lastWorkspace || workspaces[0];
 
         setActiveWorkspace(workspace);
-        setWorkspaceMembership(workspace.membership);
+        setWorkspaceMembership(workspace.membership || { role: 'owner' });
       } else {
-        // User has no workspaces - this shouldn't happen after migration
-        // but we'll handle it gracefully
-        console.warn('User has no workspaces. Migration may need to be run.');
         setActiveWorkspace(null);
         setWorkspaceMembership(null);
       }
@@ -125,49 +113,39 @@ export const WorkspaceProvider = ({ children }) => {
     }
   }, [userWorkspaces, user]);
 
-  // Create workspace
-  const createWorkspace = useCallback(async (name, slug) => {
+  // Create workspace via API (also creates Ayrshare profile)
+  const createWorkspace = useCallback(async (businessName) => {
     if (!user) return { data: null, error: 'User not authenticated' };
 
     try {
-      // Generate slug if not provided
-      const workspaceSlug = slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-
-      // Create workspace
-      const { data: workspace, error: workspaceError } = await supabase
-        .from('workspaces')
-        .insert({
-          name,
-          slug: workspaceSlug,
-          plan_type: 'free',
-          max_team_members: 1,
-          max_posts_per_month: 50,
-          max_social_accounts: 3
+      const res = await fetch(`${baseURL}/api/workspace/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          businessName: businessName
         })
-        .select()
-        .single();
+      });
 
-      if (workspaceError) throw workspaceError;
+      const data = await res.json();
 
-      // Add user as owner
-      const { error: memberError } = await supabase
-        .from('workspace_members')
-        .insert({
-          workspace_id: workspace.id,
-          user_id: user.id,
-          role: 'owner',
-          joined_at: new Date().toISOString(),
-          can_manage_team: true,
-          can_manage_settings: true,
-          can_delete_posts: true
-        });
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to create workspace');
+      }
 
-      if (memberError) throw memberError;
-
-      // Refresh workspaces
+      // Refresh workspaces and switch to the new one
       await fetchUserWorkspaces();
 
-      return { data: workspace, error: null };
+      // Switch to the new workspace
+      if (data.workspace) {
+        setActiveWorkspace({
+          ...data.workspace,
+          membership: { role: 'owner' }
+        });
+        setWorkspaceMembership({ role: 'owner' });
+      }
+
+      return { data: data.workspace, error: null };
     } catch (error) {
       console.error('Error creating workspace:', error);
       return { data: null, error: error.message };

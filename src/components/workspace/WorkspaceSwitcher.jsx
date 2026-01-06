@@ -1,13 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWorkspace } from '../../contexts/WorkspaceContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { CreateWorkspaceModal } from './CreateWorkspaceModal';
 import './WorkspaceSwitcher.css';
 
 export const WorkspaceSwitcher = () => {
   const { activeWorkspace, userWorkspaces, switchWorkspace, loading } = useWorkspace();
+  const { user, profile } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
+
+  // Create a fallback "personal workspace" from user info
+  const personalWorkspace = {
+    id: user?.id || 'personal',
+    name: profile?.full_name || user?.email?.split('@')[0] || 'My Workspace',
+    logo_url: null
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -44,8 +55,13 @@ export const WorkspaceSwitcher = () => {
     navigate('/settings?tab=workspace');
   };
 
-  // Loading skeleton while fetching workspaces
-  if (loading || !activeWorkspace) {
+  const handleAddBusinessClick = () => {
+    setShowDropdown(false);
+    setShowCreateModal(true);
+  };
+
+  // Only show loading skeleton briefly while auth is loading
+  if (loading && !user) {
     return (
       <div className="workspace-switcher-skeleton">
         <div className="workspace-logo-skeleton"></div>
@@ -54,14 +70,9 @@ export const WorkspaceSwitcher = () => {
     );
   }
 
-  // No workspaces (shouldn't happen after migration)
-  if (userWorkspaces.length === 0) {
-    return (
-      <div className="workspace-switcher-empty">
-        <span>No workspace</span>
-      </div>
-    );
-  }
+  // Use activeWorkspace if available, otherwise fall back to personal workspace
+  const displayWorkspace = activeWorkspace || personalWorkspace;
+  const hasMultipleWorkspaces = userWorkspaces.length > 1;
 
   return (
     <div className="workspace-switcher" ref={dropdownRef}>
@@ -72,15 +83,15 @@ export const WorkspaceSwitcher = () => {
         aria-expanded={showDropdown}
       >
         <div className="workspace-logo">
-          {activeWorkspace.logo_url ? (
-            <img src={activeWorkspace.logo_url} alt={activeWorkspace.name} />
+          {displayWorkspace.logo_url ? (
+            <img src={displayWorkspace.logo_url} alt={displayWorkspace.name} />
           ) : (
             <span className="workspace-initial">
-              {activeWorkspace.name[0]?.toUpperCase() || 'W'}
+              {displayWorkspace.name[0]?.toUpperCase() || 'W'}
             </span>
           )}
         </div>
-        <span className="workspace-name">{activeWorkspace.name}</span>
+        <span className="workspace-name">{displayWorkspace.name}</span>
         <svg
           className={`dropdown-arrow ${showDropdown ? 'open' : ''}`}
           width="12"
@@ -104,44 +115,83 @@ export const WorkspaceSwitcher = () => {
           <div className="dropdown-section">
             <div className="section-label">Workspaces</div>
             <div className="workspaces-list">
-              {userWorkspaces.map((workspace) => (
-                <button
-                  key={workspace.id}
-                  className={`workspace-item ${workspace.id === activeWorkspace.id ? 'active' : ''}`}
-                  onClick={() => handleWorkspaceSwitch(workspace.id)}
+              {userWorkspaces.length > 0 ? (
+                userWorkspaces.map((workspace) => (
+                  <button
+                    key={workspace.id}
+                    className={`workspace-item ${workspace.id === displayWorkspace.id ? 'active' : ''}`}
+                    onClick={() => handleWorkspaceSwitch(workspace.id)}
+                  >
+                    <div className="workspace-item-logo">
+                      {workspace.logo_url ? (
+                        <img src={workspace.logo_url} alt={workspace.name} />
+                      ) : (
+                        <span className="workspace-item-initial">
+                          {workspace.name[0]?.toUpperCase() || 'W'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="workspace-item-info">
+                      <div className="workspace-item-name">{workspace.name}</div>
+                      <div className="workspace-item-role">
+                        {workspace.membership?.role?.toUpperCase() || 'MEMBER'}
+                      </div>
+                    </div>
+                    {workspace.id === displayWorkspace.id && (
+                      <svg className="check-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path
+                          d="M13 4L6 11L3 8"
+                          stroke="#FFC801"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
+                  </button>
+                ))
+              ) : (
+                <div
+                  className="workspace-item active"
+                  style={{ cursor: 'default' }}
                 >
                   <div className="workspace-item-logo">
-                    {workspace.logo_url ? (
-                      <img src={workspace.logo_url} alt={workspace.name} />
-                    ) : (
-                      <span className="workspace-item-initial">
-                        {workspace.name[0]?.toUpperCase() || 'W'}
-                      </span>
-                    )}
+                    <span className="workspace-item-initial">
+                      {personalWorkspace.name[0]?.toUpperCase() || 'W'}
+                    </span>
                   </div>
                   <div className="workspace-item-info">
-                    <div className="workspace-item-name">{workspace.name}</div>
-                    <div className="workspace-item-role">
-                      {workspace.membership?.role?.toUpperCase() || 'MEMBER'}
-                    </div>
+                    <div className="workspace-item-name">{personalWorkspace.name}</div>
+                    <div className="workspace-item-role">PERSONAL</div>
                   </div>
-                  {workspace.id === activeWorkspace.id && (
-                    <svg className="check-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <path
-                        d="M13 4L6 11L3 8"
-                        stroke="#FFC801"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  )}
-                </button>
-              ))}
+                  <svg className="check-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path
+                      d="M13 4L6 11L3 8"
+                      stroke="#FFC801"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+              )}
             </div>
           </div>
 
           <div className="dropdown-divider" />
+
+          <button className="dropdown-action add-business" onClick={handleAddBusinessClick}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path
+                d="M8 3V13M3 8H13"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            Add Business
+          </button>
 
           <button className="dropdown-action" onClick={handleSettingsClick}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="settings-icon">
@@ -164,6 +214,11 @@ export const WorkspaceSwitcher = () => {
           </button>
         </div>
       )}
+
+      <CreateWorkspaceModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+      />
     </div>
   );
 };

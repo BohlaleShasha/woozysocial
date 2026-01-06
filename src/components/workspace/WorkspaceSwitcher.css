@@ -240,6 +240,15 @@
   background-color: #F5F5F5;
 }
 
+.dropdown-action.add-business {
+  color: #FFC801;
+  font-weight: 600;
+}
+
+.dropdown-action.add-business:hover {
+  background-color: #FFF9E6;
+}
+
 .dropdown-action .settings-icon {
   flex-shrink: 0;
 }
