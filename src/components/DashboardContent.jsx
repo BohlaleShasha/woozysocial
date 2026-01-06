@@ -91,40 +91,46 @@ export const DashboardContent = () => {
     setConnectingPlatform(platformName);
     try {
       const res = await fetch(`${baseURL}/api/generate-jwt?${queryParam}`);
-      if (res.ok) {
-        const data = await res.json();
+      const data = await res.json();
 
-        // Open in popup window instead of iframe (Ayrshare blocks iframe embedding)
-        const width = 600;
-        const height = 700;
-        const left = (window.screen.width - width) / 2;
-        const top = (window.screen.height - height) / 2;
-
-        const popup = window.open(
-          data.url,
-          'Connect Social Account',
-          `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
-        );
-
-        // Check if popup was blocked
-        if (!popup || popup.closed || typeof popup.closed === 'undefined') {
-          alert('Please allow popups to connect your social accounts');
-          setConnectingPlatform(null);
-          return;
-        }
-
-        // Poll to detect when popup closes
-        const pollTimer = setInterval(() => {
-          if (popup.closed) {
-            clearInterval(pollTimer);
-            setConnectingPlatform(null);
-            // Refresh accounts after popup closes
-            setTimeout(() => refreshAccounts(), 1000);
-          }
-        }, 500);
+      if (!res.ok || !data.url) {
+        console.error("Failed to get JWT URL:", data);
+        alert(data.error || "Failed to connect. Please try again.");
+        setConnectingPlatform(null);
+        return;
       }
+
+      // Open in popup window instead of iframe (Ayrshare blocks iframe embedding)
+      const width = 600;
+      const height = 700;
+      const left = (window.screen.width - width) / 2;
+      const top = (window.screen.height - height) / 2;
+
+      const popup = window.open(
+        data.url,
+        'Connect Social Account',
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+      );
+
+      // Check if popup was blocked
+      if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+        alert('Please allow popups to connect your social accounts');
+        setConnectingPlatform(null);
+        return;
+      }
+
+      // Poll to detect when popup closes
+      const pollTimer = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(pollTimer);
+          setConnectingPlatform(null);
+          // Refresh accounts after popup closes
+          setTimeout(() => refreshAccounts(), 1000);
+        }
+      }, 500);
     } catch (error) {
       console.error("Error connecting platform:", error);
+      alert("Failed to connect. Please try again.");
       setConnectingPlatform(null);
     }
   };
