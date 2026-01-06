@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useWorkspace } from "../contexts/WorkspaceContext";
 import { baseURL } from "../utils/constants";
-import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube } from "react-icons/fa";
+import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaCheck, FaTimes, FaComment, FaClock } from "react-icons/fa";
 import { FaTiktok } from "react-icons/fa6";
 import { SiX } from "react-icons/si";
 import { formatTimeInTimezone, formatDateOnlyInTimezone } from "../utils/timezones";
@@ -18,13 +18,29 @@ const PLATFORM_ICONS = {
   "x/twitter": SiX,
 };
 
+const APPROVAL_STATUS = {
+  pending: { label: 'Pending', color: '#f59e0b', icon: FaClock },
+  approved: { label: 'Approved', color: '#10b981', icon: FaCheck },
+  rejected: { label: 'Rejected', color: '#ef4444', icon: FaTimes },
+  changes_requested: { label: 'Changes Requested', color: '#8b5cf6', icon: FaComment },
+};
+
 export const ScheduleContent = () => {
   const { user, profile } = useAuth();
-  const { activeWorkspace } = useWorkspace();
+  const { activeWorkspace, workspaceMembership } = useWorkspace();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState("week"); // week, month, kanban
+  const [view, setView] = useState("week"); // week, month, schedule
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [approvalFilter, setApprovalFilter] = useState("all"); // all, pending, approved, rejected
+  const [selectedPost, setSelectedPost] = useState(null);
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [comment, setComment] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
+
+  // Check if user is a client (can approve/reject)
+  const isClient = workspaceMembership?.role === 'client';
+  const canApprove = isClient || workspaceMembership?.role === 'owner' || workspaceMembership?.role === 'admin';
 
   // Fetch scheduled and published posts
   const fetchPosts = useCallback(async () => {
@@ -48,6 +64,9 @@ export const ScheduleContent = () => {
         status: post.status,
         type: post.type,
         mediaUrls: post.mediaUrls || [],
+        approvalStatus: post.approval_status || 'pending',
+        requiresApproval: post.requires_approval || false,
+        comments: post.comments || [],
       }));
 
       setPosts(mappedPosts);
@@ -61,6 +80,80 @@ export const ScheduleContent = () => {
   useEffect(() => {
     fetchPosts();
   }, [fetchPosts]);
+
+  // Handle post approval
+  const handleApproval = async (postId, action, commentText = "") => {
+    if (!activeWorkspace) return;
+
+    setActionLoading(true);
+    try {
+      const response = await fetch(`${baseURL}/api/post/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          postId,
+          workspaceId: activeWorkspace.id,
+          userId: user.id,
+          action,
+          comment: commentText,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to update approval');
+      }
+
+      // Refresh posts
+      await fetchPosts();
+      setShowCommentModal(false);
+      setSelectedPost(null);
+      setComment("");
+    } catch (error) {
+      console.error('Error updating approval:', error);
+      alert(error.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Handle adding a comment
+  const handleAddComment = async (postId) => {
+    if (!comment.trim() || !activeWorkspace) return;
+
+    setActionLoading(true);
+    try {
+      const response = await fetch(`${baseURL}/api/post/comment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          postId,
+          workspaceId: activeWorkspace.id,
+          userId: user.id,
+          comment: comment.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to add comment');
+      }
+
+      await fetchPosts();
+      setComment("");
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      alert(error.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Filter posts by approval status
+  const filteredPosts = posts.filter(post => {
+    if (approvalFilter === 'all') return true;
+    return post.approvalStatus === approvalFilter;
+  });
 
   // Get week dates
   const getWeekDates = () => {
@@ -111,7 +204,7 @@ export const ScheduleContent = () => {
 
   // Get posts for a specific date and time
   const getPostsForSlot = (date, hour) => {
-    return posts.filter(post => {
+    return filteredPosts.filter(post => {
       if (!post.scheduleDate) return false;
       const postDate = new Date(post.scheduleDate);
       return (
@@ -125,7 +218,7 @@ export const ScheduleContent = () => {
 
   // Get posts for a specific date (for month/kanban view)
   const getPostsForDate = (date) => {
-    return posts.filter(post => {
+    return filteredPosts.filter(post => {
       if (!post.scheduleDate) return false;
       const postDate = new Date(post.scheduleDate);
       return (
@@ -140,7 +233,7 @@ export const ScheduleContent = () => {
   const getPostsByDate = () => {
     const grouped = {};
 
-    posts.forEach(post => {
+    filteredPosts.forEach(post => {
       if (post.scheduleDate) {
         const dateKey = formatDateOnlyInTimezone(post.scheduleDate, profile?.timezone || 'UTC');
 
@@ -167,24 +260,82 @@ export const ScheduleContent = () => {
   const timeSlots = Array.from({ length: 18 }, (_, i) => i + 6); // 6 AM to 11 PM
 
   // Render Post Card
-  const renderPostCard = (post) => {
+  const renderPostCard = (post, expanded = false) => {
     const Icon = PLATFORM_ICONS[post.platforms[0]?.toLowerCase()];
+    const approvalInfo = APPROVAL_STATUS[post.approvalStatus] || APPROVAL_STATUS.pending;
+    const ApprovalIcon = approvalInfo.icon;
 
     return (
       <div
         key={post.id}
-        className={`post-card ${post.status === "success" ? "published" : "scheduled"}`}
+        className={`post-card ${post.status === "success" ? "published" : "scheduled"} approval-${post.approvalStatus}`}
         title={post.content}
       >
-        <div className="post-card-content">
-          {post.content.substring(0, 50)}{post.content.length > 50 && "..."}
+        <div className="post-card-header">
+          <div className="post-approval-badge" style={{ backgroundColor: approvalInfo.color }}>
+            <ApprovalIcon size={10} />
+            <span>{approvalInfo.label}</span>
+          </div>
+          {post.comments?.length > 0 && (
+            <div className="post-comment-count" title={`${post.comments.length} comment(s)`}>
+              <FaComment size={10} />
+              <span>{post.comments.length}</span>
+            </div>
+          )}
         </div>
+        <div className="post-card-content">
+          {post.content.substring(0, expanded ? 150 : 50)}{post.content.length > (expanded ? 150 : 50) && "..."}
+        </div>
+        {post.mediaUrls?.length > 0 && (
+          <div className="post-card-media">
+            <img src={post.mediaUrls[0]} alt="Post media" />
+          </div>
+        )}
         <div className="post-card-meta">
-          {Icon && <Icon size={14} />}
+          <div className="post-platforms">
+            {post.platforms.map((platform, idx) => {
+              const PlatformIcon = PLATFORM_ICONS[platform?.toLowerCase()];
+              return PlatformIcon ? <PlatformIcon key={idx} size={12} /> : null;
+            })}
+          </div>
           <span className="post-time">
             {formatTimeInTimezone(post.scheduleDate, profile?.timezone || 'UTC')}
           </span>
         </div>
+
+        {/* Approval Actions - only show for scheduled posts */}
+        {post.status !== "success" && canApprove && (
+          <div className="post-approval-actions">
+            {post.approvalStatus !== 'approved' && (
+              <button
+                className="approval-btn approve"
+                onClick={(e) => { e.stopPropagation(); handleApproval(post.id, 'approve'); }}
+                disabled={actionLoading}
+                title="Approve post"
+              >
+                <FaCheck size={12} />
+              </button>
+            )}
+            {post.approvalStatus !== 'rejected' && (
+              <button
+                className="approval-btn reject"
+                onClick={(e) => { e.stopPropagation(); handleApproval(post.id, 'reject'); }}
+                disabled={actionLoading}
+                title="Reject post"
+              >
+                <FaTimes size={12} />
+              </button>
+            )}
+            <button
+              className="approval-btn comment"
+              onClick={(e) => { e.stopPropagation(); setSelectedPost(post); setShowCommentModal(true); }}
+              disabled={actionLoading}
+              title="Add comment or request changes"
+            >
+              <FaComment size={12} />
+            </button>
+          </div>
+        )}
       </div>
     );
   };
@@ -281,6 +432,15 @@ export const ScheduleContent = () => {
     );
   };
 
+  // Count posts by approval status
+  const approvalCounts = {
+    all: posts.length,
+    pending: posts.filter(p => p.approvalStatus === 'pending').length,
+    approved: posts.filter(p => p.approvalStatus === 'approved').length,
+    rejected: posts.filter(p => p.approvalStatus === 'rejected').length,
+    changes_requested: posts.filter(p => p.approvalStatus === 'changes_requested').length,
+  };
+
   return (
     <div className="schedule-container">
       <div className="schedule-header">
@@ -325,6 +485,42 @@ export const ScheduleContent = () => {
         </div>
       </div>
 
+      {/* Approval Filter Tabs */}
+      <div className="approval-filter-tabs">
+        <button
+          className={`filter-tab ${approvalFilter === 'all' ? 'active' : ''}`}
+          onClick={() => setApprovalFilter('all')}
+        >
+          All <span className="filter-count">{approvalCounts.all}</span>
+        </button>
+        <button
+          className={`filter-tab pending ${approvalFilter === 'pending' ? 'active' : ''}`}
+          onClick={() => setApprovalFilter('pending')}
+        >
+          <FaClock size={12} /> Pending <span className="filter-count">{approvalCounts.pending}</span>
+        </button>
+        <button
+          className={`filter-tab approved ${approvalFilter === 'approved' ? 'active' : ''}`}
+          onClick={() => setApprovalFilter('approved')}
+        >
+          <FaCheck size={12} /> Approved <span className="filter-count">{approvalCounts.approved}</span>
+        </button>
+        <button
+          className={`filter-tab rejected ${approvalFilter === 'rejected' ? 'active' : ''}`}
+          onClick={() => setApprovalFilter('rejected')}
+        >
+          <FaTimes size={12} /> Rejected <span className="filter-count">{approvalCounts.rejected}</span>
+        </button>
+        {approvalCounts.changes_requested > 0 && (
+          <button
+            className={`filter-tab changes ${approvalFilter === 'changes_requested' ? 'active' : ''}`}
+            onClick={() => setApprovalFilter('changes_requested')}
+          >
+            <FaComment size={12} /> Changes <span className="filter-count">{approvalCounts.changes_requested}</span>
+          </button>
+        )}
+      </div>
+
       <div className="schedule-content">
         {loading ? (
           <div className="schedule-loading">Loading posts...</div>
@@ -336,6 +532,96 @@ export const ScheduleContent = () => {
           </>
         )}
       </div>
+
+      {/* Comment Modal */}
+      {showCommentModal && selectedPost && (
+        <div className="comment-modal-overlay" onClick={() => setShowCommentModal(false)}>
+          <div className="comment-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="comment-modal-header">
+              <h3>Review Post</h3>
+              <button className="close-modal" onClick={() => setShowCommentModal(false)}>×</button>
+            </div>
+
+            <div className="comment-modal-post">
+              <div className="modal-post-content">{selectedPost.content}</div>
+              {selectedPost.mediaUrls?.length > 0 && (
+                <div className="modal-post-media">
+                  {selectedPost.mediaUrls.map((url, idx) => (
+                    <img key={idx} src={url} alt={`Media ${idx + 1}`} />
+                  ))}
+                </div>
+              )}
+              <div className="modal-post-meta">
+                <span className="modal-platforms">
+                  {selectedPost.platforms.map((p, idx) => {
+                    const PlatformIcon = PLATFORM_ICONS[p?.toLowerCase()];
+                    return PlatformIcon ? <PlatformIcon key={idx} size={14} /> : null;
+                  })}
+                </span>
+                <span className="modal-time">
+                  Scheduled: {formatTimeInTimezone(selectedPost.scheduleDate, profile?.timezone || 'UTC')} on {formatDateOnlyInTimezone(selectedPost.scheduleDate, profile?.timezone || 'UTC')}
+                </span>
+              </div>
+            </div>
+
+            {/* Existing comments */}
+            {selectedPost.comments?.length > 0 && (
+              <div className="existing-comments">
+                <h4>Comments</h4>
+                {selectedPost.comments.map((c, idx) => (
+                  <div key={idx} className={`comment-item ${c.is_system ? 'system' : ''}`}>
+                    <div className="comment-author">{c.user_name || 'User'}</div>
+                    <div className="comment-text">{c.comment}</div>
+                    <div className="comment-time">{new Date(c.created_at).toLocaleString()}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="comment-input-section">
+              <textarea
+                placeholder="Add a comment or feedback..."
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                rows={3}
+              />
+            </div>
+
+            <div className="comment-modal-actions">
+              <button
+                className="modal-btn approve"
+                onClick={() => handleApproval(selectedPost.id, 'approve', comment)}
+                disabled={actionLoading}
+              >
+                <FaCheck /> Approve
+              </button>
+              <button
+                className="modal-btn changes"
+                onClick={() => handleApproval(selectedPost.id, 'changes_requested', comment)}
+                disabled={actionLoading || !comment.trim()}
+              >
+                <FaComment /> Request Changes
+              </button>
+              <button
+                className="modal-btn reject"
+                onClick={() => handleApproval(selectedPost.id, 'reject', comment)}
+                disabled={actionLoading}
+              >
+                <FaTimes /> Reject
+              </button>
+              {comment.trim() && (
+                <button
+                  className="modal-btn comment-only"
+                  onClick={() => handleAddComment(selectedPost.id)}
+                  disabled={actionLoading}
+                >
+                  Comment Only
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

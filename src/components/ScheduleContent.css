@@ -338,3 +338,417 @@
 .post-time {
   font-weight: 500;
 }
+
+/* Approval Filter Tabs */
+.approval-filter-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #6b7280;
+}
+
+.filter-tab:hover {
+  border-color: #d1d5db;
+  background: #f9fafb;
+}
+
+.filter-tab.active {
+  background: #114C5A;
+  border-color: #114C5A;
+  color: white;
+}
+
+.filter-tab.pending.active {
+  background: #f59e0b;
+  border-color: #f59e0b;
+}
+
+.filter-tab.approved.active {
+  background: #10b981;
+  border-color: #10b981;
+}
+
+.filter-tab.rejected.active {
+  background: #ef4444;
+  border-color: #ef4444;
+}
+
+.filter-tab.changes.active {
+  background: #8b5cf6;
+  border-color: #8b5cf6;
+}
+
+.filter-count {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+}
+
+.filter-tab:not(.active) .filter-count {
+  background: #f3f4f6;
+}
+
+/* Post Card Header with Approval Badge */
+.post-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.post-approval-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  color: white;
+}
+
+.post-comment-count {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: #6b7280;
+  font-size: 11px;
+}
+
+/* Post Card with Approval Status */
+.post-card.approval-pending {
+  border-left-color: #f59e0b;
+}
+
+.post-card.approval-approved {
+  border-left-color: #10b981;
+}
+
+.post-card.approval-rejected {
+  border-left-color: #ef4444;
+}
+
+.post-card.approval-changes_requested {
+  border-left-color: #8b5cf6;
+}
+
+/* Post Card Media */
+.post-card-media {
+  margin: 6px 0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.post-card-media img {
+  width: 100%;
+  height: 60px;
+  object-fit: cover;
+}
+
+/* Post Platforms */
+.post-platforms {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Approval Actions */
+.post-approval-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.approval-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 11px;
+}
+
+.approval-btn.approve {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.approval-btn.approve:hover {
+  background: #10b981;
+  color: white;
+}
+
+.approval-btn.reject {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.approval-btn.reject:hover {
+  background: #ef4444;
+  color: white;
+}
+
+.approval-btn.comment {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.approval-btn.comment:hover {
+  background: #6366f1;
+  color: white;
+}
+
+.approval-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Comment Modal */
+.comment-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.comment-modal {
+  background: white;
+  border-radius: 16px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.comment-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.comment-modal-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.close-modal {
+  background: none;
+  border: none;
+  font-size: 28px;
+  cursor: pointer;
+  color: #9ca3af;
+  line-height: 1;
+}
+
+.close-modal:hover {
+  color: #6b7280;
+}
+
+.comment-modal-post {
+  padding: 20px 24px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-post-content {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #374151;
+  margin-bottom: 16px;
+  white-space: pre-wrap;
+}
+
+.modal-post-media {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.modal-post-media img {
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.modal-post-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.modal-platforms {
+  display: flex;
+  gap: 8px;
+}
+
+/* Existing Comments */
+.existing-comments {
+  padding: 16px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.existing-comments h4 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.comment-item {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.comment-item.system {
+  background: #fef3c7;
+  border-color: #fcd34d;
+}
+
+.comment-author {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 4px;
+}
+
+.comment-text {
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.comment-time {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 8px;
+}
+
+/* Comment Input */
+.comment-input-section {
+  padding: 16px 24px;
+}
+
+.comment-input-section textarea {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 14px;
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+.comment-input-section textarea:focus {
+  outline: none;
+  border-color: #114C5A;
+  box-shadow: 0 0 0 3px rgba(17, 76, 90, 0.1);
+}
+
+/* Comment Modal Actions */
+.comment-modal-actions {
+  padding: 16px 24px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+}
+
+.modal-btn {
+  flex: 1;
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modal-btn.approve {
+  background: #10b981;
+  color: white;
+}
+
+.modal-btn.approve:hover {
+  background: #059669;
+}
+
+.modal-btn.changes {
+  background: #8b5cf6;
+  color: white;
+}
+
+.modal-btn.changes:hover {
+  background: #7c3aed;
+}
+
+.modal-btn.reject {
+  background: #ef4444;
+  color: white;
+}
+
+.modal-btn.reject:hover {
+  background: #dc2626;
+}
+
+.modal-btn.comment-only {
+  background: #6b7280;
+  color: white;
+}
+
+.modal-btn.comment-only:hover {
+  background: #4b5563;
+}
+
+.modal-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
