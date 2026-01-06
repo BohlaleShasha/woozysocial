@@ -2122,6 +2122,274 @@ app.post("/api/team/update-role", async (req, res) => {
   }
 });
 
+// ============================================================
+// WORKSPACE MANAGEMENT ENDPOINTS
+// ============================================================
+
+// Helper to generate URL-friendly slug
+const generateSlug = (name) => {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    + '-' + Date.now().toString(36);
+};
+
+// List user's workspaces
+app.get("/api/workspace/list", async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+
+    // Get all workspaces for this user
+    const { data: memberships, error } = await supabase
+      .from('workspace_members')
+      .select(`
+        role,
+        workspace:workspaces(
+          id,
+          name,
+          slug,
+          logo_url,
+          ayr_profile_key,
+          created_at
+        )
+      `)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error("Error fetching workspaces:", error);
+      return res.status(500).json({ error: "Failed to fetch workspaces" });
+    }
+
+    // Get user's last workspace preference
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('last_workspace_id')
+      .eq('id', userId)
+      .single();
+
+    // Transform the data
+    const workspaces = (memberships || [])
+      .filter(m => m.workspace)
+      .map(m => ({
+        ...m.workspace,
+        membership: { role: m.role }
+      }));
+
+    res.json({
+      success: true,
+      workspaces: workspaces,
+      lastWorkspaceId: userProfile?.last_workspace_id || null
+    });
+
+  } catch (error) {
+    console.error("Error listing workspaces:", error);
+    res.status(500).json({ error: "Failed to list workspaces" });
+  }
+});
+
+// Migrate user to workspace (create default workspace)
+app.post("/api/workspace/migrate", async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+
+    // Check if user already has a workspace
+    const { data: existingMembership } = await supabase
+      .from('workspace_members')
+      .select('workspace_id, workspaces(*)')
+      .eq('user_id', userId)
+      .limit(1)
+      .single();
+
+    if (existingMembership?.workspace_id) {
+      return res.json({
+        success: true,
+        migrated: false,
+        workspace: existingMembership.workspaces
+      });
+    }
+
+    // Get user's profile
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('full_name, email, ayr_profile_key, ayr_ref_id')
+      .eq('id', userId)
+      .single();
+
+    // Create default workspace
+    const workspaceName = userProfile?.full_name
+      ? `${userProfile.full_name}'s Business`
+      : 'My Business';
+    const slug = generateSlug(workspaceName);
+
+    const { data: workspace, error: workspaceError } = await supabase
+      .from('workspaces')
+      .insert({
+        name: workspaceName,
+        slug: slug,
+        ayr_profile_key: userProfile?.ayr_profile_key || null,
+        ayr_ref_id: userProfile?.ayr_ref_id || null
+      })
+      .select()
+      .single();
+
+    if (workspaceError) {
+      console.error("Workspace creation error:", workspaceError);
+      return res.status(500).json({ error: "Failed to create workspace" });
+    }
+
+    // Add user as owner
+    const { error: memberError } = await supabase
+      .from('workspace_members')
+      .insert({
+        workspace_id: workspace.id,
+        user_id: userId,
+        role: 'owner'
+      });
+
+    if (memberError) {
+      console.error("Member creation error:", memberError);
+      await supabase.from('workspaces').delete().eq('id', workspace.id);
+      return res.status(500).json({ error: "Failed to add user to workspace" });
+    }
+
+    // Migrate existing posts
+    await supabase
+      .from('posts')
+      .update({ workspace_id: workspace.id })
+      .eq('user_id', userId)
+      .is('workspace_id', null);
+
+    // Migrate existing connected accounts
+    await supabase
+      .from('connected_accounts')
+      .update({ workspace_id: workspace.id })
+      .eq('user_id', userId)
+      .is('workspace_id', null);
+
+    // Update user's last_workspace_id
+    await supabase
+      .from('user_profiles')
+      .update({ last_workspace_id: workspace.id })
+      .eq('id', userId);
+
+    res.json({
+      success: true,
+      migrated: true,
+      workspace: workspace
+    });
+
+  } catch (error) {
+    console.error("Error migrating user:", error);
+    res.status(500).json({ error: "Failed to migrate user to workspace" });
+  }
+});
+
+// Create new workspace (with new Ayrshare profile)
+app.post("/api/workspace/create", async (req, res) => {
+  try {
+    const { userId, businessName } = req.body;
+
+    if (!userId || !businessName) {
+      return res.status(400).json({ error: "userId and businessName are required" });
+    }
+
+    // Create new Ayrshare profile for this business
+    let ayrProfileKey = null;
+    let ayrRefId = null;
+
+    if (env.AYRSHARE_API_KEY && env.AYRSHARE_PRIVATE_KEY) {
+      const privateKey = await readPrivateKey(env.AYRSHARE_PRIVATE_KEY);
+
+      if (privateKey) {
+        try {
+          const profileResponse = await axios.post(
+            `${BASE_AYRSHARE}/profiles/profile`,
+            {
+              title: businessName,
+              privateKey: privateKey
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${env.AYRSHARE_API_KEY}`
+              }
+            }
+          );
+
+          ayrProfileKey = profileResponse.data.profileKey;
+          ayrRefId = profileResponse.data.refId;
+          console.log("Created Ayrshare profile:", { ayrProfileKey, ayrRefId });
+        } catch (ayrError) {
+          console.error("Ayrshare profile creation error:", ayrError.response?.data || ayrError.message);
+        }
+      }
+    }
+
+    // Create workspace
+    const slug = generateSlug(businessName);
+
+    const { data: workspace, error: workspaceError } = await supabase
+      .from('workspaces')
+      .insert({
+        name: businessName,
+        slug: slug,
+        ayr_profile_key: ayrProfileKey,
+        ayr_ref_id: ayrRefId
+      })
+      .select()
+      .single();
+
+    if (workspaceError) {
+      console.error("Workspace creation error:", workspaceError);
+      return res.status(500).json({ error: "Failed to create workspace" });
+    }
+
+    // Add user as owner
+    const { error: memberError } = await supabase
+      .from('workspace_members')
+      .insert({
+        workspace_id: workspace.id,
+        user_id: userId,
+        role: 'owner'
+      });
+
+    if (memberError) {
+      console.error("Member creation error:", memberError);
+      await supabase.from('workspaces').delete().eq('id', workspace.id);
+      return res.status(500).json({ error: "Failed to add user to workspace" });
+    }
+
+    // Update user's last_workspace_id
+    await supabase
+      .from('user_profiles')
+      .update({ last_workspace_id: workspace.id })
+      .eq('id', userId);
+
+    res.json({
+      success: true,
+      workspace: {
+        id: workspace.id,
+        name: workspace.name,
+        slug: workspace.slug,
+        ayr_profile_key: workspace.ayr_profile_key
+      }
+    });
+
+  } catch (error) {
+    console.error("Error creating workspace:", error);
+    res.status(500).json({ error: "Failed to create workspace" });
+  }
+});
+
 const PORT = env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

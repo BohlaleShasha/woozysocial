@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useWorkspace } from '../../contexts/WorkspaceContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { CreateWorkspaceModal } from './CreateWorkspaceModal';
+import { InviteClientModal } from './InviteClientModal';
 import './WorkspaceSwitcher.css';
 
 export const WorkspaceSwitcher = () => {
@@ -10,6 +11,7 @@ export const WorkspaceSwitcher = () => {
   const { user, profile } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
@@ -58,6 +60,11 @@ export const WorkspaceSwitcher = () => {
   const handleAddBusinessClick = () => {
     setShowDropdown(false);
     setShowCreateModal(true);
+  };
+
+  const handleInviteClientClick = () => {
+    setShowDropdown(false);
+    setShowInviteModal(true);
   };
 
   // Only show loading skeleton briefly while auth is loading
@@ -193,6 +200,19 @@ export const WorkspaceSwitcher = () => {
             Add Business
           </button>
 
+          <button className="dropdown-action invite-client" onClick={handleInviteClientClick}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path
+                d="M10 14v-1.5a2.5 2.5 0 00-2.5-2.5h-4A2.5 2.5 0 001 12.5V14M5.5 7a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM12 5v4M10 7h4"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            Invite Client
+          </button>
+
           <button className="dropdown-action" onClick={handleSettingsClick}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="settings-icon">
               <path
@@ -218,6 +238,11 @@ export const WorkspaceSwitcher = () => {
       <CreateWorkspaceModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
+      />
+
+      <InviteClientModal
+        isOpen={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
       />
     </div>
   );

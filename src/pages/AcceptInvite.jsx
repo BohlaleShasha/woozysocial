@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../utils/supabaseClient';
 import { baseURL } from '../utils/constants';
 import './AcceptInvite.css';
 
@@ -25,21 +24,47 @@ export const AcceptInvite = () => {
     }
   }, [token]);
 
+  // Check for pending invite after login
+  useEffect(() => {
+    const pendingToken = localStorage.getItem('pending_invite_token');
+    if (pendingToken && user && !token) {
+      // Redirect with the pending token
+      navigate(`/accept-invite?token=${pendingToken}`);
+      localStorage.removeItem('pending_invite_token');
+    }
+  }, [user, token, navigate]);
+
   const validateInvitation = async () => {
     try {
       setLoading(true);
 
-      // Fetch invitation by token via API (to bypass RLS)
-      const response = await fetch(`${baseURL}/api/team/validate-invite?token=${token}`);
+      // Try workspace invitation first
+      const response = await fetch(`${baseURL}/api/workspace/validate-invite?token=${token}`);
 
-      if (!response.ok) {
+      if (response.ok) {
         const result = await response.json();
+
+        if (result.success && result.invitation) {
+          setInvitation({
+            ...result.invitation,
+            type: 'workspace'
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Fallback to old team invitation
+      const teamResponse = await fetch(`${baseURL}/api/team/validate-invite?token=${token}`);
+
+      if (!teamResponse.ok) {
+        const result = await teamResponse.json();
         setError(result.error || 'Invitation not found or invalid');
         setLoading(false);
         return;
       }
 
-      const result = await response.json();
+      const result = await teamResponse.json();
 
       if (!result.data) {
         setError('Invitation not found or invalid');
@@ -71,23 +96,10 @@ export const AcceptInvite = () => {
         return;
       }
 
-      // Check if user is already a team member
-      if (user) {
-        const { data: existingMember } = await supabase
-          .from('team_members')
-          .select('id')
-          .eq('owner_id', data.owner_id)
-          .eq('member_id', user.id)
-          .single();
-
-        if (existingMember) {
-          setError('You are already a member of this team');
-          setLoading(false);
-          return;
-        }
-      }
-
-      setInvitation(data);
+      setInvitation({
+        ...data,
+        type: 'team'
+      });
       setLoading(false);
     } catch (error) {
       console.error('Error validating invitation:', error);
@@ -107,14 +119,19 @@ export const AcceptInvite = () => {
     try {
       setAccepting(true);
 
-      // Call the API endpoint to accept invitation
-      const response = await fetch(`${baseURL}/api/team/accept-invite`, {
+      // Determine which endpoint to use
+      const endpoint = invitation.type === 'workspace'
+        ? `${baseURL}/api/workspace/accept-invite`
+        : `${baseURL}/api/team/accept-invite`;
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          token,
+          inviteToken: token,
+          token: token, // for backwards compatibility
           userId: user.id,
         }),
       });
@@ -125,8 +142,13 @@ export const AcceptInvite = () => {
         throw new Error(data.error || 'Failed to accept invitation');
       }
 
-      // Success! Redirect to team page
-      navigate('/team', { state: { message: 'You have successfully joined the team!' } });
+      // Success! Redirect based on invitation type
+      const redirectPath = invitation.type === 'workspace' ? '/approvals' : '/team';
+      const message = invitation.type === 'workspace'
+        ? `You have successfully joined ${invitation.workspace?.name || 'the workspace'}!`
+        : 'You have successfully joined the team!';
+
+      navigate(redirectPath, { state: { message } });
     } catch (error) {
       console.error('Error accepting invitation:', error);
       setError(error.message || 'Failed to accept invitation');
@@ -141,17 +163,7 @@ export const AcceptInvite = () => {
 
     try {
       setAccepting(true);
-
-      // Update invitation status to rejected
-      const { error: updateError } = await supabase
-        .from('team_invitations')
-        .update({ status: 'rejected' })
-        .eq('invite_token', token);
-
-      if (updateError) {
-        throw updateError;
-      }
-
+      // For now, just navigate away - the invitation will expire
       navigate('/', { state: { message: 'Invitation declined' } });
     } catch (error) {
       console.error('Error declining invitation:', error);
@@ -164,6 +176,7 @@ export const AcceptInvite = () => {
     const labels = {
       admin: 'Admin',
       editor: 'Editor',
+      client: 'Client',
       view_only: 'View Only',
     };
     return labels[role] || role;
@@ -172,7 +185,8 @@ export const AcceptInvite = () => {
   const getRoleDescription = (role) => {
     const descriptions = {
       admin: 'Full access - can invite, remove members, and manage all posts',
-      editor: 'Can create, edit, and delete posts',
+      editor: 'Can create, edit, and schedule posts',
+      client: 'Can view and approve/reject scheduled posts',
       view_only: 'Read-only access - can view posts and team members',
     };
     return descriptions[role] || '';
@@ -201,7 +215,7 @@ export const AcceptInvite = () => {
     return (
       <div className="accept-invite-container">
         <div className="accept-invite-card error">
-          <div className="error-icon">❌</div>
+          <div className="error-icon">✕</div>
           <h1 className="error-title">Invalid Invitation</h1>
           <p className="error-message">{error}</p>
           <button className="back-button" onClick={() => navigate('/')}>
@@ -216,12 +230,23 @@ export const AcceptInvite = () => {
     <div className="accept-invite-container">
       <div className="accept-invite-card">
         <div className="invite-header">
-          <div className="invite-icon">✉️</div>
+          <div className="invite-icon">✉</div>
           <h1 className="invite-title">You're Invited!</h1>
-          <p className="invite-subtitle">You've been invited to join a team</p>
+          <p className="invite-subtitle">
+            {invitation.type === 'workspace'
+              ? `You've been invited to ${invitation.workspace?.name || 'a business'}`
+              : "You've been invited to join a team"
+            }
+          </p>
         </div>
 
         <div className="invite-details">
+          {invitation.type === 'workspace' && invitation.workspace?.name && (
+            <div className="detail-row">
+              <span className="detail-label">Business:</span>
+              <span className="detail-value business-name">{invitation.workspace.name}</span>
+            </div>
+          )}
           <div className="detail-row">
             <span className="detail-label">Email:</span>
             <span className="detail-value">{invitation.email}</span>

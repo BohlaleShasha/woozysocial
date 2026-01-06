@@ -1,20 +1,4 @@
-const axios = require("axios");
-const fs = require("fs");
 const { setCors, getSupabase } = require("../_utils");
-
-const BASE_AYRSHARE = "https://api.ayrshare.com/api";
-
-// Helper to read private key
-const readPrivateKey = async (privateKeyPath) => {
-  try {
-    let privateKey = fs.readFileSync(privateKeyPath, { encoding: "utf8" });
-    privateKey = privateKey.replace(/\\n/g, '\n');
-    return privateKey.replace(/^\s+|\s+$/g, '');
-  } catch (error) {
-    console.error("Error reading private key:", error);
-    return null;
-  }
-};
 
 // Generate URL-friendly slug from name
 const generateSlug = (name) => {
@@ -48,40 +32,19 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: "userId and businessName are required" });
     }
 
-    // 1. Create new Ayrshare profile for this business
-    let ayrProfileKey = null;
-    let ayrRefId = null;
+    // Get the owner's (creator's) Ayrshare profile key
+    // All businesses under one account share the same Ayrshare profile
+    const { data: ownerProfile } = await supabase
+      .from('user_profiles')
+      .select('ayr_profile_key, ayr_ref_id')
+      .eq('id', userId)
+      .single();
 
-    if (process.env.AYRSHARE_API_KEY && process.env.AYRSHARE_PRIVATE_KEY) {
-      const privateKey = await readPrivateKey(process.env.AYRSHARE_PRIVATE_KEY);
+    // Use owner's profile key or fall back to env variable
+    const ayrProfileKey = ownerProfile?.ayr_profile_key || process.env.AYRSHARE_PROFILE_KEY || null;
+    const ayrRefId = ownerProfile?.ayr_ref_id || null;
 
-      if (privateKey) {
-        try {
-          const profileResponse = await axios.post(
-            `${BASE_AYRSHARE}/profiles/profile`,
-            {
-              title: businessName,
-              privateKey: privateKey
-            },
-            {
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${process.env.AYRSHARE_API_KEY}`
-              }
-            }
-          );
-
-          ayrProfileKey = profileResponse.data.profileKey;
-          ayrRefId = profileResponse.data.refId;
-          console.log("Created Ayrshare profile:", { ayrProfileKey, ayrRefId });
-        } catch (ayrError) {
-          console.error("Ayrshare profile creation error:", ayrError.response?.data || ayrError.message);
-          // Continue without Ayrshare - user can link later
-        }
-      }
-    }
-
-    // 2. Create workspace in database
+    // Create workspace in database - all businesses share owner's Ayrshare profile
     const slug = generateSlug(businessName);
 
     const { data: workspace, error: workspaceError } = await supabase
@@ -89,6 +52,7 @@ module.exports = async function handler(req, res) {
       .insert({
         name: businessName,
         slug: slug,
+        owner_id: userId,
         ayr_profile_key: ayrProfileKey,
         ayr_ref_id: ayrRefId
       })

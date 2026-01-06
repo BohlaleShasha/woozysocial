@@ -249,6 +249,15 @@
   background-color: #FFF9E6;
 }
 
+.dropdown-action.invite-client {
+  color: #2ecc71;
+  font-weight: 500;
+}
+
+.dropdown-action.invite-client:hover {
+  background-color: rgba(46, 204, 113, 0.1);
+}
+
 .dropdown-action .settings-icon {
   flex-shrink: 0;
 }
