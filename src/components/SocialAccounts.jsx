@@ -14,6 +14,7 @@ import { SiX, SiBluesky } from "react-icons/si";
 import { baseURL } from "../utils/constants";
 import { supabase } from "../utils/supabaseClient";
 import { useAuth } from "../contexts/AuthContext";
+import { useWorkspace } from "../contexts/WorkspaceContext";
 import "./SocialAccounts.css";
 
 const PLATFORMS = [
@@ -33,6 +34,7 @@ const PLATFORMS = [
 
 export const SocialAccounts = () => {
   const { user } = useAuth();
+  const { activeWorkspace } = useWorkspace();
   const [activeAccounts, setActiveAccounts] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -98,11 +100,11 @@ export const SocialAccounts = () => {
   }, [fetchActiveAccounts]);
 
   const handleLink = async () => {
-    if (!user) return;
+    if (!user || !activeWorkspace) return;
 
     try {
       setLoading(true);
-      const r = await fetch(`${baseURL}/api/generate-jwt?userId=${user.id}`);
+      const r = await fetch(`${baseURL}/api/generate-jwt?userId=${user.id}&workspaceId=${activeWorkspace.id}`);
       if (!r.ok) throw new Error("Failed to generate link");
       const d = await r.json();
       const width = 900;

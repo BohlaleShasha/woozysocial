@@ -25,6 +25,8 @@ import {
   FaTiktok
 } from "react-icons/fa6";
 import { baseURL } from "../utils/constants";
+import { useAuth } from "../contexts/AuthContext";
+import { useWorkspace } from "../contexts/WorkspaceContext";
 
 const socialIcons = {
   facebook: FaFacebookF,
@@ -52,14 +54,18 @@ const socialColors = {
 
 const RightSideNav = () => {
   const toast = useToast();
+  const { user } = useAuth();
+  const { activeWorkspace } = useWorkspace();
   const [activeAccounts, setActiveAccounts] = useState([]);
 
   const fetchActiveAccounts = useCallback(async () => {
+    if (!user || !activeWorkspace) return;
+
     try {
-      const response = await fetch(`${baseURL}/api/user-accounts`);
+      const response = await fetch(`${baseURL}/api/user-accounts?workspaceId=${activeWorkspace.id}`);
       if (response.ok) {
         const data = await response.json();
-        setActiveAccounts(data.activeSocialAccounts);
+        setActiveAccounts(data.activeSocialAccounts || data.accounts || []);
       } else {
         throw new Error("Failed to fetch active accounts");
       }
@@ -73,15 +79,17 @@ const RightSideNav = () => {
         isClosable: true
       });
     }
-  }, [toast]);
+  }, [toast, user, activeWorkspace]);
 
   useEffect(() => {
     fetchActiveAccounts();
   }, [fetchActiveAccounts]);
 
   const handleLinkSocialAccounts = async () => {
+    if (!user || !activeWorkspace) return;
+
     try {
-      const response = await fetch(`${baseURL}/api/generate-jwt`);
+      const response = await fetch(`${baseURL}/api/generate-jwt?userId=${user.id}&workspaceId=${activeWorkspace.id}`);
       if (response.ok) {
         const data = await response.json();
         const width = 800;
@@ -111,13 +119,14 @@ const RightSideNav = () => {
           }
 
           try {
-            const r = await fetch(`${baseURL}/api/user-accounts`);
+            const r = await fetch(`${baseURL}/api/user-accounts?workspaceId=${activeWorkspace.id}`);
             if (r.ok) {
               const d = await r.json();
-              if (Array.isArray(d.activeSocialAccounts)) {
+              const accounts = d.activeSocialAccounts || d.accounts || [];
+              if (Array.isArray(accounts)) {
                 // If new accounts found, update and stop polling
-                if (d.activeSocialAccounts.length > initialLen) {
-                  setActiveAccounts(d.activeSocialAccounts);
+                if (accounts.length > initialLen) {
+                  setActiveAccounts(accounts);
                   clearInterval(poll);
                   if (popup && !popup.closed) popup.close();
                 }

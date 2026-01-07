@@ -38,13 +38,13 @@ export const TopHeader = () => {
   };
 
   const handleConnectSocialAccounts = async () => {
-    if (!user || isLinking) return;
+    if (!user || isLinking || !activeWorkspace) return;
 
     try {
       setIsLinking(true);
       setShowDropdown(false);
 
-      const r = await fetch(`${baseURL}/api/generate-jwt?userId=${user.id}`);
+      const r = await fetch(`${baseURL}/api/generate-jwt?userId=${user.id}&workspaceId=${activeWorkspace.id}`);
       if (!r.ok) throw new Error("Failed to generate link");
       const d = await r.json();
 
