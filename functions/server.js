@@ -262,18 +262,33 @@ app.get("/api/post-history", requireActiveProfile, async (req, res) => {
   }
 });
 
-const readPrivateKey = async (privateKeyPath) => {
+const readPrivateKey = async (privateKeyPathOrContent) => {
   try {
-    let privateKey = await fs.readFileSync(privateKeyPath, {
-      encoding: "utf8"
-    });
+    let privateKey;
+
+    // Check if it's a file path (contains .pem or starts with path-like characters)
+    // and the file exists - use for local development
+    if (privateKeyPathOrContent.includes('.pem') || privateKeyPathOrContent.startsWith('./') || privateKeyPathOrContent.startsWith('privatekeys/')) {
+      try {
+        privateKey = await fs.readFileSync(privateKeyPathOrContent, {
+          encoding: "utf8"
+        });
+      } catch (fileError) {
+        // File doesn't exist, treat the value as the key content itself
+        privateKey = privateKeyPathOrContent;
+      }
+    } else {
+      // It's the actual key content (Vercel/production)
+      privateKey = privateKeyPathOrContent;
+    }
+
     // Replace literal \n with actual newlines if they exist
     privateKey = privateKey.replace(/\\n/g, '\n');
     // Only trim trailing/leading whitespace, preserve internal newlines
     return privateKey.replace(/^\s+|\s+$/g, '');
   } catch (error) {
-    console.error("Error reading private key file:", error);
-    throw new Error("Failed to read private key file");
+    console.error("Error reading private key:", error);
+    throw new Error("Failed to read private key");
   }
 };
 
