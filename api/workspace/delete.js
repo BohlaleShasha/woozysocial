@@ -56,28 +56,44 @@ module.exports = async function handler(req, res) {
     }
 
     // Delete workspace members first (foreign key constraint)
-    await supabase
+    const { error: membersDeleteError } = await supabase
       .from('workspace_members')
       .delete()
       .eq('workspace_id', workspaceId);
 
+    if (membersDeleteError) {
+      console.error("Members delete error:", membersDeleteError);
+    }
+
     // Delete workspace invitations
-    await supabase
+    const { error: invitesDeleteError } = await supabase
       .from('workspace_invitations')
       .delete()
       .eq('workspace_id', workspaceId);
 
-    // Nullify workspace_id on posts (don't delete posts)
-    await supabase
-      .from('posts')
-      .update({ workspace_id: null })
+    if (invitesDeleteError) {
+      console.error("Invitations delete error:", invitesDeleteError);
+    }
+
+    // Delete post drafts for this workspace
+    const { error: draftsDeleteError } = await supabase
+      .from('post_drafts')
+      .delete()
       .eq('workspace_id', workspaceId);
 
-    // Nullify workspace_id on connected accounts
-    await supabase
-      .from('connected_accounts')
-      .update({ workspace_id: null })
+    if (draftsDeleteError) {
+      console.error("Drafts delete error:", draftsDeleteError);
+    }
+
+    // Delete brand profiles for this workspace
+    const { error: brandDeleteError } = await supabase
+      .from('brand_profiles')
+      .delete()
       .eq('workspace_id', workspaceId);
+
+    if (brandDeleteError) {
+      console.error("Brand profile delete error:", brandDeleteError);
+    }
 
     // Delete the workspace
     const { error: deleteError } = await supabase
@@ -87,7 +103,7 @@ module.exports = async function handler(req, res) {
 
     if (deleteError) {
       console.error("Workspace delete error:", deleteError);
-      return res.status(500).json({ error: "Failed to delete workspace" });
+      return res.status(500).json({ error: "Failed to delete workspace", details: deleteError.message });
     }
 
     // Update user's last_workspace_id if it was this workspace
