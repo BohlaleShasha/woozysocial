@@ -86,7 +86,7 @@ module.exports = async function handler(req, res) {
         email: email.toLowerCase(),
         role: role || 'member',
         invited_by: userId,
-        invitation_token: inviteToken,
+        invite_token: inviteToken,
         status: 'pending',
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
       })
