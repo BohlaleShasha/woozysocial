@@ -264,30 +264,47 @@ app.get("/api/post-history", requireActiveProfile, async (req, res) => {
 
 const readPrivateKey = async (privateKeyPathOrContent) => {
   try {
+    if (!privateKeyPathOrContent) {
+      console.error("[readPrivateKey] No private key path or content provided!");
+      throw new Error("Private key not configured");
+    }
+
     let privateKey;
 
     // Check if it's a file path (contains .pem or starts with path-like characters)
     // and the file exists - use for local development
     if (privateKeyPathOrContent.includes('.pem') || privateKeyPathOrContent.startsWith('./') || privateKeyPathOrContent.startsWith('privatekeys/')) {
+      console.log(`[readPrivateKey] Attempting to read from file: ${privateKeyPathOrContent}`);
       try {
-        privateKey = await fs.readFileSync(privateKeyPathOrContent, {
+        privateKey = fs.readFileSync(privateKeyPathOrContent, {
           encoding: "utf8"
         });
+        console.log(`[readPrivateKey] Successfully read from file, length: ${privateKey.length}`);
       } catch (fileError) {
         // File doesn't exist, treat the value as the key content itself
+        console.log(`[readPrivateKey] File not found, treating as key content`);
         privateKey = privateKeyPathOrContent;
       }
     } else {
       // It's the actual key content (Vercel/production)
+      console.log(`[readPrivateKey] Using direct key content, length: ${privateKeyPathOrContent.length}`);
       privateKey = privateKeyPathOrContent;
     }
 
     // Replace literal \n with actual newlines if they exist
     privateKey = privateKey.replace(/\\n/g, '\n');
     // Only trim trailing/leading whitespace, preserve internal newlines
-    return privateKey.replace(/^\s+|\s+$/g, '');
+    privateKey = privateKey.replace(/^\s+|\s+$/g, '');
+
+    // Validate the key looks correct
+    if (!privateKey.includes('-----BEGIN') || !privateKey.includes('-----END')) {
+      console.error("[readPrivateKey] Private key appears malformed - missing BEGIN/END markers");
+      console.error("[readPrivateKey] Key preview:", privateKey.substring(0, 100));
+    }
+
+    return privateKey;
   } catch (error) {
-    console.error("Error reading private key:", error);
+    console.error("[readPrivateKey] Error reading private key:", error);
     throw new Error("Failed to read private key");
   }
 };
@@ -296,23 +313,34 @@ const readPrivateKey = async (privateKeyPathOrContent) => {
 app.get("/api/generate-jwt", requireActiveProfile, async (req, res) => {
   try {
     const { userId, workspaceId } = req.query;
+    console.log(`[generate-jwt] Called with userId: ${userId}, workspaceId: ${workspaceId}`);
 
     // Get workspace's profile key from database, or fall back to user's key, or env variable
     let profileKey = env.AYRSHARE_PROFILE_KEY;
+    console.log(`[generate-jwt] Default profile key from env: ${profileKey ? 'present' : 'MISSING'}`);
+
     if (workspaceId) {
       const workspaceProfileKey = await getWorkspaceProfileKey(workspaceId);
       if (workspaceProfileKey) {
         profileKey = workspaceProfileKey;
+        console.log(`[generate-jwt] Using workspace profile key`);
       }
     } else if (userId) {
       // Backwards compatibility: support userId for existing code
       const userProfileKey = await getUserProfileKey(userId);
       if (userProfileKey) {
         profileKey = userProfileKey;
+        console.log(`[generate-jwt] Using user profile key`);
       }
     }
 
+    console.log(`[generate-jwt] Final profile key: ${profileKey ? 'present' : 'MISSING'}`);
+    console.log(`[generate-jwt] AYRSHARE_DOMAIN: ${env.AYRSHARE_DOMAIN ? 'present' : 'MISSING'}`);
+    console.log(`[generate-jwt] AYRSHARE_PRIVATE_KEY: ${env.AYRSHARE_PRIVATE_KEY ? 'present (length: ' + env.AYRSHARE_PRIVATE_KEY.length + ')' : 'MISSING'}`);
+    console.log(`[generate-jwt] AYRSHARE_API_KEY: ${env.AYRSHARE_API_KEY ? 'present' : 'MISSING'}`);
+
     const privateKey = await readPrivateKey(env.AYRSHARE_PRIVATE_KEY);
+    console.log(`[generate-jwt] Private key processed, length: ${privateKey.length}, starts with: ${privateKey.substring(0, 30)}...`);
 
     const jwtData = {
       domain: env.AYRSHARE_DOMAIN,
@@ -322,6 +350,7 @@ app.get("/api/generate-jwt", requireActiveProfile, async (req, res) => {
       logout: true  // Force logout of any existing Ayrshare sessions in browser
     };
 
+    console.log(`[generate-jwt] Calling Ayrshare generateJWT...`);
     const response = await axios.post(
       `${BASE_AYRSHARE}/profiles/generateJWT`,
       jwtData,
@@ -333,13 +362,18 @@ app.get("/api/generate-jwt", requireActiveProfile, async (req, res) => {
       }
     );
 
+    console.log(`[generate-jwt] Success! URL received.`);
     res.json({ url: response.data.url });
   } catch (error) {
     console.error(
-      "Error generating JWT URL:",
+      "[generate-jwt] Error generating JWT URL:",
       error.response?.data || error.message
     );
-    res.status(500).json({ error: "Failed to generate JWT URL" });
+    console.error("[generate-jwt] Full error:", error);
+    res.status(500).json({
+      error: "Failed to generate JWT URL",
+      details: error.response?.data || error.message
+    });
   }
 });
 
@@ -448,7 +482,9 @@ async function getWorkspaceProfileKey(workspaceId) {
 // Whitelist helper functions
 function isWhitelistedEmail(email) {
   const testEmails = env.TEST_ACCOUNT_EMAILS?.split(',').map(e => e.trim().toLowerCase()) || [];
-  return testEmails.includes(email.toLowerCase());
+  const isWhitelisted = testEmails.includes(email.toLowerCase());
+  console.log(`[Whitelist Check] Email: ${email}, Whitelisted: ${isWhitelisted}, Whitelist: ${testEmails.join(', ')}`);
+  return isWhitelisted;
 }
 
 function shouldCreateProfile(email, subscriptionStatus) {
@@ -497,8 +533,10 @@ async function requireActiveProfile(req, res, next) {
     const isActive = profile.subscription_status === 'active';
     const isWhitelisted = isWhitelistedEmail(profile.email) || profile.is_whitelisted;
 
-    // Allow access if they have a profile key AND (active subscription OR whitelisted)
-    if (hasProfileKey && (isActive || isWhitelisted)) {
+    // Allow access if:
+    // 1. User is whitelisted (can access even without profile key - for initial setup)
+    // 2. User has profile key AND active subscription
+    if (isWhitelisted || (hasProfileKey && isActive)) {
       // User has access - continue to endpoint
       return next();
     }
