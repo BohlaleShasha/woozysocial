@@ -1,5 +1,5 @@
 const axios = require("axios");
-const { setCors, getWorkspaceProfileKeyForUser, getSupabase } = require("./_utils");
+const { setCors, getWorkspaceProfileKey, getWorkspaceProfileKeyForUser, getSupabase } = require("./_utils");
 
 const BASE_AYRSHARE = "https://api.ayrshare.com/api";
 
@@ -17,8 +17,18 @@ module.exports = async function handler(req, res) {
   try {
     const { userId, workspaceId } = req.query;
 
-    // Get profile key using workspace context (handles team inheritance)
-    const profileKey = await getWorkspaceProfileKeyForUser(userId);
+    // Get profile key - prefer workspaceId if provided, otherwise use userId fallback
+    let profileKey;
+    if (workspaceId) {
+      profileKey = await getWorkspaceProfileKey(workspaceId);
+    }
+    if (!profileKey && userId) {
+      profileKey = await getWorkspaceProfileKeyForUser(userId);
+    }
+
+    if (!profileKey) {
+      return res.status(200).json({ history: [] });
+    }
 
     const response = await axios.get(`${BASE_AYRSHARE}/history`, {
       headers: {
