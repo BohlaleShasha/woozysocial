@@ -75,10 +75,7 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'An invitation has already been sent to this email' });
     }
 
-    // Generate invitation token
-    const inviteToken = `ws-${workspaceId}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-
-    // Create the invitation
+    // Create the invitation (invite_token auto-generated as UUID by database)
     const { data: invitation, error: inviteError } = await supabase
       .from('workspace_invitations')
       .insert({
@@ -86,7 +83,6 @@ module.exports = async function handler(req, res) {
         email: email.toLowerCase(),
         role: role || 'member',
         invited_by: userId,
-        invite_token: inviteToken,
         status: 'pending',
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
       })
@@ -116,7 +112,7 @@ module.exports = async function handler(req, res) {
       const inviterName = inviterData?.full_name || inviterData?.email || 'A team member';
       const workspaceName = workspace?.name || 'a workspace';
       const appUrl = process.env.APP_URL || 'https://woozysocial.com';
-      const inviteLink = `${appUrl}/accept-invite?token=${inviteToken}`;
+      const inviteLink = `${appUrl}/accept-invite?token=${invitation.invite_token}`;
 
       try {
         await resend.emails.send({
