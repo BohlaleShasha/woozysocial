@@ -1,5 +1,5 @@
 const axios = require("axios");
-const { setCors, getWorkspaceProfileKeyForUser } = require("./_utils");
+const { setCors, getWorkspaceProfileKey, getWorkspaceProfileKeyForUser } = require("./_utils");
 
 const BASE_AYRSHARE = "https://api.ayrshare.com/api";
 
@@ -17,8 +17,18 @@ module.exports = async function handler(req, res) {
   try {
     const { userId, workspaceId } = req.query;
 
-    // Get profile key using workspace context (handles team inheritance)
-    const profileKey = await getWorkspaceProfileKeyForUser(userId);
+    // Get profile key - prefer workspaceId if provided, otherwise use userId fallback
+    let profileKey;
+    if (workspaceId) {
+      profileKey = await getWorkspaceProfileKey(workspaceId);
+    } else if (userId) {
+      profileKey = await getWorkspaceProfileKeyForUser(userId);
+    }
+
+    if (!profileKey) {
+      console.log("No profile key found for workspaceId:", workspaceId, "userId:", userId);
+      return res.status(200).json({ accounts: [], activeSocialAccounts: [] });
+    }
 
     const response = await axios.get(`${BASE_AYRSHARE}/user`, {
       headers: {
@@ -30,14 +40,22 @@ module.exports = async function handler(req, res) {
 
     const { displayNames } = response.data;
 
+    console.log("Ayrshare displayNames for profileKey", profileKey, ":", displayNames);
+
     if (!displayNames || !Array.isArray(displayNames)) {
-      return res.status(200).json({ accounts: [] });
+      return res.status(200).json({ accounts: [], activeSocialAccounts: [] });
     }
 
     const platformNames = displayNames.map((account) => account.platform);
-    res.status(200).json({ accounts: platformNames });
+    console.log("Connected platforms:", platformNames);
+
+    // Return both formats for compatibility with different components
+    res.status(200).json({
+      accounts: platformNames,
+      activeSocialAccounts: platformNames
+    });
   } catch (error) {
     console.error("Error fetching user accounts:", error.response?.data || error.message);
-    res.status(500).json({ error: "Failed to fetch user accounts" });
+    res.status(500).json({ error: "Failed to fetch user accounts", accounts: [], activeSocialAccounts: [] });
   }
 };
