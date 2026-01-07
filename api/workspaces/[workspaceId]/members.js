@@ -50,10 +50,15 @@ module.exports = async function handler(req, res) {
 
     // Get user profiles for all members
     const userIds = members.map(m => m.user_id);
-    const { data: profiles } = await supabase
-      .from('user_profiles')
-      .select('id, email, full_name, avatar_url')
-      .in('id', userIds);
+    console.log(`[members] Found ${members.length} members (excluding owners), userIds:`, userIds);
+
+    // Only query profiles if there are members
+    const { data: profiles } = userIds.length > 0
+      ? await supabase
+          .from('user_profiles')
+          .select('id, email, full_name, avatar_url')
+          .in('id', userIds)
+      : { data: [] };
 
     const profileMap = {};
     (profiles || []).forEach(p => { profileMap[p.id] = p; });
