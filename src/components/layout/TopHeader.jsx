@@ -59,17 +59,25 @@ export const TopHeader = () => {
         `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes`
       );
 
-      // Poll to detect when popup closes
-      if (popup) {
-        const pollTimer = setInterval(() => {
-          if (popup.closed) {
-            clearInterval(pollTimer);
-            setIsLinking(false);
-            // Dispatch custom event so other components can refresh
-            window.dispatchEvent(new CustomEvent('socialAccountsUpdated'));
-          }
-        }, 500);
+      // Check if popup was blocked
+      if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+        // Popup was blocked - open in same window instead
+        if (window.confirm('Popup was blocked. Click OK to open in a new tab, or allow popups for this site.')) {
+          window.open(d.url, '_blank');
+        }
+        setIsLinking(false);
+        return;
       }
+
+      // Poll to detect when popup closes
+      const pollTimer = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(pollTimer);
+          setIsLinking(false);
+          // Dispatch custom event so other components can refresh
+          window.dispatchEvent(new CustomEvent('socialAccountsUpdated'));
+        }
+      }, 500);
     } catch (err) {
       console.error("Error connecting social accounts:", err);
       setIsLinking(false);

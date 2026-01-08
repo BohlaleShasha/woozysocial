@@ -114,7 +114,9 @@ export const DashboardContent = () => {
 
       // Check if popup was blocked
       if (!popup || popup.closed || typeof popup.closed === 'undefined') {
-        alert('Please allow popups to connect your social accounts');
+        if (window.confirm('Popup was blocked. Click OK to open in a new tab, or allow popups for this site.')) {
+          window.open(data.url, '_blank');
+        }
         setConnectingPlatform(null);
         return;
       }
