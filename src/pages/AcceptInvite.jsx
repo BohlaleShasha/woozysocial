@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useWorkspace } from '../contexts/WorkspaceContext';
 import { baseURL } from '../utils/constants';
 import './AcceptInvite.css';
 
@@ -8,6 +9,7 @@ export const AcceptInvite = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { refreshWorkspaces } = useWorkspace();
   const token = searchParams.get('token');
 
   const [invitation, setInvitation] = useState(null);
@@ -142,8 +144,12 @@ export const AcceptInvite = () => {
         throw new Error(data.error || 'Failed to accept invitation');
       }
 
+      // Refresh workspaces to load the newly joined workspace
+      // The API has already set last_workspace_id, so it will auto-select
+      await refreshWorkspaces();
+
       // Success! Redirect based on invitation type
-      const redirectPath = invitation.type === 'workspace' ? '/approvals' : '/team';
+      const redirectPath = invitation.type === 'workspace' ? '/team' : '/team';
       const message = invitation.type === 'workspace'
         ? `You have successfully joined ${invitation.workspace?.name || 'the workspace'}!`
         : 'You have successfully joined the team!';
