@@ -1,0 +1,11 @@
+.client-layout {
+  min-height: 100vh;
+  background-color: #f5f7fa;
+}
+
+.client-main-content {
+  margin-left: 240px;
+  margin-top: 70px;
+  padding: 30px;
+  min-height: calc(100vh - 70px);
+}

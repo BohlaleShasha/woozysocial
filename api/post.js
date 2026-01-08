@@ -61,6 +61,20 @@ module.exports = async function handler(req, res) {
 
         if (saveError) throw saveError;
 
+        // Send notification to clients (non-blocking)
+        try {
+          const notifyUrl = `${req.headers.origin || process.env.APP_URL || ''}/api/notifications/send-approval-request`;
+          axios.post(notifyUrl, {
+            workspaceId,
+            postId: savedPost?.id,
+            postCaption: text,
+            scheduledAt: scheduledDate,
+            platforms
+          }).catch(err => console.log('Notification sent in background'));
+        } catch (notifyErr) {
+          console.log('Could not send notification:', notifyErr.message);
+        }
+
         return res.status(200).json({
           success: true,
           status: 'pending_approval',

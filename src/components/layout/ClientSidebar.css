@@ -1,0 +1,117 @@
+.client-sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 240px;
+  height: 100vh;
+  background: linear-gradient(180deg, #114C5A 0%, #0D3A45 100%);
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+}
+
+.client-sidebar-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 20px 0;
+}
+
+.client-sidebar-logo {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.client-logo-image {
+  width: 120px;
+  height: auto;
+}
+
+.client-workspace-info {
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.client-workspace-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #FFC801;
+  margin-bottom: 8px;
+}
+
+.client-workspace-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.client-sidebar-menu {
+  flex: 1;
+  padding: 20px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.client-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.client-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.client-menu-item.active {
+  background-color: #FFC801;
+  color: #114C5A;
+  font-weight: 600;
+}
+
+.client-menu-icon {
+  font-size: 18px;
+  width: 24px;
+  text-align: center;
+}
+
+.client-menu-text {
+  flex: 1;
+}
+
+.client-sidebar-footer {
+  padding: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.client-role-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background-color: rgba(255, 200, 1, 0.15);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 200, 1, 0.3);
+}
+
+.role-icon {
+  font-size: 18px;
+}
+
+.role-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #FFC801;
+}

@@ -262,11 +262,11 @@ export const WorkspaceProvider = ({ children }) => {
 
     switch (action) {
       case 'manageTeam':
-        return workspaceMembership.permissions.canManageTeam;
+        return workspaceMembership.permissions?.canManageTeam;
       case 'manageSettings':
-        return workspaceMembership.permissions.canManageSettings;
+        return workspaceMembership.permissions?.canManageSettings;
       case 'deletePosts':
-        return workspaceMembership.permissions.canDeletePosts;
+        return workspaceMembership.permissions?.canDeletePosts;
       case 'isOwner':
         return workspaceMembership.role === 'owner';
       case 'isAdmin':
@@ -276,11 +276,15 @@ export const WorkspaceProvider = ({ children }) => {
     }
   }, [workspaceMembership]);
 
+  // Check if user is a client (view_only role) - used for routing to client portal
+  const isClientRole = workspaceMembership?.role === 'view_only' || workspaceMembership?.role === 'client';
+
   const value = {
     activeWorkspace,
     userWorkspaces,
     workspaceMembership,
     loading,
+    isClientRole,
     switchWorkspace,
     createWorkspace,
     updateWorkspace,
