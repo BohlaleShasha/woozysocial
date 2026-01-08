@@ -1241,6 +1241,9 @@ export const ComposeContent = () => {
       });
 
       if (response.ok) {
+        const responseData = await response.json().catch(() => ({}));
+        const isPendingApproval = responseData.status === 'pending_approval';
+
         // Delete draft after successful posting
         if (currentDraftId) {
           try {
@@ -1254,15 +1257,26 @@ export const ComposeContent = () => {
           }
         }
 
-        toast({
-          title: scheduledDate ? "Post scheduled." : "Post submitted.",
-          description: scheduledDate
-            ? `Your post was scheduled for ${scheduledDate.toLocaleString()}.`
-            : "Your post was successfully submitted.",
-          status: "success",
-          duration: 3000,
-          isClosable: true
-        });
+        // Show appropriate message based on whether approval is needed
+        if (isPendingApproval) {
+          toast({
+            title: "Post awaiting approval",
+            description: `Your post has been saved and is waiting for client approval before being scheduled for ${scheduledDate.toLocaleString()}.`,
+            status: "info",
+            duration: 5000,
+            isClosable: true
+          });
+        } else {
+          toast({
+            title: scheduledDate ? "Post scheduled." : "Post submitted.",
+            description: scheduledDate
+              ? `Your post was scheduled for ${scheduledDate.toLocaleString()}.`
+              : "Your post was successfully submitted.",
+            status: "success",
+            duration: 3000,
+            isClosable: true
+          });
+        }
         // Reset form
         setPost({ text: "", media: null });
         setNetworks({
