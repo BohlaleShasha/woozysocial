@@ -40,10 +40,10 @@ module.exports = async function handler(req, res) {
       .from('posts')
       .select(`
         id,
-        post,
+        caption,
         platforms,
-        media_url,
-        schedule_date,
+        media_urls,
+        scheduled_at,
         status,
         approval_status,
         requires_approval,
@@ -64,7 +64,7 @@ module.exports = async function handler(req, res) {
         )
       `)
       .eq('workspace_id', workspaceId)
-      .order('schedule_date', { ascending: true });
+      .order('scheduled_at', { ascending: true });
 
     // Filter by approval status if provided
     if (status) {
@@ -81,9 +81,13 @@ module.exports = async function handler(req, res) {
 
     if (error) throw error;
 
-    // Add comment count to each post
+    // Add comment count and map fields for frontend
     const postsWithMeta = (posts || []).map(post => ({
       ...post,
+      // Map to frontend expected field names
+      post: post.caption,
+      schedule_date: post.scheduled_at,
+      media_url: post.media_urls?.[0] || null,
       commentCount: post.post_comments?.length || 0,
       post_comments: undefined // Remove the array, just keep count
     }));

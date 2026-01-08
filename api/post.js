@@ -77,6 +77,7 @@ module.exports = async function handler(req, res) {
     const supabase = getSupabase();
     if (supabase) {
       const ayrPostId = response.data.id || response.data.postId;
+      const isScheduled = !!scheduledDate;
       await supabase.from("posts").insert([{
         user_id: userId,
         workspace_id: workspaceId,
@@ -84,10 +85,12 @@ module.exports = async function handler(req, res) {
         ayr_post_id: ayrPostId,
         caption: text,
         media_urls: mediaUrl ? [mediaUrl] : [],
-        status: scheduledDate ? 'scheduled' : 'posted',
-        scheduled_at: scheduledDate ? new Date(scheduledDate).toISOString() : null,
-        posted_at: scheduledDate ? null : new Date().toISOString(),
-        platforms: platforms
+        status: isScheduled ? 'scheduled' : 'posted',
+        scheduled_at: isScheduled ? new Date(scheduledDate).toISOString() : null,
+        posted_at: isScheduled ? null : new Date().toISOString(),
+        platforms: platforms,
+        approval_status: isScheduled ? 'pending' : 'approved',
+        requires_approval: isScheduled
       }]);
     }
 
