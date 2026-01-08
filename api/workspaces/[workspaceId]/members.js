@@ -35,12 +35,11 @@ module.exports = async function handler(req, res) {
       return res.status(403).json({ error: "You don't have access to this workspace" });
     }
 
-    // Get all workspace members (exclude owner from display, they're shown separately)
+    // Get all workspace members (including owner)
     const { data: members, error: membersError } = await supabase
       .from('workspace_members')
       .select('id, user_id, role, created_at, can_manage_team, can_manage_settings, can_delete_posts')
       .eq('workspace_id', workspaceId)
-      .neq('role', 'owner')
       .order('created_at', { ascending: true });
 
     if (membersError) {

@@ -306,3 +306,29 @@
   background-color: #fee2e2;
   transform: translateY(-1px);
 }
+
+/* Owner styles */
+.member-avatar.owner {
+  background-color: #FFC801;
+  color: #114C5A;
+  border: 3px solid #114C5A;
+}
+
+.owner-badge {
+  display: inline-block;
+  background-color: #114C5A;
+  color: #FFC801;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin-left: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.member-role.owner-role {
+  background-color: #114C5A;
+  color: #FFC801;
+  font-weight: 700;
+}

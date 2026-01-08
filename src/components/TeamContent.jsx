@@ -264,6 +264,7 @@ export const TeamContent = () => {
 
                 const getRoleLabel = (role) => {
                   const labels = {
+                    owner: 'Owner',
                     admin: 'Admin',
                     editor: 'Editor',
                     view_only: 'View Only',
@@ -271,13 +272,16 @@ export const TeamContent = () => {
                   return labels[role] || role;
                 };
 
+                const isOwner = member.role === 'owner';
+
                 return (
                   <div key={member.id} className="member-card">
                     <div className="member-info">
-                      <div className="member-avatar">{getInitials(member.profile?.email)}</div>
+                      <div className={`member-avatar ${isOwner ? 'owner' : ''}`}>{getInitials(member.profile?.email)}</div>
                       <div className="member-details">
                         <h3 className="member-name">
                           {member.profile?.full_name || member.profile?.email || "Unknown user"}
+                          {isOwner && <span className="owner-badge">Owner</span>}
                         </h3>
                         <p className="member-email">
                           {member.profile?.email || "Email not available"}
@@ -288,21 +292,27 @@ export const TeamContent = () => {
                       </div>
                     </div>
                     <div className="member-actions">
-                      <select
-                        className="role-dropdown"
-                        value={member.role}
-                        onChange={(e) => handleUpdateRole(member.user_id, e.target.value)}
-                      >
-                        <option value="admin">Admin</option>
-                        <option value="editor">Editor</option>
-                        <option value="view_only">View Only</option>
-                      </select>
-                      <button
-                        className="remove-button"
-                        onClick={() => handleRemoveMember(member.user_id)}
-                      >
-                        Remove
-                      </button>
+                      {isOwner ? (
+                        <span className="member-role owner-role">{getRoleLabel(member.role)}</span>
+                      ) : (
+                        <>
+                          <select
+                            className="role-dropdown"
+                            value={member.role}
+                            onChange={(e) => handleUpdateRole(member.user_id, e.target.value)}
+                          >
+                            <option value="admin">Admin</option>
+                            <option value="editor">Editor</option>
+                            <option value="view_only">View Only</option>
+                          </select>
+                          <button
+                            className="remove-button"
+                            onClick={() => handleRemoveMember(member.user_id)}
+                          >
+                            Remove
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 );
