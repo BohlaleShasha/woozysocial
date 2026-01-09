@@ -633,18 +633,27 @@
 
 .post-media {
   width: 100%;
-  aspect-ratio: 1;
-  background: #000;
+  background: #fafafa;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 
-.post-media img,
+.post-media img {
+  width: 100%;
+  height: auto;
+  max-height: 350px;
+  object-fit: contain;
+  display: block;
+}
+
 .post-media video {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
+  max-height: 350px;
+  object-fit: contain;
+  display: block;
 }
 
 .post-actions {
@@ -765,12 +774,18 @@
 
 .fb-post-media {
   width: 100%;
-  background: #000;
+  background: #f0f2f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .fb-post-media img,
 .fb-post-media video {
   width: 100%;
+  height: auto;
+  max-height: 300px;
+  object-fit: contain;
   display: block;
 }
 
@@ -921,13 +936,19 @@
   width: 100%;
   border-radius: 12px;
   overflow: hidden;
-  background: #000;
+  background: #f7f9f9;
   margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .tweet-media img,
 .tweet-media video {
   width: 100%;
+  height: auto;
+  max-height: 280px;
+  object-fit: contain;
   display: block;
 }
 
@@ -1009,12 +1030,18 @@
 
 .linkedin-post-media {
   width: 100%;
-  background: #000;
+  background: #f3f2ef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .linkedin-post-media img,
 .linkedin-post-media video {
   width: 100%;
+  height: auto;
+  max-height: 280px;
+  object-fit: contain;
   display: block;
 }
 
@@ -1117,13 +1144,19 @@
   width: 100%;
   border-radius: 12px;
   overflow: hidden;
-  background: #000;
+  background: #f5f5f5;
   margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .thread-media img,
 .thread-media video {
   width: 100%;
+  height: auto;
+  max-height: 280px;
+  object-fit: contain;
   display: block;
 }
 
