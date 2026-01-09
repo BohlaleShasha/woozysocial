@@ -150,9 +150,17 @@ module.exports = async function handler(req, res) {
       );
     }
 
-    // Handle private key - support both escaped \n and actual newlines
+    // Handle private key - convert literal \n sequences to actual newlines
+    // The key may be stored with literal backslash-n characters that need conversion
     let privateKey = process.env.AYRSHARE_PRIVATE_KEY;
-    if (privateKey.includes('\\n')) {
+
+    // If the actual characters backslash + n are in the string (char code 92 + 110)
+    // This handles the case where the .env file has literal \n text
+    if (privateKey.includes('\x5cn')) {
+      privateKey = privateKey.split('\x5cn').join('\n');
+    }
+    // Also handle double-escaped newlines (\\n in the env)
+    else if (privateKey.includes('\\n')) {
       privateKey = privateKey.replace(/\\n/g, '\n');
     }
 

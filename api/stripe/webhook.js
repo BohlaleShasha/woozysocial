@@ -18,9 +18,9 @@ function getTierFromPriceId(priceId) {
   const priceToTier = {
     [process.env.STRIPE_PRICE_SOLO]: "solo",
     [process.env.STRIPE_PRICE_PRO]: "pro",
-    [process.env.STRIPE_PRICE_PRO_PLUS]: "pro-plus",
+    [process.env.STRIPE_PRICE_PRO_PLUS]: "pro_plus",
     [process.env.STRIPE_PRICE_AGENCY]: "agency",
-    [process.env.STRIPE_PRICE_BRAND_BOLT]: "brand-bolt",
+    [process.env.STRIPE_PRICE_BRAND_BOLT]: "brand_bolt",
   };
   return priceToTier[priceId] || "unknown";
 }
@@ -39,48 +39,90 @@ async function getRawBody(req) {
   });
 }
 
-// Create Ayrshare profile for user
-async function createAyrshareProfile(supabase, userId, tier) {
+// Create Ayrshare profile for a WORKSPACE (not user!)
+async function createAyrshareProfile(workspaceName) {
   try {
     const axios = require("axios");
 
-    // Get user details
-    const { data: user, error: userError } = await supabase
-      .from("user_profiles")
-      .select("email, full_name")
-      .eq("id", userId)
-      .single();
-
-    if (userError || !user) {
-      logError("ayrshare-profile-create", userError, { userId });
-      return null;
-    }
-
-    // Create Ayrshare profile
     const response = await axios.post(
       "https://api.ayrshare.com/api/profiles/profile",
       {
-        title: user.full_name || user.email.split("@")[0],
+        title: workspaceName || "My Business",
       },
       {
         headers: {
           Authorization: `Bearer ${process.env.AYRSHARE_API_KEY}`,
           "Content-Type": "application/json",
         },
+        timeout: 30000,
       }
     );
 
     if (response.data && response.data.profileKey) {
+      console.log(`[WEBHOOK] Created Ayrshare profile: ${response.data.profileKey}`);
       return response.data.profileKey;
     }
 
     logError("ayrshare-profile-create", "No profileKey in response", {
-      userId,
       response: response.data,
     });
     return null;
   } catch (error) {
-    logError("ayrshare-profile-create", error, { userId });
+    logError("ayrshare-profile-create", error);
+    return null;
+  }
+}
+
+// NEW ARCHITECTURE: Create workspace with Ayrshare profile key on payment
+async function createWorkspaceWithProfile(supabase, userId, tier, workspaceName) {
+  try {
+    // 1. Create Ayrshare profile
+    const profileKey = await createAyrshareProfile(workspaceName);
+    if (!profileKey) {
+      logError("workspace-create", "Failed to create Ayrshare profile", { userId, tier });
+      return null;
+    }
+
+    // 2. Create workspace with the profile key
+    const { data: workspace, error: workspaceError } = await supabase
+      .from("workspaces")
+      .insert({
+        name: workspaceName,
+        ayr_profile_key: profileKey,
+        subscription_tier: tier,
+        created_from_payment: true,
+        created_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (workspaceError) {
+      logError("workspace-create", workspaceError, { userId, tier });
+      return null;
+    }
+
+    // 3. Add user as owner of the workspace
+    const { error: memberError } = await supabase
+      .from("workspace_members")
+      .insert({
+        workspace_id: workspace.id,
+        user_id: userId,
+        role: "owner",
+        can_manage_team: true,
+        can_manage_settings: true,
+        can_delete_posts: true,
+        joined_at: new Date().toISOString(),
+      });
+
+    if (memberError) {
+      logError("workspace-member-create", memberError, { userId, workspaceId: workspace.id });
+      // Don't return null - workspace was created, just membership failed
+    }
+
+    console.log(`[WEBHOOK] Created workspace ${workspace.id} with profile key for user ${userId}`);
+    return workspace;
+  } catch (error) {
+    logError("workspace-create", error, { userId, tier });
     return null;
   }
 }
@@ -124,6 +166,7 @@ module.exports = async function handler(req, res) {
         const session = event.data.object;
         const userId = session.metadata?.supabase_user_id;
         const tier = session.metadata?.tier;
+        const workspaceName = session.metadata?.workspace_name || "My Business";
 
         if (!userId) {
           console.error("[WEBHOOK] No user ID in session metadata");
@@ -132,101 +175,88 @@ module.exports = async function handler(req, res) {
 
         console.log(`[WEBHOOK] Checkout completed for user ${userId}, tier: ${tier}`);
 
-        // Create Ayrshare profile if needed
-        let profileKey = null;
-        const { data: existingUser } = await supabase
-          .from("user_profiles")
-          .select("ayr_profile_key")
-          .eq("id", userId)
-          .single();
-
-        if (!existingUser?.ayr_profile_key) {
-          profileKey = await createAyrshareProfile(supabase, userId, tier);
-        }
-
-        // Update user subscription status
-        const updateData = {
-          subscription_status: "active",
-          subscription_tier: tier,
-          stripe_subscription_id: session.subscription,
-          updated_at: new Date().toISOString(),
-        };
-
-        if (profileKey) {
-          updateData.ayr_profile_key = profileKey;
-          updateData.profile_created_at = new Date().toISOString();
-        }
-
+        // Update user subscription status first
         const { error: updateError } = await supabase
           .from("user_profiles")
-          .update(updateData)
+          .update({
+            subscription_status: "active",
+            subscription_tier: tier,
+            stripe_customer_id: session.customer,
+            stripe_subscription_id: session.subscription,
+            updated_at: new Date().toISOString(),
+          })
           .eq("id", userId);
 
         if (updateError) {
           logError("stripe-webhook-update", updateError, { userId, event: event.type });
+        }
+
+        // Check if user already has a workspace with a profile key
+        const { data: existingWorkspaces } = await supabase
+          .from("workspace_members")
+          .select("workspace_id, workspaces!inner(ayr_profile_key)")
+          .eq("user_id", userId)
+          .eq("role", "owner");
+
+        const hasWorkspaceWithProfile = existingWorkspaces?.some(
+          (w) => w.workspaces?.ayr_profile_key
+        );
+
+        // NEW ARCHITECTURE: Create workspace with profile key if needed
+        if (!hasWorkspaceWithProfile) {
+          const workspace = await createWorkspaceWithProfile(
+            supabase,
+            userId,
+            tier,
+            workspaceName
+          );
+
+          if (workspace) {
+            console.log(`[WEBHOOK] User ${userId} subscription activated with workspace ${workspace.id}`);
+          } else {
+            console.error(`[WEBHOOK] User ${userId} subscription activated but workspace creation failed`);
+          }
         } else {
-          console.log(`[WEBHOOK] User ${userId} subscription activated`);
+          console.log(`[WEBHOOK] User ${userId} already has workspace with profile key`);
         }
         break;
       }
 
       case "customer.subscription.updated": {
         const subscription = event.data.object;
-        const userId = subscription.metadata?.supabase_user_id;
+        const customerId = subscription.customer;
 
-        if (!userId) {
-          // Try to find user by customer ID
-          const customerId = subscription.customer;
-          const { data: user } = await supabase
-            .from("user_profiles")
-            .select("id")
-            .eq("stripe_customer_id", customerId)
-            .single();
+        // Find user by customer ID
+        const { data: user } = await supabase
+          .from("user_profiles")
+          .select("id")
+          .eq("stripe_customer_id", customerId)
+          .single();
 
-          if (!user) {
-            console.error("[WEBHOOK] Could not find user for subscription update");
-            break;
-          }
-
-          // Get tier from price ID
-          const priceId = subscription.items?.data?.[0]?.price?.id;
-          const tier = getTierFromPriceId(priceId);
-
-          const status = subscription.status === "active" ? "active" :
-                        subscription.status === "past_due" ? "past_due" :
-                        subscription.status === "canceled" ? "cancelled" :
-                        subscription.status;
-
-          await supabase
-            .from("user_profiles")
-            .update({
-              subscription_status: status,
-              subscription_tier: tier,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", user.id);
-
-          console.log(`[WEBHOOK] Subscription updated for user ${user.id}: ${status}`);
-        } else {
-          const priceId = subscription.items?.data?.[0]?.price?.id;
-          const tier = getTierFromPriceId(priceId);
-
-          const status = subscription.status === "active" ? "active" :
-                        subscription.status === "past_due" ? "past_due" :
-                        subscription.status === "canceled" ? "cancelled" :
-                        subscription.status;
-
-          await supabase
-            .from("user_profiles")
-            .update({
-              subscription_status: status,
-              subscription_tier: tier,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", userId);
-
-          console.log(`[WEBHOOK] Subscription updated for user ${userId}: ${status}`);
+        if (!user) {
+          console.error("[WEBHOOK] Could not find user for subscription update");
+          break;
         }
+
+        // Get tier from price ID
+        const priceId = subscription.items?.data?.[0]?.price?.id;
+        const tier = getTierFromPriceId(priceId);
+
+        const status = subscription.status === "active" ? "active" :
+                      subscription.status === "past_due" ? "past_due" :
+                      subscription.status === "canceled" ? "cancelled" :
+                      subscription.status;
+
+        await supabase
+          .from("user_profiles")
+          .update({
+            subscription_status: status,
+            subscription_tier: tier,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", user.id);
+
+        console.log(`[WEBHOOK] Subscription updated for user ${user.id}: ${status}, tier: ${tier}`);
         break;
       }
 
@@ -251,6 +281,8 @@ module.exports = async function handler(req, res) {
             .eq("id", user.id);
 
           console.log(`[WEBHOOK] Subscription cancelled for user ${user.id}`);
+          // NOTE: We don't delete the workspace or Ayrshare profile
+          // They can resubscribe and regain access
         } else {
           console.error("[WEBHOOK] Could not find user for subscription deletion");
         }

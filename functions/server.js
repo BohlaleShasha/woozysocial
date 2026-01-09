@@ -82,25 +82,31 @@ async function uploadMediaToAyrshare(file) {
   }
 }
 
-app.post("/api/post", requireActiveProfile, upload.single("media"), async (req, res) => {
+// Note: multer must run BEFORE requireActiveProfile so req.body is populated for FormData
+app.post("/api/post", upload.single("media"), requireActiveProfile, async (req, res) => {
   try {
     const { text, networks, scheduledDate, userId, workspaceId, mediaUrl } = req.body;
     const media = req.file;
 
-    // Get workspace's profile key from database, or fall back to user's key, or env variable
-    let profileKey = env.AYRSHARE_PROFILE_KEY;
-    if (workspaceId) {
-      const workspaceProfileKey = await getWorkspaceProfileKey(workspaceId);
-      if (workspaceProfileKey) {
-        profileKey = workspaceProfileKey;
-      }
-    } else if (userId) {
-      // Backwards compatibility: support userId for existing code
-      const userProfileKey = await getUserProfileKey(userId);
-      if (userProfileKey) {
-        profileKey = userProfileKey;
-      }
+    // NEW ARCHITECTURE: Profile keys ONLY live on workspaces
+    // workspaceId is required for posting
+    if (!workspaceId) {
+      return res.status(400).json({
+        error: 'Workspace required',
+        message: 'workspaceId is required to post. Please select a workspace.'
+      });
     }
+
+    // Get workspace's profile key from database
+    const profileKey = await getWorkspaceProfileKey(workspaceId);
+    if (!profileKey) {
+      return res.status(400).json({
+        error: 'No social accounts connected',
+        message: 'This workspace has no social media accounts connected. Please connect accounts first.'
+      });
+    }
+
+    console.log(`[POST] Using workspace ${workspaceId} profile key: ${profileKey.substring(0, 8)}...`);
 
     const platforms = Object.entries(JSON.parse(networks))
       .filter(([, value]) => value)
@@ -444,21 +450,11 @@ app.get("/api/user-accounts", requireActiveProfile, async (req, res) => {
   }
 });
 
-// Helper function to get user's profile key from database (DEPRECATED - use getWorkspaceProfileKey)
+// DEPRECATED: getUserProfileKey - profile keys now only exist on workspaces
+// Keeping for backwards compatibility but returns null
 async function getUserProfileKey(userId) {
-  try {
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('ayr_profile_key')
-      .eq('id', userId)
-      .single();
-
-    if (error) throw error;
-    return data?.ayr_profile_key || null;
-  } catch (error) {
-    console.error('Error fetching user profile key:', error);
-    return null;
-  }
+  console.warn('[DEPRECATED] getUserProfileKey called - profile keys should only be on workspaces');
+  return null;
 }
 
 // Helper function to get workspace's profile key from database
@@ -497,15 +493,37 @@ function shouldCreateProfile(email, subscriptionStatus) {
   return subscriptionStatus === 'active';
 }
 
-// Subscription middleware - checks if user has active profile access
+// Subscription middleware - checks if user/workspace has active profile access
+// NEW ARCHITECTURE: Profile keys live ONLY on workspaces, not user_profiles
 async function requireActiveProfile(req, res, next) {
   try {
     // Support both GET (query params) and POST (body params)
     const params = req.method === 'GET' ? req.query : req.body;
     const { userId, workspaceId } = params;
 
-    // Determine which user to check (workspace owner or current user)
-    const userIdToCheck = workspaceId || userId;
+    console.log(`[requireActiveProfile] Method: ${req.method}, userId: ${userId}, workspaceId: ${workspaceId}`);
+
+    // STEP 1: We need to identify the user making the request
+    let userIdToCheck = userId;
+
+    // If only workspaceId provided, get the owner's userId
+    if (!userId && workspaceId) {
+      const { data: workspaceMember, error: memberError } = await supabase
+        .from('workspace_members')
+        .select('user_id')
+        .eq('workspace_id', workspaceId)
+        .eq('role', 'owner')
+        .single();
+
+      if (memberError || !workspaceMember) {
+        console.error('Error finding workspace owner:', memberError);
+        return res.status(404).json({
+          error: 'Workspace not found',
+          message: 'Could not find workspace owner'
+        });
+      }
+      userIdToCheck = workspaceMember.user_id;
+    }
 
     if (!userIdToCheck) {
       return res.status(400).json({
@@ -514,41 +532,48 @@ async function requireActiveProfile(req, res, next) {
       });
     }
 
-    // Fetch user profile
+    // STEP 2: Get user profile to check subscription status and whitelist
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
-      .select('email, subscription_status, ayr_profile_key, is_whitelisted')
+      .select('email, subscription_status, is_whitelisted')
       .eq('id', userIdToCheck)
       .single();
 
     if (profileError || !profile) {
+      console.error('Profile lookup error:', profileError, 'for userId:', userIdToCheck);
       return res.status(404).json({
         error: 'User profile not found',
         message: 'Please sign up to continue'
       });
     }
 
-    // Check if user has profile access
-    const hasProfileKey = !!profile.ayr_profile_key;
     const isActive = profile.subscription_status === 'active';
     const isWhitelisted = isWhitelistedEmail(profile.email) || profile.is_whitelisted;
 
+    // STEP 3: Check if workspace has a profile key (NEW: profile keys live on workspaces only)
+    let workspaceHasProfileKey = false;
+    if (workspaceId) {
+      const workspaceProfileKey = await getWorkspaceProfileKey(workspaceId);
+      workspaceHasProfileKey = !!workspaceProfileKey;
+    }
+
     // Allow access if:
     // 1. User is whitelisted (can access even without profile key - for initial setup)
-    // 2. User has profile key AND active subscription
-    if (isWhitelisted || (hasProfileKey && isActive)) {
-      // User has access - continue to endpoint
+    // 2. User has active subscription AND workspace has profile key
+    // 3. Workspace has profile key (team member access)
+    if (isWhitelisted || (isActive && workspaceHasProfileKey) || workspaceHasProfileKey) {
+      console.log(`[requireActiveProfile] Access granted: whitelisted=${isWhitelisted}, active=${isActive}, workspaceKey=${workspaceHasProfileKey}`);
       return next();
     }
 
     // User doesn't have access - return 403
-    console.log(`Access denied for user ${profile.email}: hasKey=${hasProfileKey}, active=${isActive}, whitelisted=${isWhitelisted}`);
+    console.log(`Access denied for user ${profile.email}: active=${isActive}, whitelisted=${isWhitelisted}, workspaceKey=${workspaceHasProfileKey}`);
 
     return res.status(403).json({
       error: 'Subscription required',
       message: 'An active subscription is required to use this feature',
       details: {
-        hasProfile: hasProfileKey,
+        hasWorkspaceProfile: workspaceHasProfileKey,
         subscriptionStatus: profile.subscription_status
       },
       upgradeUrl: '/pricing'
