@@ -23,6 +23,7 @@ import { TeamContent } from "./components/TeamContent";
 import { SettingsContent } from "./components/SettingsContent";
 import { EngagementContent } from "./components/EngagementContent";
 import { Approvals } from "./pages/Approvals";
+import { Pricing } from "./pages/Pricing";
 import { ClientDashboard } from "./pages/client/ClientDashboard";
 import { ClientApprovals } from "./pages/client/ClientApprovals";
 import { ClientApproved } from "./pages/client/ClientApproved";
@@ -40,6 +41,7 @@ function App() {
             <Route path="/signup" element={<SignUpPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/accept-invite" element={<AcceptInvite />} />
+            <Route path="/pricing" element={<Pricing />} />
 
             {/* Client Portal Routes */}
             <Route

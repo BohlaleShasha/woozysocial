@@ -4,5 +4,10 @@
   "framework": "vite",
   "rewrites": [
     { "source": "/((?!api).*)", "destination": "/" }
-  ]
+  ],
+  "functions": {
+    "api/stripe/webhook.js": {
+      "maxDuration": 30
+    }
+  }
 }

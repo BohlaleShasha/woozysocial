@@ -49,7 +49,7 @@ Woozy Social is a multi-platform social media management tool with team collabor
 
 | Feature | Progress | What's Missing |
 |---------|----------|----------------|
-| Subscription System | 70% | Payment processing, webhooks, billing portal |
+| Subscription System | 95% | ✅ Stripe integration complete, needs testing |
 | Post Approvals | 60% | Email notifications, bulk actions, settings |
 | Social Account Linking | 80% | OAuth flow (currently uses Ayrshare's) |
 | Analytics Dashboard | 30% | Real data from Ayrshare API |
@@ -58,82 +58,118 @@ Woozy Social is a multi-platform social media management tool with team collabor
 
 | Feature | Priority | Notes |
 |---------|----------|-------|
-| Payment Integration (Stripe) | CRITICAL | Required for monetization |
+| ~~Payment Integration (Stripe)~~ | ~~CRITICAL~~ | ✅ COMPLETE |
 | Automated Tests | CRITICAL | Zero test coverage currently |
 | Production Monitoring | HIGH | No logging/alerting system |
-| Pricing Page | HIGH | Needed for subscription flow |
+| ~~Pricing Page~~ | ~~HIGH~~ | ✅ COMPLETE |
 | Automation Rules | LOW | UI exists but not functional |
 
 ---
 
 ## PHASE 1: Critical Pre-Release (MUST COMPLETE)
 
-### 1.1 Payment Integration (Stripe)
+### 1.1 Payment Integration (Stripe) ✅ COMPLETE
 
-**Estimated:** 8-10 hours
+**Status:** COMPLETE (January 9, 2026)
 **Priority:** CRITICAL
 **Dependency:** None
 
 #### Tasks:
-- [ ] Create Stripe account and configure products
-- [ ] Add Stripe SDK to project (`npm install stripe @stripe/stripe-js`)
-- [ ] Create `/api/stripe/create-checkout-session.js` endpoint
-- [ ] Create `/api/stripe/webhook.js` endpoint
-- [ ] Handle `checkout.session.completed` event
-- [ ] Handle `customer.subscription.updated` event
-- [ ] Handle `customer.subscription.deleted` event
-- [ ] Integrate profile activation on successful payment
-- [ ] Create `/pricing` page with tier selection
-- [ ] Add Stripe Customer Portal for subscription management
-- [ ] Test complete payment flow end-to-end
+- [ ] Create Stripe account and configure products (USER ACTION REQUIRED)
+- [x] Add Stripe SDK to project (`npm install stripe @stripe/stripe-js`)
+- [x] Create `/api/stripe/create-checkout-session.js` endpoint
+- [x] Create `/api/stripe/webhook.js` endpoint
+- [x] Handle `checkout.session.completed` event
+- [x] Handle `customer.subscription.updated` event
+- [x] Handle `customer.subscription.deleted` event
+- [x] Integrate profile activation on successful payment
+- [x] Create `/pricing` page with tier selection
+- [x] Add Stripe Customer Portal for subscription management
+- [ ] Test complete payment flow end-to-end (USER ACTION REQUIRED)
 
-#### Files to Create:
+#### Files Created:
 ```
-api/stripe/create-checkout-session.js
-api/stripe/webhook.js
-api/stripe/customer-portal.js
-src/pages/Pricing.jsx
-src/pages/Pricing.css
+api/stripe/create-checkout-session.js ✅
+api/stripe/webhook.js ✅
+api/stripe/customer-portal.js ✅
+src/pages/Pricing.jsx ✅
+src/pages/Pricing.css ✅
+migrations/add-stripe-fields.sql ✅
 ```
 
-#### Files to Modify:
+#### Files Modified:
 ```
-src/App.jsx (add /pricing route)
-functions/.env (add Stripe keys)
-vercel.json (webhook configuration)
+src/App.jsx (add /pricing route) ✅
+functions/.env.example (add Stripe keys) ✅
+.env (add VITE_STRIPE_PUBLISHABLE_KEY) ✅
+vercel.json (webhook configuration) ✅
 ```
 
 #### Environment Variables Needed:
 ```env
-STRIPE_SECRET_KEY=sk_live_xxx
+# Backend (functions/.env or Vercel environment variables)
+STRIPE_SECRET_KEY=sk_live_xxx or sk_test_xxx
 STRIPE_WEBHOOK_SECRET=whsec_xxx
-STRIPE_PRICE_STARTER=price_xxx
+STRIPE_PRICE_SOLO=price_xxx
 STRIPE_PRICE_PRO=price_xxx
-STRIPE_PRICE_ENTERPRISE=price_xxx
+STRIPE_PRICE_PRO_PLUS=price_xxx
+STRIPE_PRICE_AGENCY=price_xxx
+STRIPE_PRICE_BRAND_BOLT=price_xxx
+
+# Frontend (.env)
+VITE_STRIPE_PUBLISHABLE_KEY=pk_live_xxx or pk_test_xxx
 ```
 
-#### Suggested Pricing Tiers:
+#### Database Migration Required:
+Run `migrations/add-stripe-fields.sql` in Supabase SQL Editor to add:
+- `stripe_customer_id` column to user_profiles
+- `stripe_subscription_id` column to user_profiles
+
+#### Configured Pricing Tiers (from Stripe dashboard):
 ```
-Starter - $29/month
-├── 5 social accounts
+Solo - £35/month
+├── 1 social profile
 ├── 50 scheduled posts/month
-├── 1 team member
+├── Basic analytics
+└── Email support
+
+Pro - £50/month
+├── 3 social profiles
+├── 150 scheduled posts/month
+├── Team collaboration (2 users)
+└── Priority email support
+
+Pro Plus - £115/month (POPULAR)
+├── 5 social profiles
+├── Unlimited scheduled posts
+├── Team collaboration (5 users)
+├── Client approvals
+└── Advanced analytics
+
+Agency - £288/month
+├── 15 social profiles
+├── Unlimited everything
+├── Team collaboration (15 users)
+├── Client portal
+└── White label branding
+
+BrandBolt - £25/month
+├── 1 social profile
+├── 30 scheduled posts/month
 └── Basic analytics
 
-Pro - $79/month
-├── 15 social accounts
-├── Unlimited scheduled posts
-├── 5 team members
-├── Advanced analytics
-└── Post approval workflow
-
-Enterprise - $199/month
-├── Unlimited social accounts
-├── Unlimited everything
-├── Unlimited team members
-├── Priority support
-└── Custom integrations
+Internal Tiers (Free - for company use):
+- CCs Brand Bolt (£0)
+- Css Internal (£0)
 ```
+
+#### Setup Steps for Stripe:
+1. Create products/prices in Stripe Dashboard matching the tiers above
+2. Copy the price IDs (price_xxx) to your environment variables
+3. Configure webhook endpoint: `https://your-domain.com/api/stripe/webhook`
+4. Subscribe to events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`, `invoice.paid`
+5. Copy the webhook signing secret (whsec_xxx) to STRIPE_WEBHOOK_SECRET
+6. Run the database migration to add Stripe columns
 
 ---
 
@@ -336,35 +372,35 @@ src/components/SettingsContent.jsx (add notification preferences)
 
 ---
 
-### 2.2 Pricing Page
+### 2.2 Pricing Page ✅ COMPLETE
 
-**Estimated:** 3-4 hours
+**Status:** COMPLETE (January 9, 2026)
 **Priority:** HIGH
 **Dependency:** Phase 1.1 (Stripe integration)
 
 #### Tasks:
-- [ ] Design pricing page layout (3-column tier comparison)
-- [ ] Create tier comparison feature table
-- [ ] Add "Subscribe" buttons linked to Stripe checkout
-- [ ] Add FAQ section with common questions
-- [ ] Mobile responsive design
-- [ ] Add annual pricing option (20% discount)
-- [ ] Add "Contact Sales" for Enterprise tier
+- [x] Design pricing page layout (5-card tier comparison)
+- [x] Create tier comparison feature table
+- [x] Add "Subscribe" buttons linked to Stripe checkout
+- [ ] Add FAQ section with common questions (optional enhancement)
+- [x] Mobile responsive design
+- [ ] Add annual pricing option (20% discount) (optional enhancement)
+- [ ] Add "Contact Sales" for Enterprise tier (optional enhancement)
 
-#### Files to Create:
+#### Files Created:
 ```
-src/pages/Pricing.jsx
-src/pages/Pricing.css
+src/pages/Pricing.jsx ✅
+src/pages/Pricing.css ✅
 ```
 
-#### Page Sections:
-```
-1. Hero - "Simple, transparent pricing"
-2. Tier Cards - Starter, Pro, Enterprise
-3. Feature Comparison Table
-4. FAQ Section
-5. CTA - "Start your free trial"
-```
+#### Implemented Features:
+- 5 pricing tiers: Solo, Pro, Pro Plus, Agency, BrandBolt
+- Feature comparison for each tier
+- Current plan indicator for subscribed users
+- "Manage Subscription" button to Stripe Customer Portal
+- Success/cancelled payment message handling
+- Spinner states during checkout
+- Mobile responsive grid layout
 
 ---
 
