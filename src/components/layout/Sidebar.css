@@ -109,3 +109,10 @@
   color: #FFC801;
   opacity: 1;
 }
+
+/* Tablet and below - hide sidebar */
+@media (max-width: 1024px) {
+  .sidebar {
+    display: none;
+  }
+}

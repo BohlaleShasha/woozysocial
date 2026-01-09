@@ -8,9 +8,28 @@
   overflow-y: auto;
   min-height: calc(100vh - 70px);
   z-index: 1;
+  transition: margin-left 0.3s ease;
 }
 
 .main-content::-webkit-scrollbar {
   display: none;
   width: 0;
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .main-content {
+    margin-left: 0;
+    padding: 24px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 0;
+    padding: 16px;
+    margin-top: 60px;
+    min-height: calc(100vh - 60px);
+  }
 }
