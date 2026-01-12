@@ -1,4 +1,5 @@
 const axios = require("axios");
+const { sendApprovalNotification } = require("../notifications/helpers");
 const {
   setCors,
   getSupabase,
@@ -276,6 +277,15 @@ module.exports = async function handler(req, res) {
         'reject': 'rejected',
         'changes_requested': 'marked for changes'
       };
+
+      // Send notification to post creator (non-blocking)
+      sendApprovalNotification(supabase, {
+        postId,
+        workspaceId,
+        action,
+        reviewerId: userId,
+        comment
+      });
 
       return sendSuccess(res, {
         status: newStatus,

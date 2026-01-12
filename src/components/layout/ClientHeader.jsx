@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useWorkspace } from "../../contexts/WorkspaceContext";
+import { NotificationBell } from "../NotificationBell";
 import "./ClientHeader.css";
 
 export const ClientHeader = () => {
@@ -36,6 +37,7 @@ export const ClientHeader = () => {
       </div>
 
       <div className="client-header-right">
+        <NotificationBell />
         <div className="client-profile-section" ref={profileRef}>
           <div
             className="client-profile-avatar"

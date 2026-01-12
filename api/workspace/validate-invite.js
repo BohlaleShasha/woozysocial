@@ -35,7 +35,7 @@ module.exports = async function handler(req, res) {
       return sendError(res, "Invalid token format", ErrorCodes.VALIDATION_ERROR);
     }
 
-    // Get the invitation
+    // Get the invitation by invite_token
     const { data: invitation, error: inviteError } = await supabase
       .from('workspace_invitations')
       .select(`
@@ -57,6 +57,11 @@ module.exports = async function handler(req, res) {
       .single();
 
     if (inviteError || !invitation) {
+      logError('workspace.validate-invite.query', inviteError || 'No invitation found', {
+        tokenPrefix: token.substring(0, 8) + '...',
+        errorCode: inviteError?.code,
+        errorMessage: inviteError?.message
+      });
       return sendError(res, "Invitation not found", ErrorCodes.NOT_FOUND);
     }
 

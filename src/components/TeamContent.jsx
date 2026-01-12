@@ -119,8 +119,15 @@ export const TeamContent = () => {
     }
 
     try {
-      const response = await fetch(`${baseURL}/api/workspace/invite?invitationId=${inviteId}&userId=${user.id}`, {
-        method: 'DELETE',
+      const response = await fetch(`${baseURL}/api/team/cancel-invite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          inviteId,
+          userId: user.id,
+        }),
       });
 
       const data = await response.json();
@@ -139,8 +146,8 @@ export const TeamContent = () => {
 
   const handleResendInvite = async (invite) => {
     try {
-      // Use workspace invite endpoint to resend (updates existing invitation)
-      const response = await fetch(`${baseURL}/api/workspaces/${activeWorkspace.id}/invite`, {
+      // Use workspace invite endpoint to resend (updates existing invitation and sends new email)
+      const response = await fetch(`${baseURL}/api/workspace/invite`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

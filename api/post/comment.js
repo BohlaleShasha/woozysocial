@@ -9,6 +9,7 @@ const {
   validateRequired,
   isValidUUID
 } = require("../_utils");
+const { sendNewCommentNotification } = require("../notifications/helpers");
 
 module.exports = async function handler(req, res) {
   setCors(res);
@@ -93,6 +94,16 @@ module.exports = async function handler(req, res) {
         .select('full_name, email, avatar_url')
         .eq('id', userId)
         .single();
+
+      // Send notification to post creator and other commenters (non-blocking)
+      const commenterName = userProfile?.full_name || userProfile?.email || 'Someone';
+      sendNewCommentNotification(supabase, {
+        postId,
+        workspaceId,
+        commenterId: userId,
+        commenterName,
+        comment
+      });
 
       return sendSuccess(res, {
         comment: {

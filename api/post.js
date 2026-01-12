@@ -58,12 +58,15 @@ async function workspaceHasClients(supabase, workspaceId) {
   if (!workspaceId) return false;
 
   try {
+    // Check for both 'view_only' and 'client' roles (database may use either)
     const { data: clients } = await supabase
       .from('workspace_members')
-      .select('id')
+      .select('id, role')
       .eq('workspace_id', workspaceId)
       .in('role', ['client', 'view_only'])
       .limit(1);
+
+    console.log(`[workspaceHasClients] workspaceId: ${workspaceId}, clients found:`, clients?.length || 0);
 
     return clients && clients.length > 0;
   } catch (error) {

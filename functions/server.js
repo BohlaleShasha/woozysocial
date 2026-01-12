@@ -98,6 +98,28 @@ async function uploadMediaToAyrshare(file) {
 }
 
 // Note: multer must run BEFORE requireActiveProfile so req.body is populated for FormData
+// Helper to check if workspace has client members who need to approve
+async function workspaceHasClients(workspaceId) {
+  if (!workspaceId) return false;
+
+  try {
+    // Check for both 'view_only' and 'client' roles (database may use either)
+    const { data: clients, error } = await supabase
+      .from('workspace_members')
+      .select('id, role')
+      .eq('workspace_id', workspaceId)
+      .in('role', ['view_only', 'client'])
+      .limit(1);
+
+    console.log(`[workspaceHasClients] workspaceId: ${workspaceId}, clients found:`, clients, 'error:', error);
+
+    return clients && clients.length > 0;
+  } catch (error) {
+    console.error('Error checking workspace clients:', error);
+    return false;
+  }
+}
+
 app.post("/api/post", upload.single("media"), requireActiveProfile, async (req, res) => {
   try {
     // DEBUG: Log the raw request body to see what we're receiving
@@ -133,6 +155,62 @@ app.post("/api/post", upload.single("media"), requireActiveProfile, async (req, 
     const platforms = Object.entries(JSON.parse(networks))
       .filter(([, value]) => value)
       .map(([key]) => key);
+
+    const isScheduled = !!scheduledDate;
+
+    // Check if workspace has clients who need to approve scheduled posts
+    const hasClients = await workspaceHasClients(workspaceId);
+    const requiresApproval = isScheduled && hasClients;
+
+    console.log(`[POST] isScheduled: ${isScheduled}, hasClients: ${hasClients}, requiresApproval: ${requiresApproval}`);
+
+    // If scheduled and has clients, save to DB only - wait for approval
+    if (requiresApproval) {
+      // Handle media URL from upload or existing
+      let finalMediaUrl = mediaUrl;
+      if (media) {
+        try {
+          finalMediaUrl = await uploadMediaToAyrshare(media);
+        } catch (error) {
+          console.error("Failed to upload media:", error);
+          return res.status(500).json({
+            error: "Failed to upload media",
+            details: error.response?.data || error.message
+          });
+        }
+      }
+
+      const { data: savedPost, error: saveError } = await supabase.from("posts").insert([{
+        user_id: userId,
+        workspace_id: workspaceId,
+        created_by: userId,
+        caption: text,
+        media_urls: finalMediaUrl ? [finalMediaUrl] : [],
+        status: 'pending_approval',
+        scheduled_at: new Date(scheduledDate).toISOString(),
+        platforms: platforms,
+        approval_status: 'pending',
+        requires_approval: true
+      }]).select().single();
+
+      if (saveError) {
+        console.error('Error saving post for approval:', saveError);
+        return res.status(500).json({
+          success: false,
+          error: "Failed to save post for approval",
+          details: saveError.message
+        });
+      }
+
+      console.log(`[POST] Post saved for approval with ID: ${savedPost?.id}`);
+
+      return res.status(200).json({
+        success: true,
+        status: 'pending_approval',
+        message: 'Post saved and awaiting client approval',
+        postId: savedPost?.id
+      });
+    }
 
     const postData = {
       post: text,
@@ -1142,6 +1220,494 @@ app.put("/api/post/retry", requireActiveProfile, async (req, res) => {
     });
   }
 });
+
+// =====================================================
+// POST APPROVAL ROUTES
+// =====================================================
+
+// Get pending approvals
+app.get("/api/post/pending-approvals", async (req, res) => {
+  try {
+    const { workspaceId, userId, status } = req.query;
+
+    if (!workspaceId || !userId) {
+      return res.status(400).json({ success: false, error: "workspaceId and userId are required" });
+    }
+
+    // Verify user is a member of the workspace
+    const { data: membership, error: membershipError } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', userId)
+      .single();
+
+    if (membershipError && membershipError.code !== 'PGRST116') {
+      console.error('Error checking membership:', membershipError);
+    }
+
+    if (!membership) {
+      return res.status(403).json({ success: false, error: "You are not a member of this workspace" });
+    }
+
+    // Build query for posts
+    let query = supabase
+      .from('posts')
+      .select(`
+        id,
+        caption,
+        platforms,
+        media_urls,
+        scheduled_at,
+        status,
+        approval_status,
+        requires_approval,
+        created_at,
+        user_id,
+        user_profiles!user_id (
+          full_name,
+          email,
+          avatar_url
+        ),
+        post_approvals (
+          approval_status,
+          reviewed_at,
+          reviewed_by
+        ),
+        post_comments (
+          id
+        )
+      `)
+      .eq('workspace_id', workspaceId)
+      .order('scheduled_at', { ascending: true });
+
+    // Filter by approval status if provided
+    if (status && status !== 'all') {
+      query = query.eq('approval_status', status);
+    } else if (!status) {
+      // Default to showing posts that need action (pending or changes_requested)
+      query = query.in('approval_status', ['pending', 'changes_requested']);
+    }
+    // If status === 'all', don't filter by approval_status
+
+    // Show posts that are pending approval or scheduled
+    query = query.in('status', ['pending_approval', 'scheduled']);
+
+    const { data: posts, error } = await query;
+
+    if (error) {
+      console.error('Error fetching pending approvals:', error);
+      return res.status(500).json({ success: false, error: "Failed to fetch pending approvals" });
+    }
+
+    // Add comment count and map fields for frontend
+    const postsWithMeta = (posts || []).map(post => ({
+      ...post,
+      post: post.caption,
+      schedule_date: post.scheduled_at,
+      media_url: post.media_urls?.[0] || null,
+      commentCount: post.post_comments?.length || 0,
+      post_comments: undefined
+    }));
+
+    // Group by approval status
+    const grouped = {
+      pending: postsWithMeta.filter(p => p.approval_status === 'pending'),
+      changes_requested: postsWithMeta.filter(p => p.approval_status === 'changes_requested'),
+      approved: postsWithMeta.filter(p => p.approval_status === 'approved'),
+      rejected: postsWithMeta.filter(p => p.approval_status === 'rejected')
+    };
+
+    res.json({
+      success: true,
+      data: {
+        posts: postsWithMeta,
+        grouped: grouped,
+        counts: {
+          pending: grouped.pending.length,
+          changes_requested: grouped.changes_requested.length,
+          approved: grouped.approved.length,
+          rejected: grouped.rejected.length,
+          total: postsWithMeta.length
+        },
+        userRole: membership.role
+      }
+    });
+  } catch (error) {
+    console.error("Error in pending-approvals:", error);
+    res.status(500).json({ success: false, error: "Failed to fetch pending approvals" });
+  }
+});
+
+// Approve, reject, or request changes for a post
+app.post("/api/post/approve", async (req, res) => {
+  try {
+    const { postId, workspaceId, userId, action, comment } = req.body;
+
+    if (!postId || !workspaceId || !userId || !action) {
+      return res.status(400).json({ success: false, error: "postId, workspaceId, userId, and action are required" });
+    }
+
+    const validActions = ['approve', 'reject', 'changes_requested'];
+    if (!validActions.includes(action)) {
+      return res.status(400).json({ success: false, error: `Invalid action. Must be one of: ${validActions.join(', ')}` });
+    }
+
+    // Verify user is a member of the workspace
+    const { data: membership, error: membershipError } = await supabase
+      .from('workspace_members')
+      .select('role')
+      .eq('workspace_id', workspaceId)
+      .eq('user_id', userId)
+      .single();
+
+    if (membershipError && membershipError.code !== 'PGRST116') {
+      console.error('Error checking membership:', membershipError);
+    }
+
+    if (!membership) {
+      return res.status(403).json({ success: false, error: "You are not a member of this workspace" });
+    }
+
+    // Map action to status
+    const statusMap = {
+      'approve': 'approved',
+      'reject': 'rejected',
+      'changes_requested': 'changes_requested'
+    };
+    const newStatus = statusMap[action];
+
+    // Update or create post approval record
+    const { data: existingApproval, error: approvalError } = await supabase
+      .from('post_approvals')
+      .select('id')
+      .eq('post_id', postId)
+      .single();
+
+    if (approvalError && approvalError.code !== 'PGRST116') {
+      console.error('Error checking approval:', approvalError);
+    }
+
+    const approvalData = {
+      approval_status: newStatus,
+      reviewed_by: userId,
+      reviewed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    if (existingApproval) {
+      await supabase
+        .from('post_approvals')
+        .update(approvalData)
+        .eq('id', existingApproval.id);
+    } else {
+      await supabase
+        .from('post_approvals')
+        .insert({
+          post_id: postId,
+          workspace_id: workspaceId,
+          ...approvalData
+        });
+    }
+
+    // Update the post's approval_status
+    await supabase
+      .from('posts')
+      .update({ approval_status: newStatus })
+      .eq('id', postId);
+
+    // If approved, send the post to Ayrshare
+    if (action === 'approve') {
+      const { data: post, error: postError } = await supabase
+        .from('posts')
+        .select('*')
+        .eq('id', postId)
+        .single();
+
+      if (postError) {
+        console.error('Error fetching post:', postError);
+        return res.status(500).json({ success: false, error: "Failed to fetch post data" });
+      }
+
+      if (post && post.status === 'pending_approval') {
+        // Get workspace profile key
+        const { data: workspace } = await supabase
+          .from('workspaces')
+          .select('ayr_profile_key')
+          .eq('id', workspaceId)
+          .single();
+
+        const profileKey = workspace?.ayr_profile_key || env.AYRSHARE_PROFILE_KEY;
+
+        if (!profileKey) {
+          return res.status(400).json({ success: false, error: "No social media profile found for this workspace" });
+        }
+
+        try {
+          // Build post data for Ayrshare
+          const postData = {
+            post: post.caption,
+            platforms: post.platforms
+          };
+
+          // Check if scheduled time is in the future
+          if (post.scheduled_at) {
+            const scheduledTime = new Date(post.scheduled_at);
+            const now = new Date();
+            if (scheduledTime > now) {
+              postData.scheduleDate = Math.floor(scheduledTime.getTime() / 1000);
+            }
+          }
+
+          if (post.media_urls && post.media_urls.length > 0) {
+            postData.mediaUrls = post.media_urls;
+          }
+
+          const ayrshareResponse = await axios.post(`${BASE_AYRSHARE}/post`, postData, {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${env.AYRSHARE_API_KEY}`,
+              "Profile-Key": profileKey
+            },
+            timeout: 30000
+          });
+
+          if (ayrshareResponse.data.status !== 'error') {
+            const ayrPostId = ayrshareResponse.data.id || ayrshareResponse.data.postId;
+            const scheduledTime = new Date(post.scheduled_at);
+            const now = new Date();
+            const isStillFuture = scheduledTime > now;
+
+            await supabase
+              .from('posts')
+              .update({
+                ayr_post_id: ayrPostId,
+                status: isStillFuture ? 'scheduled' : 'posted',
+                posted_at: isStillFuture ? null : new Date().toISOString()
+              })
+              .eq('id', postId);
+          } else {
+            await supabase
+              .from('posts')
+              .update({
+                status: 'failed',
+                last_error: ayrshareResponse.data.message || 'Failed to post to Ayrshare'
+              })
+              .eq('id', postId);
+
+            return res.status(500).json({
+              success: false,
+              error: "Failed to post to social platforms",
+              details: ayrshareResponse.data
+            });
+          }
+        } catch (ayrError) {
+          console.error('Ayrshare error:', ayrError.response?.data || ayrError.message);
+          await supabase
+            .from('posts')
+            .update({
+              status: 'failed',
+              last_error: ayrError.response?.data?.message || ayrError.message
+            })
+            .eq('id', postId);
+
+          return res.status(500).json({
+            success: false,
+            error: "Failed to send post to social platforms",
+            details: ayrError.response?.data
+          });
+        }
+      }
+    }
+
+    // Add system comment
+    const systemComment = comment || `Post ${action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'marked for changes'}`;
+
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('full_name, email')
+      .eq('id', userId)
+      .single();
+
+    const userName = userProfile?.full_name || userProfile?.email || 'User';
+
+    await supabase
+      .from('post_comments')
+      .insert({
+        post_id: postId,
+        workspace_id: workspaceId,
+        user_id: userId,
+        comment: `${userName}: ${systemComment}`,
+        is_system: true
+      });
+
+    const actionMessages = {
+      'approve': 'approved',
+      'reject': 'rejected',
+      'changes_requested': 'marked for changes'
+    };
+
+    res.json({
+      success: true,
+      data: {
+        status: newStatus,
+        message: `Post ${actionMessages[action]}`
+      }
+    });
+  } catch (error) {
+    console.error("Error in post approve:", error);
+    res.status(500).json({ success: false, error: "Failed to update approval status" });
+  }
+});
+
+// Get approval status and comments for a post
+app.get("/api/post/approve", async (req, res) => {
+  try {
+    const { postId } = req.query;
+
+    if (!postId) {
+      return res.status(400).json({ success: false, error: "postId is required" });
+    }
+
+    // Get approval record
+    const { data: approval, error: approvalError } = await supabase
+      .from('post_approvals')
+      .select(`
+        id,
+        approval_status,
+        reviewed_at,
+        reviewed_by,
+        user_profiles!reviewed_by (
+          full_name,
+          email
+        )
+      `)
+      .eq('post_id', postId)
+      .single();
+
+    if (approvalError && approvalError.code !== 'PGRST116') {
+      console.error('Error fetching approval:', approvalError);
+    }
+
+    // Get comments
+    const { data: comments, error: commentsError } = await supabase
+      .from('post_comments')
+      .select(`
+        id,
+        comment,
+        is_system,
+        created_at,
+        user_id,
+        user_profiles (
+          full_name,
+          email,
+          avatar_url
+        )
+      `)
+      .eq('post_id', postId)
+      .order('created_at', { ascending: true });
+
+    if (commentsError) {
+      console.error('Error fetching comments:', commentsError);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        approval: approval || { approval_status: 'pending' },
+        comments: comments || []
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching approval status:", error);
+    res.status(500).json({ success: false, error: "Failed to fetch approval status" });
+  }
+});
+
+// Post comments endpoint
+app.get("/api/post/comment", async (req, res) => {
+  try {
+    const { postId } = req.query;
+
+    if (!postId) {
+      return res.status(400).json({ success: false, error: "postId is required" });
+    }
+
+    const { data: comments, error } = await supabase
+      .from('post_comments')
+      .select(`
+        id,
+        comment,
+        is_system,
+        created_at,
+        user_id,
+        user_profiles (
+          full_name,
+          email,
+          avatar_url
+        )
+      `)
+      .eq('post_id', postId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching comments:', error);
+      return res.status(500).json({ success: false, error: "Failed to fetch comments" });
+    }
+
+    res.json({ success: true, data: { comments: comments || [] } });
+  } catch (error) {
+    console.error("Error fetching comments:", error);
+    res.status(500).json({ success: false, error: "Failed to fetch comments" });
+  }
+});
+
+app.post("/api/post/comment", async (req, res) => {
+  try {
+    const { postId, workspaceId, userId, comment } = req.body;
+
+    if (!postId || !workspaceId || !userId || !comment) {
+      return res.status(400).json({ success: false, error: "postId, workspaceId, userId, and comment are required" });
+    }
+
+    const { data: newComment, error } = await supabase
+      .from('post_comments')
+      .insert({
+        post_id: postId,
+        workspace_id: workspaceId,
+        user_id: userId,
+        comment: comment.trim(),
+        is_system: false
+      })
+      .select(`
+        id,
+        comment,
+        is_system,
+        created_at,
+        user_id,
+        user_profiles (
+          full_name,
+          email,
+          avatar_url
+        )
+      `)
+      .single();
+
+    if (error) {
+      console.error('Error adding comment:', error);
+      return res.status(500).json({ success: false, error: "Failed to add comment" });
+    }
+
+    res.json({ success: true, data: { comment: newComment } });
+  } catch (error) {
+    console.error("Error adding comment:", error);
+    res.status(500).json({ success: false, error: "Failed to add comment" });
+  }
+});
+
+// =====================================================
+// END POST APPROVAL ROUTES
+// =====================================================
 
 // Get individual post details
 app.get("/api/post/:id", requireActiveProfile, async (req, res) => {

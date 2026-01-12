@@ -83,12 +83,13 @@ module.exports = async function handler(req, res) {
       .order('scheduled_at', { ascending: true });
 
     // Filter by approval status if provided
-    if (status) {
+    if (status && status !== 'all') {
       query = query.eq('approval_status', status);
-    } else {
+    } else if (!status) {
       // Default to showing posts that need action (pending or changes_requested)
       query = query.in('approval_status', ['pending', 'changes_requested']);
     }
+    // If status === 'all', don't filter by approval_status
 
     // Show posts that are pending approval or scheduled
     query = query.in('status', ['pending_approval', 'scheduled']);

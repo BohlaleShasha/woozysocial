@@ -1,3 +1,4 @@
+const { Resend } = require("resend");
 const {
   setCors,
   getSupabase,
@@ -8,7 +9,8 @@ const {
   logError,
   validateRequired,
   isValidUUID,
-  isValidEmail
+  isValidEmail,
+  isServiceConfigured
 } = require("../_utils");
 
 const VALID_ROLES = ['admin', 'editor', 'view_only'];
@@ -86,9 +88,8 @@ module.exports = async function handler(req, res) {
         logError('workspace.invite.checkExisting', existingError, { workspaceId, email });
       }
 
-      if (existingInvite && existingInvite.status === 'pending') {
-        return sendError(res, "An invitation is already pending for this email", ErrorCodes.VALIDATION_ERROR);
-      }
+      // Note: We allow updating pending invitations for resend functionality
+      // The frontend handles the "already sent" warning
 
       // Create or update invitation
       const inviteData = {
@@ -131,12 +132,92 @@ module.exports = async function handler(req, res) {
         invitation = data;
       }
 
-      // Get workspace name for the response
+      // Get workspace name for the email
       const { data: workspace } = await supabase
         .from('workspaces')
         .select('name')
         .eq('id', workspaceId)
         .single();
+
+      // Send email if Resend is configured
+      if (isServiceConfigured('resend')) {
+        const resend = new Resend(process.env.RESEND_API_KEY);
+
+        const { data: inviterData } = await supabase
+          .from('user_profiles')
+          .select('full_name, email')
+          .eq('id', invitedBy)
+          .single();
+
+        const inviterName = inviterData?.full_name || inviterData?.email || 'A team member';
+        const workspaceName = workspace?.name || 'a workspace';
+        const assignedRole = role || 'editor';
+        const appUrl = process.env.FRONTEND_URL || process.env.APP_URL || 'https://woozysocial.com';
+        const inviteLink = `${appUrl}/accept-invite?token=${invitation.invite_token}`;
+
+        try {
+          await resend.emails.send({
+            from: 'Woozy Social <hello@woozysocial.com>',
+            to: [email],
+            subject: `${inviterName} invited you to join ${workspaceName} on Woozy Social`,
+            html: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background-color: #F1F6F4;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td align="center" style="padding: 40px 20px;">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width: 600px; background-color: #ffffff; border-radius: 16px; border: 2px solid #e0e0e0;">
+          <tr>
+            <td style="padding: 40px; text-align: center; background-color: #114C5A; border-radius: 14px 14px 0 0;">
+              <h1 style="margin: 0; color: #FFC801; font-size: 28px; font-weight: 700;">You've been invited!</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px;">
+              <p style="margin: 0 0 20px 0; font-size: 16px; color: #114C5A; line-height: 1.6;">
+                <strong>${inviterName}</strong> has invited you to join <strong>${workspaceName}</strong> on Woozy Social.
+              </p>
+              <p style="margin: 0 0 30px 0; font-size: 16px; color: #114C5A;">
+                Role: <strong>${assignedRole}</strong>
+              </p>
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
+                <tr>
+                  <td style="border-radius: 8px; background-color: #FFC801;">
+                    <a href="${inviteLink}" target="_blank" style="display: inline-block; padding: 16px 32px; font-size: 16px; font-weight: 700; color: #114C5A; text-decoration: none;">
+                      Accept Invitation
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin: 30px 0 0 0; font-size: 14px; color: #666; line-height: 1.6;">
+                This invitation expires in 7 days.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 20px 40px; background-color: #F1F6F4; border-radius: 0 0 14px 14px; border-top: 1px solid #e0e0e0;">
+              <p style="margin: 0; font-size: 12px; color: #666; text-align: center;">
+                If the button doesn't work, copy and paste this link:<br>
+                <a href="${inviteLink}" style="color: #114C5A; word-break: break-all;">${inviteLink}</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`
+          });
+        } catch (emailError) {
+          logError('workspace.invite.sendEmail', emailError, { workspaceId });
+          // Don't fail the request if email fails
+        }
+      }
 
       return sendSuccess(res, {
         invitation: {

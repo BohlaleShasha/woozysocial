@@ -23,15 +23,15 @@ export const ClientApprovals = () => {
 
   useEffect(() => {
     fetchPosts();
-  }, [activeWorkspace, activeTab]);
+  }, [activeWorkspace, activeTab, user]);
 
   const fetchPosts = async () => {
-    if (!activeWorkspace) return;
+    if (!activeWorkspace || !user) return;
 
     try {
       setLoading(true);
       const res = await fetch(
-        `${baseURL}/api/post/pending-approvals?workspaceId=${activeWorkspace.id}&status=${activeTab}`
+        `${baseURL}/api/post/pending-approvals?workspaceId=${activeWorkspace.id}&userId=${user.id}&status=${activeTab}`
       );
 
       if (res.ok) {

@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useWorkspace } from "../../contexts/WorkspaceContext";
 import { baseURL } from "../../utils/constants";
+import { NotificationBell } from "../NotificationBell";
 import "./TopHeader.css";
 
 export const TopHeader = () => {
@@ -131,6 +132,7 @@ export const TopHeader = () => {
         </div>
 
         <div className="header-right">
+          <NotificationBell />
           <div className="profile-section" ref={profileRef}>
             <div
               className="profile-avatar"

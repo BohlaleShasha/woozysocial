@@ -51,42 +51,77 @@ export const ScheduleContent = () => {
   const isClient = workspaceMembership?.role === 'client';
   const canApprove = isClient || workspaceMembership?.role === 'owner' || workspaceMembership?.role === 'admin';
 
-  // Fetch scheduled and published posts
+  // Fetch scheduled and published posts from both Ayrshare AND local database
   const fetchPosts = useCallback(async () => {
-    if (!user) return;
+    if (!user || !activeWorkspace?.id) return;
 
     setLoading(true);
     try {
-      const response = await fetch(`${baseURL}/api/post-history?workspaceId=${activeWorkspace.id}`);
-      if (!response.ok) throw new Error("Failed to fetch posts");
+      // Fetch from both sources in parallel
+      const [historyResponse, pendingResponse] = await Promise.all([
+        fetch(`${baseURL}/api/post-history?workspaceId=${activeWorkspace.id}`),
+        fetch(`${baseURL}/api/post/pending-approvals?workspaceId=${activeWorkspace.id}&userId=${user.id}&status=all`)
+      ]);
 
-      const data = await response.json();
-      // Handle both old format (data.history) and new format (data.data.history)
-      const responseData = data.data || data;
-      const allPosts = responseData.history || [];
+      let allPosts = [];
 
-      // Map posts with their schedule dates
-      // Keep scheduleDate as ISO string to prevent timezone conversion issues
-      const mappedPosts = allPosts.map(post => ({
-        id: post.id,
-        content: post.post || "",
-        platforms: post.platforms || [],
-        scheduleDate: post.scheduleDate,  // Keep as string
-        status: post.status,
-        type: post.type,
-        mediaUrls: post.mediaUrls || [],
-        approvalStatus: post.approval_status || 'pending',
-        requiresApproval: post.requires_approval || false,
-        comments: post.comments || [],
-      }));
+      // Process Ayrshare history
+      if (historyResponse.ok) {
+        const historyData = await historyResponse.json();
+        const responseData = historyData.data || historyData;
+        const ayrshareHistory = responseData.history || [];
 
-      setPosts(mappedPosts);
+        // Map Ayrshare posts
+        const ayrPosts = ayrshareHistory.map(post => ({
+          id: post.id,
+          content: post.post || "",
+          platforms: post.platforms || [],
+          scheduleDate: post.scheduleDate,
+          status: post.status,
+          type: post.type,
+          mediaUrls: post.mediaUrls || [],
+          approvalStatus: 'approved', // Ayrshare posts are already approved/posted
+          requiresApproval: false,
+          comments: post.comments || [],
+          source: 'ayrshare'
+        }));
+        allPosts = [...ayrPosts];
+      }
+
+      // Process pending approvals from local database
+      if (pendingResponse.ok) {
+        const pendingData = await pendingResponse.json();
+        const responseData = pendingData.data || pendingData;
+        const pendingPosts = responseData.posts || [];
+
+        // Map local posts awaiting approval
+        const localPosts = pendingPosts.map(post => ({
+          id: post.id,
+          content: post.post || post.caption || "",
+          platforms: post.platforms || [],
+          scheduleDate: post.schedule_date || post.scheduled_at,
+          status: post.status,
+          type: 'scheduled',
+          mediaUrls: post.media_urls || (post.media_url ? [post.media_url] : []),
+          approvalStatus: post.approval_status || 'pending',
+          requiresApproval: post.requires_approval !== false,
+          comments: [],
+          commentCount: post.commentCount || 0,
+          source: 'local',
+          user_profiles: post.user_profiles
+        }));
+
+        // Add local posts that aren't duplicates (check by not having ayrshare IDs)
+        allPosts = [...allPosts, ...localPosts];
+      }
+
+      setPosts(allPosts);
     } catch (error) {
       console.error("Error fetching posts:", error);
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, activeWorkspace?.id]);
 
   useEffect(() => {
     fetchPosts();
