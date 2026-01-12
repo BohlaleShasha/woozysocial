@@ -33,6 +33,44 @@ async function parseFormData(req) {
   });
 }
 
+// Get request body - handles both JSON and FormData
+async function getRequestBody(req) {
+  const contentType = req.headers['content-type'] || '';
+
+  // If JSON, parse the body
+  if (contentType.includes('application/json')) {
+    // Body might already be parsed by Vercel
+    if (req.body && typeof req.body === 'object') {
+      return { fields: req.body, files: {} };
+    }
+    // Otherwise read and parse
+    return new Promise((resolve, reject) => {
+      let body = '';
+      req.on('data', chunk => body += chunk);
+      req.on('end', () => {
+        try {
+          resolve({ fields: JSON.parse(body), files: {} });
+        } catch (e) {
+          reject(e);
+        }
+      });
+      req.on('error', reject);
+    });
+  }
+
+  // If FormData/multipart, use formidable
+  if (contentType.includes('multipart/form-data')) {
+    return parseFormData(req);
+  }
+
+  // Default: try to use req.body if available
+  if (req.body) {
+    return { fields: req.body, files: {} };
+  }
+
+  return { fields: {}, files: {} };
+}
+
 // Helper to check if workspace has client members who need to approve
 async function workspaceHasClients(supabase, workspaceId) {
   if (!workspaceId) return false;
@@ -83,8 +121,8 @@ module.exports = async function handler(req, res) {
   const supabase = getSupabase();
 
   try {
-    // Parse FormData from request
-    const { fields, files } = await parseFormData(req);
+    // Parse request body (handles both JSON and FormData)
+    const { fields, files } = await getRequestBody(req);
     const { text, networks, scheduledDate, userId, workspaceId, mediaUrl } = fields;
 
     // Validate required fields

@@ -468,26 +468,41 @@ export const ComposeContent = () => {
     setIsLoading(true);
     onClose();
 
-    const formData = new FormData();
-    formData.append("text", post.text);
-    formData.append("userId", user.id);
-    formData.append("workspaceId", activeWorkspace.id);
-
-    // Handle media: either a new file upload or existing URL from draft
-    if (post.media) {
-      formData.append("media", post.media);
-    } else if (mediaPreview && typeof mediaPreview === 'string' && mediaPreview.startsWith('http')) {
-      formData.append("mediaUrl", mediaPreview);
-    }
-
-    formData.append("networks", JSON.stringify(networks));
-    formData.append("scheduledDate", tempScheduledDate.toISOString());
+    // Use JSON for requests without file uploads (better Vercel compatibility)
+    const hasFileUpload = post.media instanceof File;
 
     try {
-      const response = await fetch(`${baseURL}/api/post`, {
-        method: "POST",
-        body: formData
-      });
+      let response;
+
+      if (hasFileUpload) {
+        // Use FormData for file uploads
+        const formData = new FormData();
+        formData.append("text", post.text);
+        formData.append("userId", user.id);
+        formData.append("workspaceId", activeWorkspace.id);
+        formData.append("media", post.media);
+        formData.append("networks", JSON.stringify(networks));
+        formData.append("scheduledDate", tempScheduledDate.toISOString());
+
+        response = await fetch(`${baseURL}/api/post`, {
+          method: "POST",
+          body: formData
+        });
+      } else {
+        // Use JSON for text-only or URL media posts
+        response = await fetch(`${baseURL}/api/post`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: post.text,
+            userId: user.id,
+            workspaceId: activeWorkspace.id,
+            mediaUrl: mediaPreview && typeof mediaPreview === 'string' && mediaPreview.startsWith('http') ? mediaPreview : null,
+            networks: JSON.stringify(networks),
+            scheduledDate: tempScheduledDate.toISOString()
+          })
+        });
+      }
 
       if (response.ok) {
         // Delete draft if this was loaded from a draft
@@ -1248,26 +1263,14 @@ export const ComposeContent = () => {
 
     setIsLoading(true);
 
-    const formData = new FormData();
-    formData.append("text", post.text);
-    formData.append("userId", user.id);
-    formData.append("workspaceId", activeWorkspace.id);
-
-    // Handle media: either a new file upload or existing URL from draft
-    if (post.media) {
-      // New file upload
-      formData.append("media", post.media);
-    } else if (mediaPreview && typeof mediaPreview === 'string' && mediaPreview.startsWith('http')) {
-      // Existing media URL from draft - send as mediaUrl
-      formData.append("mediaUrl", mediaPreview);
-    }
-
-    formData.append("networks", JSON.stringify(networks));
+    // Use JSON for requests without file uploads (better Vercel compatibility)
+    const hasFileUpload = post.media instanceof File;
+    let scheduledTime = null;
 
     if (scheduledDate) {
       // Ensure the scheduled date is in the future
       const now = new Date();
-      const scheduledTime = new Date(scheduledDate);
+      scheduledTime = new Date(scheduledDate);
 
       if (scheduledTime <= now) {
         toast({
@@ -1285,15 +1288,44 @@ export const ComposeContent = () => {
       console.log("  Current time:", now.toISOString());
       console.log("  Scheduled time:", scheduledTime.toISOString());
       console.log("  Time difference (minutes):", (scheduledTime - now) / 1000 / 60);
-
-      formData.append("scheduledDate", scheduledTime.toISOString());
     }
 
     try {
-      const response = await fetch(`${baseURL}/api/post`, {
-        method: "POST",
-        body: formData
-      });
+      let response;
+
+      if (hasFileUpload) {
+        // Use FormData for file uploads
+        const formData = new FormData();
+        formData.append("text", post.text);
+        formData.append("userId", user.id);
+        formData.append("workspaceId", activeWorkspace.id);
+        formData.append("media", post.media);
+        formData.append("networks", JSON.stringify(networks));
+        if (scheduledTime) {
+          formData.append("scheduledDate", scheduledTime.toISOString());
+        }
+
+        response = await fetch(`${baseURL}/api/post`, {
+          method: "POST",
+          body: formData
+        });
+      } else {
+        // Use JSON for text-only or URL media posts
+        const mediaUrl = mediaPreview && typeof mediaPreview === 'string' && mediaPreview.startsWith('http') ? mediaPreview : null;
+
+        response = await fetch(`${baseURL}/api/post`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: post.text,
+            userId: user.id,
+            workspaceId: activeWorkspace.id,
+            mediaUrl,
+            networks: JSON.stringify(networks),
+            scheduledDate: scheduledTime ? scheduledTime.toISOString() : null
+          })
+        });
+      }
 
       if (response.ok) {
         const responseData = await response.json().catch(() => ({}));
