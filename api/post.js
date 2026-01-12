@@ -66,9 +66,10 @@ module.exports = async function handler(req, res) {
 
   try {
     // Debug: Log what we received
-    console.log('POST /api/post - Content-Type:', req.headers['content-type']);
-    console.log('POST /api/post - Body type:', typeof req.body);
-    console.log('POST /api/post - Body:', JSON.stringify(req.body).substring(0, 500));
+    const contentType = req.headers['content-type'] || 'none';
+    const bodyType = typeof req.body;
+    const bodyStr = req.body ? JSON.stringify(req.body).substring(0, 500) : 'undefined/null';
+    console.log('POST /api/post - Content-Type:', contentType, '- Body type:', bodyType, '- Body:', bodyStr);
 
     // Use req.body directly (Vercel parses JSON automatically)
     const { text, networks, scheduledDate, userId, workspaceId, mediaUrl } = req.body || {};
