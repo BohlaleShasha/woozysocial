@@ -65,15 +65,21 @@ module.exports = async function handler(req, res) {
   const supabase = getSupabase();
 
   try {
+    // Debug: Log what we received
+    console.log('POST /api/post - Content-Type:', req.headers['content-type']);
+    console.log('POST /api/post - Body type:', typeof req.body);
+    console.log('POST /api/post - Body:', JSON.stringify(req.body).substring(0, 500));
+
     // Use req.body directly (Vercel parses JSON automatically)
     const { text, networks, scheduledDate, userId, workspaceId, mediaUrl } = req.body || {};
 
     // Validate required fields
     const validation = validateRequired(req.body || {}, ['text', 'networks', 'userId']);
     if (!validation.valid) {
+      // Include debug info in error
       return sendError(
         res,
-        `Missing required fields: ${validation.missing.join(', ')}`,
+        `Missing required fields: ${validation.missing.join(', ')}. Debug: content-type=${req.headers['content-type']}, body-type=${typeof req.body}`,
         ErrorCodes.VALIDATION_ERROR
       );
     }
