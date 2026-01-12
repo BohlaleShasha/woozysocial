@@ -24,7 +24,7 @@ async function workspaceHasClients(supabase, workspaceId) {
       .from('workspace_members')
       .select('id')
       .eq('workspace_id', workspaceId)
-      .eq('role', 'view_only')
+      .in('role', ['client', 'view_only'])
       .limit(1);
 
     return clients && clients.length > 0;

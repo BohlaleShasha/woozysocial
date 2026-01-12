@@ -53,9 +53,10 @@ module.exports = async function handler(req, res) {
       return sendError(res, "Social media service is not configured", ErrorCodes.CONFIG_ERROR);
     }
 
-    let response;
+    // Fetch from Ayrshare
+    let ayrshareHistory = [];
     try {
-      response = await axios.get(`${BASE_AYRSHARE}/history`, {
+      const response = await axios.get(`${BASE_AYRSHARE}/history`, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${process.env.AYRSHARE_API_KEY}`,
@@ -63,87 +64,71 @@ module.exports = async function handler(req, res) {
         },
         timeout: 30000
       });
+      ayrshareHistory = response.data.history || [];
     } catch (axiosError) {
       logError('post-history.ayrshare', axiosError);
-      return sendError(
-        res,
-        "Failed to fetch post history from social media service",
-        ErrorCodes.EXTERNAL_API_ERROR
-      );
+      // Continue with empty Ayrshare history instead of failing
     }
 
-    // Get approval data from Supabase if workspaceId is provided
-    let approvalData = {};
-    let commentsData = {};
+    // Fetch posts from Supabase (including pending approval)
+    let supabasePosts = [];
+    const supabase = getSupabase();
 
-    if (workspaceId) {
-      const supabase = getSupabase();
-      if (supabase) {
-        // Fetch post approvals
-        const { data: approvals, error: approvalError } = await supabase
-          .from('post_approvals')
-          .select('post_id, approval_status, reviewed_by, reviewed_at')
-          .eq('workspace_id', workspaceId);
-
-        if (approvalError) {
-          logError('post-history.getApprovals', approvalError, { workspaceId });
-        }
-
-        if (approvals) {
-          approvals.forEach(a => {
-            approvalData[a.post_id] = a;
-          });
-        }
-
-        // Fetch post comments with user info
-        const { data: comments, error: commentsError } = await supabase
-          .from('post_comments')
-          .select(`
-            id,
-            post_id,
-            comment,
-            is_system,
-            created_at,
-            user_id,
-            user_profiles:user_id (full_name)
-          `)
+    if (workspaceId && supabase) {
+      try {
+        const { data: dbPosts, error: dbError } = await supabase
+          .from('posts')
+          .select('*')
           .eq('workspace_id', workspaceId)
-          .order('created_at', { ascending: true });
+          .order('created_at', { ascending: false });
 
-        if (commentsError) {
-          logError('post-history.getComments', commentsError, { workspaceId });
+        if (!dbError && dbPosts) {
+          supabasePosts = dbPosts.map(post => ({
+            id: post.id,
+            post: post.caption,
+            platforms: post.platforms || [],
+            scheduleDate: post.scheduled_at,
+            status: post.status === 'pending_approval' ? 'scheduled' : post.status,
+            type: post.scheduled_at ? 'schedule' : 'post',
+            mediaUrls: post.media_urls || [],
+            approval_status: post.approval_status || 'pending',
+            requires_approval: post.requires_approval || false,
+            comments: [],
+            created_at: post.created_at,
+            source: 'database',
+            ayr_post_id: post.ayr_post_id
+          }));
         }
-
-        if (comments) {
-          comments.forEach(c => {
-            if (!commentsData[c.post_id]) {
-              commentsData[c.post_id] = [];
-            }
-            commentsData[c.post_id].push({
-              id: c.id,
-              comment: c.comment,
-              is_system: c.is_system,
-              created_at: c.created_at,
-              user_id: c.user_id,
-              user_name: c.user_profiles?.full_name || 'Unknown'
-            });
-          });
-        }
+      } catch (dbErr) {
+        logError('post-history.supabase', dbErr);
       }
     }
 
-    // Merge approval and comment data with history
-    const history = response.data.history || [];
-    const enrichedHistory = history.map(post => ({
-      ...post,
-      approval_status: approvalData[post.id]?.approval_status || 'pending',
-      requires_approval: true,
-      comments: commentsData[post.id] || []
-    }));
+    // Merge: Supabase posts (pending/not in Ayrshare) + Ayrshare history
+    const ayrPostIds = new Set(ayrshareHistory.map(p => p.id));
+    const pendingPosts = supabasePosts.filter(p =>
+      p.approval_status === 'pending' ||
+      p.approval_status === 'rejected' ||
+      !p.ayr_post_id ||
+      !ayrPostIds.has(p.ayr_post_id)
+    );
+
+    // Enrich Ayrshare posts with approval status from DB
+    const enrichedAyrshare = ayrshareHistory.map(ayrPost => {
+      const dbPost = supabasePosts.find(p => p.ayr_post_id === ayrPost.id);
+      return {
+        ...ayrPost,
+        approval_status: dbPost?.approval_status || 'approved',
+        requires_approval: dbPost?.requires_approval || false,
+        comments: dbPost?.comments || []
+      };
+    });
+
+    const allHistory = [...pendingPosts, ...enrichedAyrshare];
 
     return sendSuccess(res, {
-      ...response.data,
-      history: enrichedHistory
+      history: allHistory,
+      count: allHistory.length
     });
 
   } catch (error) {
