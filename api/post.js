@@ -1,4 +1,5 @@
 const axios = require("axios");
+const formidable = require("formidable");
 const {
   setCors,
   getWorkspaceProfileKey,
@@ -14,6 +15,23 @@ const {
 } = require("./_utils");
 
 const BASE_AYRSHARE = "https://api.ayrshare.com/api";
+
+
+// Parse form data using formidable
+async function parseFormData(req) {
+  return new Promise((resolve, reject) => {
+    const form = formidable({ multiples: false });
+    form.parse(req, (err, fields, files) => {
+      if (err) reject(err);
+      // Formidable returns arrays for fields, extract first value
+      const parsed = {};
+      for (const key of Object.keys(fields)) {
+        parsed[key] = Array.isArray(fields[key]) ? fields[key][0] : fields[key];
+      }
+      resolve({ fields: parsed, files });
+    });
+  });
+}
 
 // Helper to check if workspace has client members who need to approve
 async function workspaceHasClients(supabase, workspaceId) {
@@ -65,10 +83,12 @@ module.exports = async function handler(req, res) {
   const supabase = getSupabase();
 
   try {
-    const { text, networks, scheduledDate, userId, workspaceId, mediaUrl } = req.body;
+    // Parse FormData from request
+    const { fields, files } = await parseFormData(req);
+    const { text, networks, scheduledDate, userId, workspaceId, mediaUrl } = fields;
 
     // Validate required fields
-    const validation = validateRequired(req.body, ['text', 'networks', 'userId']);
+    const validation = validateRequired(fields, ['text', 'networks', 'userId']);
     if (!validation.valid) {
       return sendError(
         res,
@@ -273,29 +293,13 @@ module.exports = async function handler(req, res) {
 
   } catch (error) {
     logError('post.handler', error, { method: req.method });
-
-    // Try to save error to database
-    if (supabase) {
-      try {
-        const { text, networks, scheduledDate, userId, workspaceId, mediaUrl } = req.body || {};
-        const { platforms } = parseNetworks(networks || '{}');
-
-        await supabase.from("posts").insert([{
-          user_id: userId,
-          workspace_id: workspaceId,
-          created_by: userId,
-          caption: text,
-          media_urls: mediaUrl ? [mediaUrl] : [],
-          status: 'failed',
-          scheduled_at: scheduledDate ? new Date(scheduledDate).toISOString() : null,
-          platforms: platforms,
-          last_error: error.message
-        }]);
-      } catch (dbErr) {
-        logError('post.save_error', dbErr);
-      }
-    }
-
     return sendError(res, "An unexpected error occurred while posting", ErrorCodes.INTERNAL_ERROR);
   }
+};
+
+// Disable body parsing for FormData - we use formidable
+module.exports.config = {
+  api: {
+    bodyParser: false,
+  },
 };
