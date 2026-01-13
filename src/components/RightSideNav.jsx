@@ -103,13 +103,15 @@ const RightSideNav = () => {
       const response = await fetch(`${baseURL}/api/generate-jwt?userId=${user.id}&workspaceId=${activeWorkspace.id}`);
       if (response.ok) {
         const data = await response.json();
+        // API returns { success: true, data: { url: "..." } }
+        const url = data.data?.url || data.url;
         const width = 800;
         const height = 800;
         const left = window.screen.width / 2 - width / 2;
         const top = window.screen.height / 2 - height / 2;
         // Open the Ayrshare linking URL in a centered popup
         const popup = window.open(
-          data.url,
+          url,
           "LinkSocialAccounts",
           `toolbar=no, location=no, directories=no, status=no, menubar=no, scrollbars=no, resizable=no, copyhistory=no, width=${width}, height=${height}, top=${top}, left=${left}`
         );

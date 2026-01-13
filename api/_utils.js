@@ -517,6 +517,116 @@ function parseBody(req) {
   });
 }
 
+// ============================================
+// AUTHENTICATION MIDDLEWARE
+// ============================================
+
+/**
+ * Check if email is whitelisted for free access
+ */
+function isWhitelistedEmail(email) {
+  const whitelist = [
+    'bobo79752@gmail.com',
+    'bobo@creativecrewstudio.co.uk',
+    'liebenbergmarcell@gmail.com'
+  ];
+  return whitelist.includes(email?.toLowerCase());
+}
+
+/**
+ * Require active profile middleware for Vercel serverless functions
+ * Adapted from Express middleware to work with Vercel's callback pattern
+ *
+ * Usage: return requireActiveProfile(req, res, async () => { ... your handler ... });
+ */
+async function requireActiveProfile(req, res, callback) {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) {
+      return sendError(res, "Database service unavailable", ErrorCodes.CONFIG_ERROR);
+    }
+
+    // Support both GET (query params) and POST (body params)
+    const params = req.method === 'GET' ? req.query : req.body;
+    const { userId, workspaceId } = params;
+
+    console.log(`[requireActiveProfile] Method: ${req.method}, userId: ${userId}, workspaceId: ${workspaceId}`);
+
+    // STEP 1: We need to identify the user making the request
+    let userIdToCheck = userId;
+
+    // If only workspaceId provided, get the owner's userId
+    if (!userId && workspaceId) {
+      const { data: workspaceMember, error: memberError } = await supabase
+        .from('workspace_members')
+        .select('user_id')
+        .eq('workspace_id', workspaceId)
+        .eq('role', 'owner')
+        .single();
+
+      if (memberError || !workspaceMember) {
+        console.error('Error finding workspace owner:', memberError);
+        return sendError(res, "Workspace not found", ErrorCodes.NOT_FOUND);
+      }
+      userIdToCheck = workspaceMember.user_id;
+    }
+
+    if (!userIdToCheck) {
+      return sendError(res, "userId or workspaceId must be provided", ErrorCodes.AUTH_REQUIRED);
+    }
+
+    // STEP 2: Get user profile to check subscription status and whitelist
+    const { data: profile, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('email, subscription_status, is_whitelisted')
+      .eq('id', userIdToCheck)
+      .single();
+
+    if (profileError || !profile) {
+      console.error('Profile lookup error:', profileError, 'for userId:', userIdToCheck);
+      return sendError(res, "User profile not found", ErrorCodes.NOT_FOUND);
+    }
+
+    const isActive = profile.subscription_status === 'active';
+    const isWhitelisted = isWhitelistedEmail(profile.email) || profile.is_whitelisted;
+
+    // STEP 3: Check if workspace has a profile key (NEW: profile keys live on workspaces only)
+    let workspaceHasProfileKey = false;
+    if (workspaceId) {
+      const workspaceProfileKey = await getWorkspaceProfileKey(workspaceId);
+      workspaceHasProfileKey = !!workspaceProfileKey;
+    }
+
+    // Allow access if:
+    // 1. User is whitelisted (can access even without profile key - for initial setup)
+    // 2. User has active subscription AND workspace has profile key
+    // 3. Workspace has profile key (team member access)
+    if (isWhitelisted || (isActive && workspaceHasProfileKey) || workspaceHasProfileKey) {
+      console.log(`[requireActiveProfile] Access granted: whitelisted=${isWhitelisted}, active=${isActive}, workspaceKey=${workspaceHasProfileKey}`);
+      // Call the callback function to continue processing
+      return await callback();
+    }
+
+    // User doesn't have access - return 403
+    console.log(`Access denied for user ${profile.email}: active=${isActive}, whitelisted=${isWhitelisted}, workspaceKey=${workspaceHasProfileKey}`);
+
+    return sendError(
+      res,
+      "An active subscription is required to use this feature",
+      ErrorCodes.SUBSCRIPTION_REQUIRED,
+      {
+        hasWorkspaceProfile: workspaceHasProfileKey,
+        subscriptionStatus: profile.subscription_status,
+        upgradeUrl: '/pricing'
+      }
+    );
+
+  } catch (error) {
+    console.error('Error in requireActiveProfile middleware:', error);
+    return sendError(res, "Authentication check failed", ErrorCodes.INTERNAL_ERROR, error.message);
+  }
+}
+
 module.exports = {
   // Existing exports
   getSupabase,
@@ -525,6 +635,10 @@ module.exports = {
   getWorkspaceProfileKeyForUser,
   setCors,
   parseBody,
+
+  // Authentication
+  requireActiveProfile,
+  isWhitelistedEmail,
 
   // Error handling
   ErrorCodes,

@@ -93,8 +93,10 @@ export const DashboardContent = () => {
     try {
       const res = await fetch(`${baseURL}/api/generate-jwt?${queryParam}`);
       const data = await res.json();
+      // API returns { success: true, data: { url: "..." } }
+      const url = data.data?.url || data.url;
 
-      if (!res.ok || !data.url) {
+      if (!res.ok || !url) {
         console.error("Failed to get JWT URL:", data);
         alert(data.error || "Failed to connect. Please try again.");
         setConnectingPlatform(null);
@@ -108,7 +110,7 @@ export const DashboardContent = () => {
       const top = (window.screen.height - height) / 2;
 
       const popup = window.open(
-        data.url,
+        url,
         'Connect Social Account',
         `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
       );
@@ -116,7 +118,7 @@ export const DashboardContent = () => {
       // Check if popup was blocked
       if (!popup || popup.closed || typeof popup.closed === 'undefined') {
         if (window.confirm('Popup was blocked. Click OK to open in a new tab, or allow popups for this site.')) {
-          window.open(data.url, '_blank');
+          window.open(url, '_blank');
         }
         setConnectingPlatform(null);
         return;

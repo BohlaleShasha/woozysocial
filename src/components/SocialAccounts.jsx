@@ -113,6 +113,11 @@ export const SocialAccounts = () => {
     return () => window.removeEventListener('socialAccountsUpdated', handleAccountsUpdated);
   }, [fetchActiveAccounts]);
 
+  /**
+   * ⚠️ CRITICAL FUNCTION - DO NOT MODIFY ⚠️
+   * Handles social account connection via Ayrshare JWT
+   * See CRITICAL_FEATURES.md for details
+   */
   const handleLink = async () => {
     if (!user || !activeWorkspace) return;
 
@@ -125,7 +130,8 @@ export const SocialAccounts = () => {
         throw new Error(errorData.error || "Failed to generate link");
       }
       const d = await r.json();
-      // API returns { success: true, data: { url: "..." } }
+      // ⚠️ CRITICAL: API returns { success: true, data: { url: "..." } }
+      // Always use d.data?.url || d.url pattern to handle nested response
       const url = d.data?.url || d.url;
 
       if (!url) {

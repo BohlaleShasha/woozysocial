@@ -1,3 +1,19 @@
+/**
+ * ⚠️ CRITICAL ENDPOINT - DO NOT MODIFY WITHOUT TESTING ⚠️
+ *
+ * This endpoint is ESSENTIAL for social account connections.
+ * The entire application depends on this working correctly.
+ *
+ * Response format: { success: true, data: { url: "..." } }
+ *
+ * Frontend components that depend on this:
+ * - SocialAccounts.jsx
+ * - TopHeader.jsx
+ * - DashboardContent.jsx
+ * - RightSideNav.jsx
+ *
+ * See CRITICAL_FEATURES.md for testing checklist before deploying changes.
+ */
 const axios = require("axios");
 const {
   getWorkspaceProfileKey,
