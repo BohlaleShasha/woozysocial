@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useWorkspace } from "../../contexts/WorkspaceContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { baseURL } from "../../utils/constants";
+import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaReddit, FaTelegram, FaPinterest } from "react-icons/fa";
+import { FaTiktok, FaThreads } from "react-icons/fa6";
+import { SiX, SiBluesky } from "react-icons/si";
 import "./ClientCalendar.css";
 
 export const ClientCalendar = () => {

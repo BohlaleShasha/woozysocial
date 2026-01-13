@@ -3,6 +3,9 @@ import { useWorkspace } from "../../contexts/WorkspaceContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { baseURL } from "../../utils/constants";
 import { useToast } from "@chakra-ui/react";
+import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaReddit, FaTelegram, FaPinterest, FaCheck, FaTimes, FaClock, FaEdit } from "react-icons/fa";
+import { FaTiktok, FaThreads } from "react-icons/fa6";
+import { SiX, SiBluesky } from "react-icons/si";
 import "./ClientApprovals.css";
 
 export const ClientApprovals = () => {
@@ -17,9 +20,9 @@ export const ClientApprovals = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const tabs = [
-    { id: "pending", label: "Pending", icon: "⏳" },
-    { id: "approved", label: "Approved", icon: "✅" },
-    { id: "changes_requested", label: "Changes Requested", icon: "📝" }
+    { id: "pending", label: "Pending", icon: FaClock },
+    { id: "approved", label: "Approved", icon: FaCheck },
+    { id: "changes_requested", label: "Changes Requested", icon: FaEdit }
   ];
 
   useEffect(() => {
@@ -130,18 +133,24 @@ export const ClientApprovals = () => {
     });
   };
 
+  const PLATFORM_ICONS = {
+    facebook: FaFacebookF,
+    instagram: FaInstagram,
+    linkedin: FaLinkedinIn,
+    youtube: FaYoutube,
+    tiktok: FaTiktok,
+    twitter: SiX,
+    "x/twitter": SiX,
+    bluesky: SiBluesky,
+    reddit: FaReddit,
+    telegram: FaTelegram,
+    pinterest: FaPinterest,
+    threads: FaThreads
+  };
+
   const getPlatformIcon = (platform) => {
-    const icons = {
-      instagram: "📸",
-      facebook: "📘",
-      twitter: "🐦",
-      linkedin: "💼",
-      tiktok: "🎵",
-      youtube: "📺",
-      pinterest: "📌",
-      threads: "🧵"
-    };
-    return icons[platform.toLowerCase()] || "📱";
+    const IconComponent = PLATFORM_ICONS[platform.toLowerCase()];
+    return IconComponent ? <IconComponent /> : null;
   };
 
   return (
@@ -153,22 +162,25 @@ export const ClientApprovals = () => {
 
       {/* Tabs */}
       <div className="approvals-tabs">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            className={`approval-tab ${activeTab === tab.id ? "active" : ""}`}
-            onClick={() => {
-              setActiveTab(tab.id);
-              setSelectedPost(null);
-            }}
-          >
-            <span className="tab-icon">{tab.icon}</span>
-            <span className="tab-label">{tab.label}</span>
-            {tab.id === "pending" && posts.length > 0 && activeTab === "pending" && (
-              <span className="tab-badge">{posts.length}</span>
-            )}
-          </button>
-        ))}
+        {tabs.map((tab) => {
+          const IconComponent = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              className={`approval-tab ${activeTab === tab.id ? "active" : ""}`}
+              onClick={() => {
+                setActiveTab(tab.id);
+                setSelectedPost(null);
+              }}
+            >
+              <span className="tab-icon"><IconComponent /></span>
+              <span className="tab-label">{tab.label}</span>
+              {tab.id === "pending" && posts.length > 0 && activeTab === "pending" && (
+                <span className="tab-badge">{posts.length}</span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       <div className="approvals-content">
@@ -258,7 +270,10 @@ export const ClientApprovals = () => {
               {(selectedPost.approval_status === 'approved' || selectedPost.approval_status === 'rejected') && (
                 <div className="detail-status">
                   <div className={`status-banner ${selectedPost.approval_status}`}>
-                    {selectedPost.approval_status === 'approved' ? '✅ This post has been approved and scheduled' : '❌ This post was rejected'}
+                    {selectedPost.approval_status === 'approved' ?
+                      <><FaCheck /> This post has been approved and scheduled</> :
+                      <><FaTimes /> This post was rejected</>
+                    }
                   </div>
                 </div>
               )}
@@ -283,21 +298,21 @@ export const ClientApprovals = () => {
                       onClick={() => handleApproval("approve")}
                       disabled={submitting}
                     >
-                      ✅ Approve
+                      <FaCheck /> Approve
                     </button>
                     <button
                       className="action-btn changes"
                       onClick={() => handleApproval("changes_requested")}
                       disabled={submitting}
                     >
-                      📝 Request Changes
+                      <FaEdit /> Request Changes
                     </button>
                     <button
                       className="action-btn reject"
                       onClick={() => handleApproval("reject")}
                       disabled={submitting}
                     >
-                      ❌ Reject
+                      <FaTimes /> Reject
                     </button>
                   </div>
                 </>

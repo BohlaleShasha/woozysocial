@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useWorkspace } from "../../contexts/WorkspaceContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { baseURL } from "../../utils/constants";
+import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaReddit, FaTelegram, FaPinterest, FaCheck, FaTimes } from "react-icons/fa";
+import { FaTiktok, FaThreads } from "react-icons/fa6";
+import { SiX, SiBluesky } from "react-icons/si";
 import "./ClientApproved.css";
 
 export const ClientApproved = () => {
@@ -57,17 +60,24 @@ export const ClientApproved = () => {
     });
   };
 
+  const PLATFORM_ICONS = {
+    facebook: FaFacebookF,
+    instagram: FaInstagram,
+    linkedin: FaLinkedinIn,
+    youtube: FaYoutube,
+    tiktok: FaTiktok,
+    twitter: SiX,
+    "x/twitter": SiX,
+    bluesky: SiBluesky,
+    reddit: FaReddit,
+    telegram: FaTelegram,
+    pinterest: FaPinterest,
+    threads: FaThreads
+  };
+
   const getPlatformIcon = (platform) => {
-    const icons = {
-      instagram: "📸",
-      facebook: "📘",
-      twitter: "🐦",
-      linkedin: "💼",
-      tiktok: "🎵",
-      youtube: "📺",
-      pinterest: "📌"
-    };
-    return icons[platform.toLowerCase()] || "📱";
+    const IconComponent = PLATFORM_ICONS[platform.toLowerCase()];
+    return IconComponent ? <IconComponent /> : null;
   };
 
   return (
@@ -120,7 +130,10 @@ export const ClientApproved = () => {
               <div className="card-content">
                 <div className="card-status">
                   <span className={`status-badge ${post.approval_status}`}>
-                    {post.approval_status === "approved" ? "✅ Approved" : "❌ Rejected"}
+                    {post.approval_status === "approved" ?
+                      <><FaCheck /> Approved</> :
+                      <><FaTimes /> Rejected</>
+                    }
                   </span>
                 </div>
 
