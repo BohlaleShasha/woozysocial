@@ -1,3 +1,21 @@
+/**
+ * ⚠️⚠️⚠️ CRITICAL PAGE - DO NOT MODIFY WITHOUT APPROVAL ⚠️⚠️⚠️
+ *
+ * AcceptInvite Page - Handles workspace invitation acceptance
+ *
+ * This page is CRITICAL for team onboarding. Breaking this breaks the entire
+ * invitation flow and prevents new members from joining workspaces.
+ *
+ * CRITICAL REQUIREMENTS:
+ * - Must parse nested API responses: result.data?.invitation || result.invitation
+ * - Must validate token before showing UI
+ * - Must check email match on backend (security requirement)
+ * - Must refresh workspaces after successful acceptance
+ *
+ * See CRITICAL_FEATURES.md section "Teams & Invitation System"
+ *
+ * Last Stable: January 13, 2026
+ */
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';

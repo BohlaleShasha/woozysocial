@@ -86,18 +86,106 @@ Before deploying changes that touch social account connection:
 
 ---
 
-## 2. Invitation System (CRITICAL)
+## 2. Teams & Invitation System (CRITICAL - DO NOT BREAK)
+
+⚠️ **EXTREMELY CRITICAL** ⚠️ - This system took extensive debugging to get working correctly. DO NOT modify without explicit approval and thorough testing.
+
+### Why This Is Critical
+The Teams/Invitation system is essential for workspace collaboration:
+- Allows inviting team members and clients to workspaces
+- Manages role-based permissions (owner, admin, editor, client, view_only)
+- Controls who can approve posts, manage team, etc.
+- **Breaking this breaks the entire multi-user workflow**
+
+### Database Schema Requirements
+The `workspace_members` table MUST have these columns:
+```sql
+CREATE TABLE workspace_members (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('owner', 'admin', 'editor', 'view_only', 'client')),
+  can_manage_team BOOLEAN DEFAULT false,
+  can_manage_settings BOOLEAN DEFAULT false,
+  can_delete_posts BOOLEAN DEFAULT false,
+  can_approve_posts BOOLEAN DEFAULT false,  -- CRITICAL: Must exist or invitations will fail!
+  joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(workspace_id, user_id)
+);
+```
+
+### RLS Policies (MUST BE CORRECT)
+**Critical RLS Policy** - Without this, invitations will fail silently:
+```sql
+CREATE POLICY "Allow service role full access"
+ON workspace_members
+FOR ALL
+TO service_role
+USING (true)
+WITH CHECK (true);
+```
+
+### Environment Variables Required
+- `APP_URL` - MUST be frontend domain (https://woozysocial.com) NOT API domain
+- `RESEND_API_KEY` - For sending invitation emails
+- `SUPABASE_URL` - Database connection
+- `SUPABASE_SERVICE_ROLE_KEY` - Required for RLS bypass
+
+---
+
+## 3. Invitation System Flow (DO NOT MODIFY)
 
 ### Why This Is Critical
 Team collaboration depends on invitations working correctly.
 
-### Key Endpoints
-- `POST /api/invitations/create` - Create invitation
-- `GET /api/invitations/validate?token=xxx` - Validate token
-- `POST /api/invitations/accept` - Accept invitation
-- `POST /api/invitations/cancel` - Cancel invitation
-- `POST /api/invitations/leave` - Leave workspace
-- `GET /api/invitations/list` - List pending invitations
+### Complete Invitation Flow (All Steps Required)
+
+**Step 1: Create Invitation**
+```
+POST /api/invitations/create
+Body: { workspaceId, email, role, userId }
+→ Creates workspace_invitations record
+→ Sends email with link: APP_URL/accept-invite?token=xxx
+→ Email MUST be sent to exact address
+```
+
+**Step 2: Validate Token**
+```
+GET /api/invitations/validate?token=xxx
+→ Checks invitation exists, not expired, status=pending
+→ Returns invitation details
+```
+
+**Step 3: Accept Invitation**
+```
+POST /api/invitations/accept
+Body: { token, userId }
+→ Validates logged-in email EXACTLY matches invitation email
+→ Inserts into workspace_members (requires RLS policy!)
+→ Sets can_approve_posts based on role
+→ Updates invitation status to 'accepted'
+```
+
+### Critical Files (DO NOT MODIFY)
+**API Endpoints:**
+- `api/invitations/create.js` - Creates invitations, sends emails
+- `api/invitations/validate.js` - Validates invitation tokens
+- `api/invitations/accept.js` - **MOST CRITICAL** - Adds member to workspace
+- `api/invitations/cancel.js` - Cancels pending invitations
+- `api/invitations/leave.js` - Allows members to leave workspace
+- `api/invitations/list.js` - Lists pending invitations
+
+**Frontend Components:**
+- `src/pages/AcceptInvite.jsx` - Invitation acceptance UI
+- `src/components/TeamContent.jsx` - Team management dashboard
+- `src/components/InviteMemberModal.jsx` - Modal for creating invitations
+
+### Common Issues That Were Fixed (DO NOT REINTRODUCE)
+1. ❌ **APP_URL pointing to API domain** - Must be frontend domain (woozysocial.com)
+2. ❌ **Missing can_approve_posts column** - Must exist in workspace_members table
+3. ❌ **RLS blocking inserts** - Must have service_role policy
+4. ❌ **Email mismatch** - Logged-in email must exactly match invitation email
+5. ❌ **Wrong response parsing** - Must use `result.data?.invitation` not `result.invitation`
 
 ### Response Structure
 All invitation endpoints return:

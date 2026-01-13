@@ -1,3 +1,26 @@
+/**
+ * ⚠️⚠️⚠️ CRITICAL COMPONENT - DO NOT MODIFY WITHOUT APPROVAL ⚠️⚠️⚠️
+ *
+ * TeamContent Component - Manages workspace team members and invitations
+ *
+ * This component is CRITICAL for multi-user collaboration. It was extensively
+ * debugged and any changes could break:
+ * - Team member invitations
+ * - Role management
+ * - Permission controls
+ * - Workspace membership
+ *
+ * REQUIRED TESTING before any changes:
+ * 1. Create invitation → verify email sent with correct URL
+ * 2. Accept invitation → verify member added to workspace
+ * 3. Update member role → verify permissions updated
+ * 4. Remove member → verify member deleted
+ * 5. Leave workspace → verify non-owners can leave
+ *
+ * See CRITICAL_FEATURES.md for complete documentation.
+ *
+ * Last Stable: January 13, 2026
+ */
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useWorkspace } from "../contexts/WorkspaceContext";
