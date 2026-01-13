@@ -136,11 +136,21 @@ module.exports = async function handler(req, res) {
     }
 
     // Verify email matches
+    console.log('[accept] Email check:', {
+      userEmail: userProfile.email.toLowerCase(),
+      invitationEmail: invitation.email.toLowerCase(),
+      match: userProfile.email.toLowerCase() === invitation.email.toLowerCase()
+    });
+
     if (userProfile.email.toLowerCase() !== invitation.email.toLowerCase()) {
       return sendError(
         res,
         "This invitation was sent to a different email address",
-        ErrorCodes.FORBIDDEN
+        ErrorCodes.FORBIDDEN,
+        {
+          userEmail: userProfile.email,
+          invitationEmail: invitation.email
+        }
       );
     }
 
@@ -170,7 +180,15 @@ module.exports = async function handler(req, res) {
 
     // Add to workspace
     const permissions = ROLE_PERMISSIONS[invitation.role] || ROLE_PERMISSIONS.editor;
-    const { error: memberError } = await supabase
+
+    console.log('[accept] Adding member to workspace:', {
+      workspace_id: invitation.workspace_id,
+      user_id: userId,
+      role: invitation.role,
+      permissions
+    });
+
+    const { data: insertedMember, error: memberError } = await supabase
       .from('workspace_members')
       .insert({
         workspace_id: invitation.workspace_id,
@@ -180,12 +198,24 @@ module.exports = async function handler(req, res) {
         can_manage_settings: permissions.can_manage_settings,
         can_delete_posts: permissions.can_delete_posts,
         can_approve_posts: permissions.can_approve_posts
-      });
+      })
+      .select();
+
+    console.log('[accept] Insert result:', { insertedMember, memberError });
 
     if (memberError) {
-      console.error('Failed to add member:', memberError);
+      console.error('[accept] Failed to add member:', memberError);
       logError('invitations.accept.addMember', memberError);
-      return sendError(res, "Failed to join workspace", ErrorCodes.DATABASE_ERROR);
+      return sendError(
+        res,
+        "Failed to join workspace",
+        ErrorCodes.DATABASE_ERROR,
+        {
+          error: memberError.message,
+          code: memberError.code,
+          details: memberError.details
+        }
+      );
     }
 
     // Mark invitation as accepted
