@@ -291,42 +291,7 @@ app.post("/api/post", upload.single("media"), requireActiveProfile, async (req, 
     console.log("Full postData:", JSON.stringify(postData, null, 2));
     console.log("=== END FINAL POST DATA ===");
 
-<<<<<<< Updated upstream
-    // If requires approval, save to DB and wait for client approval
-    if (requiresApproval) {
-      const { data: savedPost, error: saveError } = await supabase.from("posts").insert([{
-        user_id: userId,
-        workspace_id: workspaceId,
-        created_by: userId,
-        caption: text,
-        media_urls: postData.mediaUrls || [],
-        status: 'pending_approval',
-        scheduled_at: new Date(scheduledDate).toISOString(),
-        platforms: platforms,
-        approval_status: 'pending',
-        requires_approval: true
-      }]).select().single();
-
-      if (saveError) {
-        console.error("Error saving post for approval:", saveError);
-        return res.status(500).json({
-          error: "Failed to save post for approval",
-          details: saveError.message
-        });
-      }
-
-      console.log("Post saved for client approval:", savedPost?.id);
-      return res.status(200).json({
-        status: 'pending_approval',
-        message: 'Post saved and awaiting client approval',
-        postId: savedPost?.id
-      });
-    }
-
-    // No approval needed - send directly to Ayrshare
-=======
     // Send to Ayrshare
->>>>>>> Stashed changes
     const response = await axios.post(`${BASE_AYRSHARE}/post`, postData, {
       headers: {
         "Content-Type": "application/json",
