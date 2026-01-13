@@ -20,6 +20,11 @@
   max-width: 300px;
 }
 
+.client-header-left img {
+  height: 45px;
+  object-fit: contain;
+}
+
 .client-header-right {
   display: flex;
   align-items: center;
@@ -120,4 +125,26 @@
 .client-dropdown-item:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+@media (max-width: 1024px) {
+  .client-header-left img {
+    height: 50px;
+  }
+}
+
+@media (max-width: 768px) {
+  .client-header {
+    padding: 12px 20px;
+  }
+
+  .client-header-left img {
+    height: 45px;
+  }
+
+  .client-profile-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
 }

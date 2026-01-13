@@ -136,6 +136,11 @@
   max-width: 300px;
 }
 
+.logo-container img {
+  height: 45px;
+  object-fit: contain;
+}
+
 /* Mobile Menu Button */
 .mobile-menu-btn {
   display: none;
@@ -189,6 +194,11 @@
   margin-bottom: 30px;
 }
 
+.mobile-nav-header img {
+  height: 50px;
+  object-fit: contain;
+}
+
 .mobile-nav-close {
   background: none;
   border: none;
@@ -240,6 +250,10 @@
   .logo-container {
     min-width: auto;
     max-width: none;
+  }
+
+  .logo-container img {
+    height: 50px;
   }
 }
 
