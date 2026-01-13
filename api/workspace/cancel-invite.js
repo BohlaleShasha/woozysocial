@@ -29,11 +29,13 @@ module.exports = async function handler(req, res) {
 
   try {
     const body = await parseBody(req);
+    console.log('cancel-invite body:', JSON.stringify(body));
     const { inviteId, workspaceId, userId } = body;
 
     // Validate required fields
     const validation = validateRequired(body, ['inviteId', 'userId']);
     if (!validation.valid) {
+      console.log('cancel-invite validation failed:', validation.missing);
       return sendError(
         res,
         `Missing required fields: ${validation.missing.join(', ')}`,
@@ -42,15 +44,19 @@ module.exports = async function handler(req, res) {
     }
 
     if (!isValidUUID(inviteId) || !isValidUUID(userId)) {
+      console.log('cancel-invite invalid UUID:', { inviteId, userId });
       return sendError(res, "Invalid ID format", ErrorCodes.VALIDATION_ERROR);
     }
 
     // Get the invitation
+    console.log('cancel-invite looking up invitation:', inviteId);
     const { data: invite, error } = await supabase
       .from('workspace_invitations')
       .select('id, workspace_id, status')
       .eq('id', inviteId)
       .single();
+
+    console.log('cancel-invite lookup result:', { invite, error });
 
     if (error || !invite) {
       return sendError(res, "Invitation not found", ErrorCodes.NOT_FOUND);
