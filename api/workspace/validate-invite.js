@@ -57,6 +57,12 @@ module.exports = async function handler(req, res) {
       .single();
 
     if (inviteError || !invitation) {
+      console.error('validate-invite failed:', {
+        tokenPrefix: token.substring(0, 8) + '...',
+        tokenLength: token.length,
+        error: inviteError,
+        hasInvitation: !!invitation
+      });
       logError('workspace.validate-invite.query', inviteError || 'No invitation found', {
         tokenPrefix: token.substring(0, 8) + '...',
         errorCode: inviteError?.code,
