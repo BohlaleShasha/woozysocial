@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useWorkspace } from "../../contexts/WorkspaceContext";
+import { useAuth } from "../../contexts/AuthContext";
 import { baseURL } from "../../utils/constants";
 import "./ClientCalendar.css";
 
 export const ClientCalendar = () => {
   const { activeWorkspace } = useWorkspace();
+  const { user } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,21 +18,22 @@ export const ClientCalendar = () => {
   }, [activeWorkspace, currentDate]);
 
   const fetchPosts = async () => {
-    if (!activeWorkspace) return;
+    if (!activeWorkspace || !user) return;
 
     try {
       setLoading(true);
       const res = await fetch(
-        `${baseURL}/api/post/pending-approvals?workspaceId=${activeWorkspace.id}`
+        `${baseURL}/api/post/pending-approvals?workspaceId=${activeWorkspace.id}&userId=${user.id}&status=all`
       );
 
       if (res.ok) {
         const data = await res.json();
+        const responseData = data.data || data;
         const allPosts = [
-          ...(data.grouped?.pending || []),
-          ...(data.grouped?.changes_requested || []),
-          ...(data.grouped?.approved || []),
-          ...(data.grouped?.rejected || [])
+          ...(responseData.grouped?.pending || []),
+          ...(responseData.grouped?.changes_requested || []),
+          ...(responseData.grouped?.approved || []),
+          ...(responseData.grouped?.rejected || [])
         ];
         setPosts(allPosts);
       }

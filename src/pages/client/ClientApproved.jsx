@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useWorkspace } from "../../contexts/WorkspaceContext";
+import { useAuth } from "../../contexts/AuthContext";
 import { baseURL } from "../../utils/constants";
 import "./ClientApproved.css";
 
 export const ClientApproved = () => {
   const { activeWorkspace } = useWorkspace();
+  const { user } = useAuth();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all"); // all, approved, rejected
@@ -14,18 +16,19 @@ export const ClientApproved = () => {
   }, [activeWorkspace]);
 
   const fetchPosts = async () => {
-    if (!activeWorkspace) return;
+    if (!activeWorkspace || !user) return;
 
     try {
       setLoading(true);
       const res = await fetch(
-        `${baseURL}/api/post/pending-approvals?workspaceId=${activeWorkspace.id}`
+        `${baseURL}/api/post/pending-approvals?workspaceId=${activeWorkspace.id}&userId=${user.id}&status=all`
       );
 
       if (res.ok) {
         const data = await res.json();
-        const approvedPosts = data.grouped?.approved || [];
-        const rejectedPosts = data.grouped?.rejected || [];
+        const responseData = data.data || data;
+        const approvedPosts = responseData.grouped?.approved || [];
+        const rejectedPosts = responseData.grouped?.rejected || [];
         setPosts([...approvedPosts, ...rejectedPosts]);
       }
     } catch (error) {

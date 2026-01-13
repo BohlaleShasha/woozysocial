@@ -18,6 +18,7 @@ export const ClientApprovals = () => {
 
   const tabs = [
     { id: "pending", label: "Pending", icon: "⏳" },
+    { id: "approved", label: "Approved", icon: "✅" },
     { id: "changes_requested", label: "Changes Requested", icon: "📝" }
   ];
 
@@ -253,41 +254,54 @@ export const ClientApprovals = () => {
                 </div>
               </div>
 
-              {/* Comment Input */}
-              <div className="detail-comment">
-                <h3>Feedback (optional for approval)</h3>
-                <textarea
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="Add your feedback or notes here..."
-                  rows={3}
-                />
-              </div>
+              {/* Show status badge for approved/rejected posts */}
+              {(selectedPost.approval_status === 'approved' || selectedPost.approval_status === 'rejected') && (
+                <div className="detail-status">
+                  <div className={`status-banner ${selectedPost.approval_status}`}>
+                    {selectedPost.approval_status === 'approved' ? '✅ This post has been approved and scheduled' : '❌ This post was rejected'}
+                  </div>
+                </div>
+              )}
 
-              {/* Action Buttons */}
-              <div className="detail-actions">
-                <button
-                  className="action-btn approve"
-                  onClick={() => handleApproval("approve")}
-                  disabled={submitting}
-                >
-                  ✅ Approve
-                </button>
-                <button
-                  className="action-btn changes"
-                  onClick={() => handleApproval("changes_requested")}
-                  disabled={submitting}
-                >
-                  📝 Request Changes
-                </button>
-                <button
-                  className="action-btn reject"
-                  onClick={() => handleApproval("reject")}
-                  disabled={submitting}
-                >
-                  ❌ Reject
-                </button>
-              </div>
+              {/* Comment Input - only for pending and changes_requested */}
+              {(selectedPost.approval_status === 'pending' || selectedPost.approval_status === 'changes_requested') && (
+                <>
+                  <div className="detail-comment">
+                    <h3>Feedback (optional for approval)</h3>
+                    <textarea
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      placeholder="Add your feedback or notes here..."
+                      rows={3}
+                    />
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="detail-actions">
+                    <button
+                      className="action-btn approve"
+                      onClick={() => handleApproval("approve")}
+                      disabled={submitting}
+                    >
+                      ✅ Approve
+                    </button>
+                    <button
+                      className="action-btn changes"
+                      onClick={() => handleApproval("changes_requested")}
+                      disabled={submitting}
+                    >
+                      📝 Request Changes
+                    </button>
+                    <button
+                      className="action-btn reject"
+                      onClick={() => handleApproval("reject")}
+                      disabled={submitting}
+                    >
+                      ❌ Reject
+                    </button>
+                  </div>
+                </>
+              )}
             </>
           ) : (
             <div className="no-selection">

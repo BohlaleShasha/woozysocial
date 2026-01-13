@@ -87,8 +87,8 @@ module.exports = async function handler(req, res) {
     }
     // If status === 'all', don't filter by approval_status
 
-    // Show posts that are pending approval or scheduled
-    query = query.in('status', ['pending_approval', 'scheduled']);
+    // Show posts that are pending approval, scheduled, or posted (to include approved posts)
+    query = query.in('status', ['pending_approval', 'scheduled', 'posted']);
 
     const { data: posts, error } = await query;
 

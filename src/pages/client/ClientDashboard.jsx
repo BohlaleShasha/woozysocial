@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useWorkspace } from "../../contexts/WorkspaceContext";
+import { useAuth } from "../../contexts/AuthContext";
 import { baseURL } from "../../utils/constants";
 import "./ClientDashboard.css";
 
 export const ClientDashboard = () => {
   const { activeWorkspace } = useWorkspace();
+  const { user } = useAuth();
   const [stats, setStats] = useState({
     pending: 0,
     changesRequested: 0,
@@ -17,31 +19,33 @@ export const ClientDashboard = () => {
 
   useEffect(() => {
     const fetchDashboardData = async () => {
-      if (!activeWorkspace) return;
+      if (!activeWorkspace || !user) return;
 
       try {
         setLoading(true);
 
-        // Fetch pending approvals to get stats
+        // Fetch all posts to get accurate stats
         const res = await fetch(
-          `${baseURL}/api/post/pending-approvals?workspaceId=${activeWorkspace.id}`
+          `${baseURL}/api/post/pending-approvals?workspaceId=${activeWorkspace.id}&userId=${user.id}&status=all`
         );
 
         if (res.ok) {
           const data = await res.json();
+          const responseData = data.data || data;
+
           setStats({
-            pending: data.counts?.pending || 0,
-            changesRequested: data.counts?.changes_requested || 0,
-            approved: data.counts?.approved || 0,
-            rejected: data.counts?.rejected || 0
+            pending: responseData.counts?.pending || 0,
+            changesRequested: responseData.counts?.changes_requested || 0,
+            approved: responseData.counts?.approved || 0,
+            rejected: responseData.counts?.rejected || 0
           });
 
           // Get recent posts for activity
           const allPosts = [
-            ...(data.grouped?.pending || []),
-            ...(data.grouped?.changes_requested || []),
-            ...(data.grouped?.approved || []),
-            ...(data.grouped?.rejected || [])
+            ...(responseData.grouped?.pending || []),
+            ...(responseData.grouped?.changes_requested || []),
+            ...(responseData.grouped?.approved || []),
+            ...(responseData.grouped?.rejected || [])
           ];
 
           // Sort by date and take last 5
@@ -59,7 +63,7 @@ export const ClientDashboard = () => {
     };
 
     fetchDashboardData();
-  }, [activeWorkspace]);
+  }, [activeWorkspace, user]);
 
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
