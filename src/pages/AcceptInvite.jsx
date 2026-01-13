@@ -40,68 +40,23 @@ export const AcceptInvite = () => {
     try {
       setLoading(true);
 
-      // Try workspace invitation first
       const response = await fetch(`${baseURL}/api/workspace/validate-invite?token=${token}`);
+      const result = await response.json();
 
-      if (response.ok) {
-        const result = await response.json();
-
-        if (result.success && result.invitation) {
-          setInvitation({
-            ...result.invitation,
-            type: 'workspace'
-          });
-          setLoading(false);
-          return;
-        }
-      }
-
-      // Fallback to old team invitation
-      const teamResponse = await fetch(`${baseURL}/api/team/validate-invite?token=${token}`);
-
-      if (!teamResponse.ok) {
-        const result = await teamResponse.json();
+      if (!response.ok) {
         setError(result.error || 'Invitation not found or invalid');
         setLoading(false);
         return;
       }
 
-      const result = await teamResponse.json();
-
-      if (!result.data) {
+      if (result.success && result.invitation) {
+        setInvitation({
+          ...result.invitation,
+          type: 'workspace'
+        });
+      } else {
         setError('Invitation not found or invalid');
-        setLoading(false);
-        return;
       }
-
-      const data = result.data;
-
-      // Check if already accepted
-      if (data.status === 'accepted') {
-        setError('This invitation has already been accepted');
-        setLoading(false);
-        return;
-      }
-
-      // Check if cancelled
-      if (data.status === 'cancelled') {
-        setError('This invitation has been cancelled');
-        setLoading(false);
-        return;
-      }
-
-      // Check if expired
-      const expiresAt = new Date(data.expires_at);
-      if (new Date() > expiresAt) {
-        setError('This invitation has expired');
-        setLoading(false);
-        return;
-      }
-
-      setInvitation({
-        ...data,
-        type: 'team'
-      });
       setLoading(false);
     } catch (error) {
       console.error('Error validating invitation:', error);
@@ -121,19 +76,13 @@ export const AcceptInvite = () => {
     try {
       setAccepting(true);
 
-      // Determine which endpoint to use
-      const endpoint = invitation.type === 'workspace'
-        ? `${baseURL}/api/workspace/accept-invite`
-        : `${baseURL}/api/team/accept-invite`;
-
-      const response = await fetch(endpoint, {
+      const response = await fetch(`${baseURL}/api/workspace/accept-invite`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           inviteToken: token,
-          token: token, // for backwards compatibility
           userId: user.id,
         }),
       });
@@ -148,13 +97,9 @@ export const AcceptInvite = () => {
       // The API has already set last_workspace_id, so it will auto-select
       await refreshWorkspaces();
 
-      // Success! Redirect based on invitation type
-      const redirectPath = invitation.type === 'workspace' ? '/team' : '/team';
-      const message = invitation.type === 'workspace'
-        ? `You have successfully joined ${invitation.workspace?.name || 'the workspace'}!`
-        : 'You have successfully joined the team!';
-
-      navigate(redirectPath, { state: { message } });
+      // Success! Redirect to team page
+      const message = `You have successfully joined ${invitation.workspace?.name || 'the workspace'}!`;
+      navigate('/team', { state: { message } });
     } catch (error) {
       console.error('Error accepting invitation:', error);
       setError(error.message || 'Failed to accept invitation');
