@@ -128,6 +128,8 @@ export const TopHeader = () => {
           ☰
         </button>
 
+        <div style={{ flex: 1 }}></div>
+
         <div className="header-right">
           <NotificationBell />
           <div className="profile-section" ref={profileRef}>
