@@ -74,8 +74,10 @@ module.exports = async function handler(req, res) {
     );
   }
 
+  let userId, tier, successUrl, cancelUrl; // Declare outside try block for error handler access
+
   try {
-    const { userId, tier, successUrl, cancelUrl } = req.body;
+    ({ userId, tier, successUrl, cancelUrl } = req.body);
 
     // Validate required fields
     const validation = validateRequired(req.body, ["userId", "tier"]);
@@ -146,8 +148,8 @@ module.exports = async function handler(req, res) {
         .eq("id", userId);
     }
 
-    // Create checkout session
-    const appUrl = process.env.APP_URL || process.env.FRONTEND_URL || "http://localhost:5173";
+    // Create checkout session - trim to remove any whitespace/newlines from env vars
+    const appUrl = (process.env.APP_URL || process.env.FRONTEND_URL || "http://localhost:5173").trim();
 
     // Debug logging before Stripe API call
     console.log("[STRIPE CHECKOUT] Creating session with:", {
