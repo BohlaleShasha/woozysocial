@@ -13,7 +13,7 @@ const {
   applyRateLimit,
   isServiceConfigured
 } = require("./_utils");
-const { sendPostScheduledNotification } = require("./notifications/helpers");
+const { sendPostScheduledNotification, sendApprovalRequestNotification } = require("./notifications/helpers");
 
 const BASE_AYRSHARE = "https://api.ayrshare.com/api";
 
@@ -269,18 +269,12 @@ module.exports = async function handler(req, res) {
         }
 
         // Send approval request notification to clients (non-blocking)
-        try {
-          const notifyUrl = `${req.headers.origin || process.env.APP_URL || ''}/api/notifications/send-approval-request`;
-          axios.post(notifyUrl, {
+        if (workspaceId) {
+          sendApprovalRequestNotification(supabase, {
             workspaceId,
             postId: savedPost?.id,
-            postCaption: text,
-            scheduledAt: scheduledDate,
             platforms
-          }).catch(err => logError('post.notification.approval', err, { postId: savedPost?.id }));
-        } catch (notifyErr) {
-          // Non-blocking, just log
-          logError('post.notification.approval_setup', notifyErr);
+          }).catch(err => logError('post.notification.approvalRequest', err, { postId: savedPost?.id }));
         }
 
         // Send post scheduled notification to admins/owners (non-blocking)

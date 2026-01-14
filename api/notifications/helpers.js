@@ -500,6 +500,39 @@ async function sendPostPublishedNotification(supabase, { postId, workspaceId, cr
   }
 }
 
+/**
+ * Send approval request notification to clients
+ */
+async function sendApprovalRequestNotification(supabase, { workspaceId, postId, platforms }) {
+  try {
+    // Get all view_only (client) members
+    const { data: clients } = await supabase
+      .from('workspace_members')
+      .select('user_id')
+      .eq('workspace_id', workspaceId)
+      .eq('role', 'view_only');
+
+    if (!clients || clients.length === 0) return;
+
+    const platformList = platforms?.join(', ') || 'multiple platforms';
+
+    const notifications = clients.map(client => ({
+      user_id: client.user_id,
+      workspace_id: workspaceId,
+      post_id: postId,
+      type: 'approval_request',
+      title: 'New Post Awaiting Approval',
+      message: `A new post for ${platformList} needs your approval`,
+      read: false,
+      metadata: {}
+    }));
+
+    await supabase.from('notifications').insert(notifications);
+  } catch (error) {
+    logError('notifications.helpers.approvalRequest', error, { workspaceId, postId });
+  }
+}
+
 module.exports = {
   sendApprovalNotification,
   sendWorkspaceInviteNotification,
@@ -514,5 +547,6 @@ module.exports = {
   sendSocialAccountLinkedNotification,
   sendSocialAccountUnlinkedNotification,
   sendPostFailedNotification,
-  sendPostPublishedNotification
+  sendPostPublishedNotification,
+  sendApprovalRequestNotification
 };
