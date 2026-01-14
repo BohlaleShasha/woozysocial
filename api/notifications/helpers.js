@@ -235,15 +235,27 @@ async function sendNewCommentNotification(supabase, { postId, workspaceId, comme
  */
 async function sendPostScheduledNotification(supabase, { postId, workspaceId, scheduledAt, platforms, createdByUserId }) {
   try {
-    // Notify workspace admins/owners
-    const { data: admins } = await supabase
+    console.log('[sendPostScheduledNotification] Starting...', { workspaceId, postId, createdByUserId });
+
+    // Notify workspace admins/owners (excluding the creator)
+    const { data: admins, error: queryError } = await supabase
       .from('workspace_members')
-      .select('user_id')
+      .select('user_id, role')
       .eq('workspace_id', workspaceId)
       .in('role', ['owner', 'admin'])
       .neq('user_id', createdByUserId);
 
-    if (!admins || admins.length === 0) return;
+    if (queryError) {
+      logError('notifications.helpers.postScheduled.query', queryError, { workspaceId, postId });
+      return;
+    }
+
+    console.log('[sendPostScheduledNotification] Admins found (excluding creator):', admins?.length || 0, 'roles:', admins?.map(a => a.role));
+
+    if (!admins || admins.length === 0) {
+      console.log('[sendPostScheduledNotification] No admins found (or all are creator), skipping notification');
+      return;
+    }
 
     const scheduledDate = new Date(scheduledAt).toLocaleString('en-US', {
       weekday: 'short',
@@ -265,7 +277,15 @@ async function sendPostScheduledNotification(supabase, { postId, workspaceId, sc
       read: false
     }));
 
-    await supabase.from('notifications').insert(notifications);
+    const { data: insertedData, error: insertError } = await supabase
+      .from('notifications')
+      .insert(notifications);
+
+    if (insertError) {
+      logError('notifications.helpers.postScheduled.insert', insertError, { workspaceId, postId, count: notifications.length });
+    } else {
+      console.log('[sendPostScheduledNotification] Successfully created', notifications.length, 'notifications');
+    }
   } catch (error) {
     logError('notifications.helpers.postScheduled', error, { postId, workspaceId });
   }
@@ -503,16 +523,28 @@ async function sendPostPublishedNotification(supabase, { postId, workspaceId, cr
 /**
  * Send approval request notification to clients
  */
-async function sendApprovalRequestNotification(supabase, { workspaceId, postId, platforms }) {
+async function sendApprovalRequestNotification(supabase, { workspaceId, postId, platforms, createdByUserId }) {
   try {
-    // Get all view_only (client) members
-    const { data: clients } = await supabase
-      .from('workspace_members')
-      .select('user_id')
-      .eq('workspace_id', workspaceId)
-      .eq('role', 'view_only');
+    console.log('[sendApprovalRequestNotification] Starting...', { workspaceId, postId, platforms });
 
-    if (!clients || clients.length === 0) return;
+    // Get all view_only and client members (database may use either role name)
+    const { data: clients, error: queryError } = await supabase
+      .from('workspace_members')
+      .select('user_id, role')
+      .eq('workspace_id', workspaceId)
+      .in('role', ['view_only', 'client']);
+
+    if (queryError) {
+      logError('notifications.helpers.approvalRequest.query', queryError, { workspaceId, postId });
+      return;
+    }
+
+    console.log('[sendApprovalRequestNotification] Clients found:', clients?.length || 0, 'roles:', clients?.map(c => c.role));
+
+    if (!clients || clients.length === 0) {
+      console.log('[sendApprovalRequestNotification] No clients found, skipping notification');
+      return;
+    }
 
     const platformList = platforms?.join(', ') || 'multiple platforms';
 
@@ -523,11 +555,20 @@ async function sendApprovalRequestNotification(supabase, { workspaceId, postId, 
       type: 'approval_request',
       title: 'New Post Awaiting Approval',
       message: `A new post for ${platformList} needs your approval`,
+      actor_id: createdByUserId,
       read: false,
-      metadata: {}
+      metadata: { platforms }
     }));
 
-    await supabase.from('notifications').insert(notifications);
+    const { data: insertedData, error: insertError } = await supabase
+      .from('notifications')
+      .insert(notifications);
+
+    if (insertError) {
+      logError('notifications.helpers.approvalRequest.insert', insertError, { workspaceId, postId, count: notifications.length });
+    } else {
+      console.log('[sendApprovalRequestNotification] Successfully created', notifications.length, 'notifications');
+    }
   } catch (error) {
     logError('notifications.helpers.approvalRequest', error, { workspaceId, postId });
   }

@@ -273,7 +273,8 @@ module.exports = async function handler(req, res) {
           sendApprovalRequestNotification(supabase, {
             workspaceId,
             postId: savedPost?.id,
-            platforms
+            platforms,
+            createdByUserId: userId
           }).catch(err => logError('post.notification.approvalRequest', err, { postId: savedPost?.id }));
         }
 
