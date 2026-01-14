@@ -349,7 +349,6 @@ export const TeamContent = () => {
                       <div className="member-details">
                         <h3 className="member-name">
                           {member.profile?.full_name || member.profile?.email || "Unknown user"}
-                          {isOwner && <span className="owner-badge">Owner</span>}
                           {isCurrentUser && !isOwner && <span className="owner-badge" style={{backgroundColor: '#4CAF50'}}>You</span>}
                         </h3>
                         <p className="member-email">
