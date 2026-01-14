@@ -161,9 +161,8 @@ module.exports = async function handler(req, res) {
       timestamp: new Date().toISOString()
     });
 
-    const session = await stripe.checkout.sessions.create({
+    const sessionConfig = {
       customer: customerId,
-      payment_method_types: ["card"],
       line_items: [
         {
           price: priceId,
@@ -189,6 +188,15 @@ module.exports = async function handler(req, res) {
         address: "auto",
         name: "auto",
       },
+    };
+
+    console.log("[STRIPE CHECKOUT] Session config:", JSON.stringify(sessionConfig, null, 2));
+
+    const session = await stripe.checkout.sessions.create(sessionConfig);
+
+    console.log("[STRIPE CHECKOUT] Session created successfully:", {
+      sessionId: session.id,
+      url: session.url
     });
 
     return sendSuccess(res, {
