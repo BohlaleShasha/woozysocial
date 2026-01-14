@@ -349,13 +349,12 @@ export const ScheduleContent = () => {
     });
 
     // Calculate dynamic height for each hour slot
-    // Base height: 80px, add ~65px per additional post
+    // Base height: 60px, add ~38px per post (compact card height)
     const getSlotHeight = (hour) => {
       const postCount = hourPostCounts[hour];
-      if (postCount === 0) return 80;
-      if (postCount === 1) return 80;
-      // For 2+ posts: 80px base + 65px per additional post after the first
-      return 80 + ((postCount - 1) * 65);
+      if (postCount === 0) return 60;
+      // For each post: ~35px card height + 3px gap
+      return Math.max(60, 20 + (postCount * 38));
     };
 
     return (
