@@ -13,6 +13,7 @@ const {
   applyRateLimit,
   isServiceConfigured
 } = require("./_utils");
+const { sendPostScheduledNotification } = require("./notifications/helpers");
 
 const BASE_AYRSHARE = "https://api.ayrshare.com/api";
 
@@ -267,7 +268,7 @@ module.exports = async function handler(req, res) {
           return sendError(res, "Failed to save post for approval", ErrorCodes.DATABASE_ERROR);
         }
 
-        // Send notification to team members (non-blocking)
+        // Send approval request notification to clients (non-blocking)
         try {
           const notifyUrl = `${req.headers.origin || process.env.APP_URL || ''}/api/notifications/send-approval-request`;
           axios.post(notifyUrl, {
@@ -276,10 +277,21 @@ module.exports = async function handler(req, res) {
             postCaption: text,
             scheduledAt: scheduledDate,
             platforms
-          }).catch(err => logError('post.notification', err, { postId: savedPost?.id }));
+          }).catch(err => logError('post.notification.approval', err, { postId: savedPost?.id }));
         } catch (notifyErr) {
           // Non-blocking, just log
-          logError('post.notification_setup', notifyErr);
+          logError('post.notification.approval_setup', notifyErr);
+        }
+
+        // Send post scheduled notification to admins/owners (non-blocking)
+        if (workspaceId) {
+          sendPostScheduledNotification(supabase, {
+            postId: savedPost?.id,
+            workspaceId,
+            scheduledAt: scheduledDate,
+            platforms,
+            createdByUserId: userId
+          }).catch(err => logError('post.notification.scheduled', err, { postId: savedPost?.id }));
         }
 
       return sendSuccess(res, {
