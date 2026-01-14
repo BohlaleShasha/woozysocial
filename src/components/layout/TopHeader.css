@@ -129,6 +129,18 @@
   cursor: not-allowed;
 }
 
+.logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.logo-container img {
+  height: 50px;
+  object-fit: contain;
+}
+
 /* Mobile Menu Button */
 .mobile-menu-btn {
   display: none;
@@ -237,6 +249,10 @@
     padding: 10px 12px;
   }
 
+  .logo-container img {
+    height: 45px;
+  }
+
   .top-header .header-right {
     gap: 12px;
   }
@@ -255,6 +271,10 @@
 }
 
 @media (max-width: 480px) {
+  .logo-container img {
+    height: 40px;
+  }
+
   .mobile-nav {
     width: 90vw;
     padding: 16px;
