@@ -130,7 +130,7 @@
 }
 
 .time-slot {
-  height: 80px;
+  min-height: 80px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -138,6 +138,7 @@
   font-size: 13px;
   color: #6b7280;
   font-weight: 500;
+  flex-shrink: 0;
 }
 
 .day-column {
@@ -177,7 +178,6 @@
 
 .schedule-cell {
   min-height: 80px;
-  height: auto;
   border-bottom: 1px solid #e5e7eb;
   padding: 8px;
   display: flex;
@@ -186,6 +186,8 @@
   overflow: visible;
   background: white;
   position: relative;
+  flex-shrink: 0;
+  align-items: stretch;
 }
 
 /* Add subtle hover effect for cells */

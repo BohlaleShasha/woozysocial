@@ -334,48 +334,81 @@ export const ScheduleContent = () => {
   };
 
   // Week View
-  const renderWeekView = () => (
-    <div className="week-view">
-      <div className="time-column">
-        <div className="time-header"></div>
-        {timeSlots.map((hour) => (
-          <div key={hour} className="time-slot">
-            {hour > 12 ? `${hour - 12}:00 PM` : `${hour}:00 AM`}
+  const renderWeekView = () => {
+    // Calculate the maximum number of posts for each hour across all days
+    const hourPostCounts = {};
+    timeSlots.forEach(hour => {
+      let maxPosts = 0;
+      weekDates.forEach(date => {
+        const postsInSlot = getPostsForSlot(date, hour).length;
+        if (postsInSlot > maxPosts) {
+          maxPosts = postsInSlot;
+        }
+      });
+      hourPostCounts[hour] = maxPosts;
+    });
+
+    // Calculate dynamic height for each hour slot
+    // Base height: 80px, add ~65px per additional post
+    const getSlotHeight = (hour) => {
+      const postCount = hourPostCounts[hour];
+      if (postCount === 0) return 80;
+      if (postCount === 1) return 80;
+      // For 2+ posts: 80px base + 65px per additional post after the first
+      return 80 + ((postCount - 1) * 65);
+    };
+
+    return (
+      <div className="week-view">
+        <div className="time-column">
+          <div className="time-header"></div>
+          {timeSlots.map((hour) => (
+            <div
+              key={hour}
+              className="time-slot"
+              style={{ height: `${getSlotHeight(hour)}px` }}
+            >
+              {hour > 12 ? `${hour - 12}:00 PM` : `${hour}:00 AM`}
+            </div>
+          ))}
+        </div>
+
+        {weekDates.map((date, dayIndex) => (
+          <div key={dayIndex} className="day-column">
+            <div className="day-header">
+              <div className="day-name">{dayNames[date.getDay()]}</div>
+              <div className="day-date">
+                {date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              </div>
+            </div>
+            {timeSlots.map((hour) => {
+              const slotPosts = getPostsForSlot(date, hour);
+              const visiblePosts = slotPosts.slice(0, 2);
+              const remainingCount = slotPosts.length - 2;
+
+              return (
+                <div
+                  key={hour}
+                  className="schedule-cell"
+                  style={{ height: `${getSlotHeight(hour)}px` }}
+                >
+                  {visiblePosts.map(renderPostCard)}
+                  {remainingCount > 0 && (
+                    <div
+                      className="more-posts-indicator"
+                      title={`${remainingCount} more post${remainingCount !== 1 ? 's' : ''} at this time. Click to view all.`}
+                    >
+                      +{remainingCount} more
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         ))}
       </div>
-
-      {weekDates.map((date, dayIndex) => (
-        <div key={dayIndex} className="day-column">
-          <div className="day-header">
-            <div className="day-name">{dayNames[date.getDay()]}</div>
-            <div className="day-date">
-              {date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-            </div>
-          </div>
-          {timeSlots.map((hour) => {
-            const slotPosts = getPostsForSlot(date, hour);
-            const visiblePosts = slotPosts.slice(0, 2);
-            const remainingCount = slotPosts.length - 2;
-
-            return (
-              <div key={hour} className="schedule-cell">
-                {visiblePosts.map(renderPostCard)}
-                {remainingCount > 0 && (
-                  <div
-                    className="more-posts-indicator"
-                    title={`${remainingCount} more post${remainingCount !== 1 ? 's' : ''} at this time. Click to view all.`}
-                  >
-                    +{remainingCount} more
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      ))}
-    </div>
-  );
+    );
+  };
 
   // Month View
   const renderMonthView = () => (
