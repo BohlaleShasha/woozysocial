@@ -130,7 +130,7 @@
 }
 
 .time-slot {
-  height: 100px;
+  height: 120px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -176,13 +176,13 @@
 }
 
 .schedule-cell {
-  min-height: 100px;
+  min-height: 120px;
   height: auto;
   border-bottom: 1px solid #e5e7eb;
-  padding: 8px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   overflow: visible;
   background: white;
   position: relative;
@@ -350,13 +350,8 @@
 }
 
 .post-card.expanded {
-  position: absolute;
-  z-index: 1000;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
-  min-width: 200px;
-  max-width: 280px;
-  left: 8px;
-  right: 8px;
+  z-index: 10;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
 
 .post-card.published {
