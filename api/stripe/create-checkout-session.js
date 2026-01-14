@@ -10,10 +10,8 @@ const {
   applyRateLimit,
 } = require("../_utils");
 
-// Initialize Stripe with API version
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2024-12-18.acacia",
-});
+// Initialize Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Price ID mapping for each tier
 const PRICE_IDS = {
