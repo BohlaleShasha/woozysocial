@@ -102,17 +102,26 @@
 
 /* Week View */
 .week-view {
-  display: flex;
+  display: grid;
+  grid-template-columns: 100px repeat(7, 1fr);
   overflow-x: auto;
   height: calc(100vh - 250px);
   min-height: 700px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
 }
 
 .time-column {
-  min-width: 100px;
-  flex-shrink: 0;
-  border-right: 1px solid #e5e7eb;
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  border-right: 2px solid #e5e7eb;
   background: #f9fafb;
+  position: sticky;
+  left: 0;
+  z-index: 10;
 }
 
 .time-header {
@@ -132,7 +141,8 @@
 }
 
 .day-column {
-  flex: 1;
+  display: flex;
+  flex-direction: column;
   min-width: 160px;
   border-right: 1px solid #e5e7eb;
 }
@@ -167,13 +177,21 @@
 
 .schedule-cell {
   min-height: 70px;
-  height: auto;
+  max-height: 70px;
+  height: 70px;
   border-bottom: 1px solid #e5e7eb;
   padding: 6px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  overflow: visible;
+  overflow: hidden;
+  background: white;
+  position: relative;
+}
+
+/* Add subtle hover effect for cells */
+.schedule-cell:hover {
+  background: #f9fafb;
 }
 
 /* Month View */
@@ -241,6 +259,28 @@
   background: #eef2ff;
   border-radius: 4px;
   text-align: center;
+}
+
+/* More posts indicator for week view (when posts overflow) */
+.more-posts-indicator {
+  font-size: 10px;
+  color: #114C5A;
+  font-weight: 600;
+  padding: 3px 6px;
+  background: #e0f2fe;
+  border: 1px solid #bae6fd;
+  border-radius: 4px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.more-posts-indicator:hover {
+  background: #afabf9;
+  color: white;
+  border-color: #afabf9;
+  transform: translateY(-1px);
 }
 
 /* Schedule List View */

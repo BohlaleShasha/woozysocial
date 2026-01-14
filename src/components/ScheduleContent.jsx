@@ -51,79 +51,31 @@ export const ScheduleContent = () => {
   const isClient = workspaceMembership?.role === 'client';
   const canApprove = isClient || workspaceMembership?.role === 'owner' || workspaceMembership?.role === 'admin';
 
-  // Fetch scheduled and published posts from both Ayrshare AND local database
+  // Fetch scheduled and published posts from unified endpoint (single source of truth)
   const fetchPosts = useCallback(async () => {
     if (!user || !activeWorkspace?.id) return;
 
     setLoading(true);
     try {
-      // Fetch from both sources in parallel
-      const [historyResponse, pendingResponse] = await Promise.all([
-        fetch(`${baseURL}/api/post-history?workspaceId=${activeWorkspace.id}`),
-        fetch(`${baseURL}/api/post/pending-approvals?workspaceId=${activeWorkspace.id}&userId=${user.id}&status=all`)
-      ]);
+      // Fetch from unified endpoint that handles deduplication
+      const response = await fetch(
+        `${baseURL}/api/post/unified-schedule?workspaceId=${activeWorkspace.id}&userId=${user.id}&status=all`
+      );
 
-      let allPosts = [];
-
-      // Process Ayrshare history
-      if (historyResponse.ok) {
-        const historyData = await historyResponse.json();
-        const responseData = historyData.data || historyData;
-        const ayrshareHistory = responseData.history || [];
-
-        // Map Ayrshare posts
-        const ayrPosts = ayrshareHistory.map(post => ({
-          id: post.id,
-          content: post.post || "",
-          platforms: post.platforms || [],
-          scheduleDate: post.scheduleDate,
-          status: post.status,
-          type: post.type,
-          mediaUrls: post.mediaUrls || [],
-          approvalStatus: 'approved', // Ayrshare posts are already approved/posted
-          requiresApproval: false,
-          comments: post.comments || [],
-          source: 'ayrshare'
-        }));
-        allPosts = [...ayrPosts];
+      if (!response.ok) {
+        throw new Error('Failed to fetch posts');
       }
 
-      // Process pending approvals from local database
-      if (pendingResponse.ok) {
-        const pendingData = await pendingResponse.json();
-        const responseData = pendingData.data || pendingData;
-        const pendingPosts = responseData.posts || [];
+      const data = await response.json();
+      const responseData = data.data || data;
+      const unifiedPosts = responseData.posts || [];
 
-        // Map local posts awaiting approval
-        const localPosts = pendingPosts
-          .filter(post => {
-            // Only include posts that DON'T have an ayr_post_id
-            // (posts with ayr_post_id are already in Ayrshare history)
-            return !post.ayr_post_id;
-          })
-          .map(post => ({
-            id: post.id,
-            content: post.post || post.caption || "",
-            platforms: post.platforms || [],
-            scheduleDate: post.schedule_date || post.scheduled_at,
-            status: post.status,
-            type: 'scheduled',
-            mediaUrls: post.media_urls || (post.media_url ? [post.media_url] : []),
-            approvalStatus: post.approval_status || 'pending',
-            requiresApproval: post.requires_approval !== false,
-            comments: [],
-            commentCount: post.commentCount || 0,
-            source: 'local',
-            user_profiles: post.user_profiles
-          }));
-
-        // Add local posts (already filtered to exclude duplicates with ayr_post_id)
-        allPosts = [...allPosts, ...localPosts];
-      }
-
-      setPosts(allPosts);
+      // Posts are already properly formatted and deduplicated by the backend
+      setPosts(unifiedPosts);
     } catch (error) {
       console.error("Error fetching posts:", error);
+      // Set empty array on error to prevent UI issues
+      setPosts([]);
     } finally {
       setLoading(false);
     }
@@ -429,9 +381,20 @@ export const ScheduleContent = () => {
           </div>
           {timeSlots.map((hour) => {
             const slotPosts = getPostsForSlot(date, hour);
+            const visiblePosts = slotPosts.slice(0, 2);
+            const remainingCount = slotPosts.length - 2;
+
             return (
               <div key={hour} className="schedule-cell">
-                {slotPosts.map(renderPostCard)}
+                {visiblePosts.map(renderPostCard)}
+                {remainingCount > 0 && (
+                  <div
+                    className="more-posts-indicator"
+                    title={`${remainingCount} more post${remainingCount !== 1 ? 's' : ''} at this time. Click to view all.`}
+                  >
+                    +{remainingCount} more
+                  </div>
+                )}
               </div>
             );
           })}
