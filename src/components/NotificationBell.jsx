@@ -194,7 +194,7 @@ export const NotificationBell = () => {
       const unreadNotifications = notifications.filter(n => !n.read);
       const unreadIds = unreadNotifications.map(n => n.id);
 
-      // Add to fading out set
+      // Add to fading out set for animation
       setFadingOutIds(prev => new Set([...prev, ...unreadIds]));
 
       // Mark as read in backend
@@ -207,18 +207,16 @@ export const NotificationBell = () => {
         })
       });
 
-      // Update state to mark as read
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-      setUnreadCount(0);
-
-      // After animation completes, remove from dropdown
+      // After animation completes, update state
       setTimeout(() => {
-        setNotifications(prev => prev.filter(n => !unreadIds.includes(n.id)));
+        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        setUnreadCount(0);
         setFadingOutIds(new Set());
       }, 300); // Match CSS transition duration
 
     } catch (error) {
       console.error("Error marking as read:", error);
+      setFadingOutIds(new Set());
     }
   };
 
@@ -226,7 +224,7 @@ export const NotificationBell = () => {
   const handleNotificationClick = (notification) => {
     // Mark as read with animation
     if (!notification.read) {
-      // Add to fading out set
+      // Add to fading out set for animation
       setFadingOutIds(prev => new Set(prev).add(notification.id));
 
       // Mark as read in backend
@@ -239,15 +237,12 @@ export const NotificationBell = () => {
         })
       }).catch(err => console.error(err));
 
-      // Update notification state
-      setNotifications(prev =>
-        prev.map(n => n.id === notification.id ? { ...n, read: true } : n)
-      );
-      setUnreadCount(prev => Math.max(0, prev - 1));
-
-      // After animation, remove from dropdown
+      // After animation, update state
       setTimeout(() => {
-        setNotifications(prev => prev.filter(n => n.id !== notification.id));
+        setNotifications(prev =>
+          prev.map(n => n.id === notification.id ? { ...n, read: true } : n)
+        );
+        setUnreadCount(prev => Math.max(0, prev - 1));
         setFadingOutIds(prev => {
           const newSet = new Set(prev);
           newSet.delete(notification.id);
@@ -407,7 +402,7 @@ export const NotificationBell = () => {
     return date.toLocaleDateString();
   };
 
-  // Group notifications by date
+  // Group notifications by date (only show unread in dropdown)
   const groupedNotifications = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -421,7 +416,10 @@ export const NotificationBell = () => {
       older: []
     };
 
-    notifications.slice(0, 20).forEach(notification => {
+    // Only show unread notifications in the dropdown
+    const unreadNotifications = notifications.filter(n => !n.read);
+
+    unreadNotifications.slice(0, 20).forEach(notification => {
       const notifDate = new Date(notification.created_at);
       notifDate.setHours(0, 0, 0, 0);
 
