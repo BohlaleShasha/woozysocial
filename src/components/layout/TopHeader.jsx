@@ -129,7 +129,7 @@ export const TopHeader = () => {
         </button>
 
         <div className="logo-container">
-          <img src="/assets/woozysocial.png" alt="Woozy Social" style={{ height: '40px', objectFit: 'contain' }} />
+          <img src="/assets/woozysocial.png" alt="Woozy Social" style={{ height: '55px', objectFit: 'contain' }} />
         </div>
 
         <div className="header-right">
@@ -178,7 +178,7 @@ export const TopHeader = () => {
           <img
             src="/assets/woozysocial.png"
             alt="Woozy Social"
-            style={{ height: '40px', objectFit: 'contain' }}
+            style={{ height: '55px', objectFit: 'contain' }}
           />
           <button
             className="mobile-nav-close"
