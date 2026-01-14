@@ -97,34 +97,91 @@
   border-radius: 12px;
   padding: 16px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  animation: fadeInUp 0.4s ease-out;
+  animation-fill-mode: both;
+}
+
+/* Animated top border gradient */
+.post-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #afabf9, #5951e5);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
 }
 
 .post-card:hover {
-  border-color: #444;
+  border-color: #afabf9;
   background: #222;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(175, 171, 249, 0.2);
+}
+
+.post-card:hover::before {
+  transform: scaleX(1);
 }
 
 .post-card.selected {
   border-color: #afabf9;
+  background: #222;
+  box-shadow: 0 8px 24px rgba(175, 171, 249, 0.3);
 }
+
+.post-card.selected::before {
+  transform: scaleX(1);
+}
+
+/* Staggered animation for cards */
+.post-card:nth-child(1) { animation-delay: 0.05s; }
+.post-card:nth-child(2) { animation-delay: 0.1s; }
+.post-card:nth-child(3) { animation-delay: 0.15s; }
+.post-card:nth-child(4) { animation-delay: 0.2s; }
+.post-card:nth-child(5) { animation-delay: 0.25s; }
+.post-card:nth-child(n+6) { animation-delay: 0.3s; }
 
 .post-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .post-platforms {
   display: flex;
-  gap: 8px;
+  gap: 10px;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
 }
 
 .platform-icon {
   font-size: 16px;
-  color: #888;
+  color: #666;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0.6;
 }
+
+.post-card:hover .platform-icon {
+  color: #afabf9;
+  opacity: 1;
+  transform: translateY(-2px) scale(1.1);
+}
+
+/* Staggered animation timing */
+.platform-icon:nth-child(1) { transition-delay: 0s; }
+.platform-icon:nth-child(2) { transition-delay: 0.05s; }
+.platform-icon:nth-child(3) { transition-delay: 0.1s; }
+.platform-icon:nth-child(4) { transition-delay: 0.15s; }
 
 .status-badge {
   padding: 4px 10px;
@@ -133,45 +190,98 @@
   font-weight: 600;
   color: #000;
   text-transform: uppercase;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  letter-spacing: 0.8px;
+}
+
+.post-card:hover .status-badge {
+  transform: scale(1.05);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
 }
 
 .post-preview {
-  font-size: 14px;
+  font-size: 15px;
+  font-weight: 400;
   color: #ccc;
-  line-height: 1.5;
+  line-height: 1.6;
   margin: 0 0 12px 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.post-card:hover .post-preview {
+  color: #e8e8e8;
 }
 
 .post-media-preview {
   margin-bottom: 12px;
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
   max-height: 150px;
+  position: relative;
+}
+
+.post-media-preview::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.3));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.post-card:hover .post-media-preview::after {
+  opacity: 1;
 }
 
 .post-media-preview img {
   width: 100%;
   height: auto;
   object-fit: cover;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.post-card:hover .post-media-preview img {
+  transform: scale(1.05);
 }
 
 .post-card-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding-top: 12px;
+  margin-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .post-date {
-  font-size: 12px;
-  color: #666;
+  font-size: 13px;
+  font-weight: 500;
+  color: #999;
+  letter-spacing: 0.3px;
+}
+
+.post-date::before {
+  content: '📅 ';
+  opacity: 0.6;
+  margin-right: 4px;
 }
 
 .comment-count {
   font-size: 12px;
-  color: #888;
-  background: #333;
-  padding: 4px 8px;
-  border-radius: 4px;
+  font-weight: 600;
+  color: #afabf9;
+  background: rgba(175, 171, 249, 0.15);
+  padding: 6px 10px;
+  border-radius: 12px;
+}
+
+.comment-count::before {
+  content: '💬 ';
+  margin-right: 4px;
 }
 
 /* Post Detail Panel */
@@ -426,4 +536,16 @@
   text-align: center;
   font-size: 14px;
   margin-top: 20px;
+}
+
+/* Card Loading Animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
