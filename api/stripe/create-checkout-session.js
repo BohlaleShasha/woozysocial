@@ -149,6 +149,18 @@ module.exports = async function handler(req, res) {
     // Create checkout session
     const appUrl = process.env.APP_URL || process.env.FRONTEND_URL || "http://localhost:5173";
 
+    // Debug logging before Stripe API call
+    console.log("[STRIPE CHECKOUT] Creating session with:", {
+      customerId,
+      priceId,
+      tier,
+      userId,
+      appUrl,
+      hasStripeKey: !!process.env.STRIPE_SECRET_KEY,
+      stripeKeyPrefix: process.env.STRIPE_SECRET_KEY?.substring(0, 7),
+      timestamp: new Date().toISOString()
+    });
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ["card"],
@@ -184,9 +196,34 @@ module.exports = async function handler(req, res) {
       url: session.url,
     });
   } catch (error) {
-    logError("stripe-checkout", error);
+    // Enhanced error logging with full details
+    console.error("[STRIPE CHECKOUT ERROR]", {
+      errorType: error.type,
+      errorMessage: error.message,
+      errorCode: error.code,
+      errorParam: error.param,
+      statusCode: error.statusCode,
+      requestId: error.requestId,
+      rawError: error.raw,
+      userId,
+      tier,
+      priceId: PRICE_IDS[tier],
+      timestamp: new Date().toISOString()
+    });
 
-    // Handle Stripe-specific errors
+    logError("stripe-checkout", error, {
+      userId,
+      tier,
+      priceId: PRICE_IDS[tier],
+      errorDetails: {
+        type: error.type,
+        code: error.code,
+        param: error.param,
+        statusCode: error.statusCode
+      }
+    });
+
+    // Handle Stripe-specific errors with more details
     if (error.type === "StripeCardError") {
       return sendError(res, error.message, ErrorCodes.VALIDATION_ERROR);
     }
@@ -194,16 +231,21 @@ module.exports = async function handler(req, res) {
     if (error.type === "StripeInvalidRequestError") {
       return sendError(
         res,
-        "Invalid request to payment provider",
+        `Invalid request to payment provider: ${error.message}`,
         ErrorCodes.VALIDATION_ERROR,
-        error.message
+        {
+          stripeError: error.message,
+          param: error.param,
+          code: error.code
+        }
       );
     }
 
     return sendError(
       res,
       "Failed to create checkout session",
-      ErrorCodes.INTERNAL_ERROR
+      ErrorCodes.INTERNAL_ERROR,
+      { errorMessage: error.message }
     );
   }
 };
