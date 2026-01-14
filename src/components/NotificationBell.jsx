@@ -148,7 +148,10 @@ export const NotificationBell = () => {
 
   // Fetch notifications
   const fetchNotifications = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('[NotificationBell] No user, skipping fetch');
+      return;
+    }
 
     try {
       setLoading(true);
@@ -156,14 +159,25 @@ export const NotificationBell = () => {
         ? `${baseURL}/api/notifications/list?userId=${user.id}&workspaceId=${activeWorkspace.id}`
         : `${baseURL}/api/notifications/list?userId=${user.id}`;
 
+      console.log('[NotificationBell] Fetching notifications from:', url);
       const res = await fetch(url);
+      console.log('[NotificationBell] Response status:', res.status, 'ok:', res.ok);
+
       if (res.ok) {
         const data = await res.json();
-        setNotifications(data.notifications || []);
-        setUnreadCount(data.unreadCount || 0);
+        console.log('[NotificationBell] Received data:', data);
+        console.log('[NotificationBell] data.success:', data.success);
+        console.log('[NotificationBell] data.data:', data.data);
+        console.log('[NotificationBell] Notifications count:', data.notifications?.length || data.data?.notifications?.length || 0);
+
+        setNotifications(data.notifications || data.data?.notifications || []);
+        setUnreadCount(data.unreadCount || data.data?.unreadCount || 0);
+        console.log('[NotificationBell] State updated');
+      } else {
+        console.error('[NotificationBell] Response not ok:', res.status);
       }
     } catch (error) {
-      console.error("Error fetching notifications:", error);
+      console.error("[NotificationBell] Error fetching notifications:", error);
     } finally {
       setLoading(false);
     }
