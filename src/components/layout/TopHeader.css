@@ -238,8 +238,7 @@
   }
 
   .logo-container {
-    min-width: auto;
-    max-width: none;
+    display: none;
   }
 }
 
