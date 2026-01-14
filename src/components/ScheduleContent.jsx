@@ -46,6 +46,7 @@ export const ScheduleContent = () => {
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [comment, setComment] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [expandedPostId, setExpandedPostId] = useState(null);
 
   // Check if user is a client (can approve/reject)
   const isClient = workspaceMembership?.role === 'client';
@@ -278,81 +279,114 @@ export const ScheduleContent = () => {
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const timeSlots = Array.from({ length: 18 }, (_, i) => i + 6); // 6 AM to 11 PM
 
-  // Render Post Card
-  const renderPostCard = (post, expanded = false) => {
+  // Render Post Card - Compact with expand/collapse
+  const renderPostCard = (post) => {
     const approvalInfo = APPROVAL_STATUS[post.approvalStatus] || APPROVAL_STATUS.pending;
     const ApprovalIcon = approvalInfo.icon;
+    const isExpanded = expandedPostId === post.id;
+
+    const toggleExpand = (e) => {
+      e.stopPropagation();
+      setExpandedPostId(isExpanded ? null : post.id);
+    };
 
     return (
       <div
         key={post.id}
-        className={`post-card ${post.status === "success" ? "published" : "scheduled"} approval-${post.approvalStatus}`}
-        title="Click to view details"
-        onClick={() => { setSelectedPost(post); setShowCommentModal(true); }}
+        className={`post-card ${post.status === "success" ? "published" : "scheduled"} approval-${post.approvalStatus} ${isExpanded ? 'expanded' : 'compact'}`}
+        onClick={toggleExpand}
       >
-        <div className="post-card-header">
-          <div className="post-approval-badge" style={{ backgroundColor: approvalInfo.color }}>
-            <ApprovalIcon size={10} />
-            <span>{approvalInfo.label}</span>
-          </div>
-          {(post.comments?.length > 0 || post.commentCount > 0) && (
-            <div className="post-comment-count" title={`${post.comments?.length || post.commentCount} comment(s)`}>
-              <FaComment size={10} />
-              <span>{post.comments?.length || post.commentCount}</span>
+        {/* Compact View - Always Visible */}
+        <div className="post-card-compact">
+          <div className="post-card-header">
+            <div className="post-approval-badge" style={{ backgroundColor: approvalInfo.color }}>
+              <ApprovalIcon size={8} />
+              <span>{approvalInfo.label}</span>
             </div>
-          )}
-        </div>
-        <div className="post-card-content">
-          {post.content.substring(0, expanded ? 150 : 80)}{post.content.length > (expanded ? 150 : 80) && "..."}
-        </div>
-        {post.mediaUrls?.length > 0 && (
-          <div className="post-card-media">
-            <img src={post.mediaUrls[0]} alt="Post media" />
+            {(post.comments?.length > 0 || post.commentCount > 0) && (
+              <div className="post-comment-count" title={`${post.comments?.length || post.commentCount} comment(s)`}>
+                <FaComment size={8} />
+                <span>{post.comments?.length || post.commentCount}</span>
+              </div>
+            )}
           </div>
-        )}
-        <div className="post-card-meta">
-          <div className="post-platforms">
-            {post.platforms.map((platform, idx) => {
-              const PlatformIcon = PLATFORM_ICONS[platform?.toLowerCase()];
-              return PlatformIcon ? <PlatformIcon key={idx} size={12} /> : null;
-            })}
+          <div className="post-card-content">
+            {post.content.substring(0, 35)}{post.content.length > 35 && "..."}
           </div>
-          <span className="post-time">
-            {formatTimeInTimezone(post.scheduleDate, profile?.timezone || 'UTC')}
-          </span>
+          <div className="post-card-footer">
+            <div className="post-platforms">
+              {post.platforms.slice(0, 3).map((platform, idx) => {
+                const PlatformIcon = PLATFORM_ICONS[platform?.toLowerCase()];
+                return PlatformIcon ? <PlatformIcon key={idx} size={10} /> : null;
+              })}
+              {post.platforms.length > 3 && <span className="platform-more">+{post.platforms.length - 3}</span>}
+            </div>
+            <span className="post-time">
+              {formatTimeInTimezone(post.scheduleDate, profile?.timezone || 'UTC')}
+            </span>
+          </div>
         </div>
 
-        {/* Approval Actions - only show for scheduled posts */}
-        {post.status !== "success" && canApprove && (
-          <div className="post-approval-actions">
-            {post.approvalStatus !== 'approved' && (
-              <button
-                className="approval-btn approve"
-                onClick={(e) => { e.stopPropagation(); handleApproval(post.id, 'approve'); }}
-                disabled={actionLoading}
-                title="Approve"
-              >
-                <FaCheck size={12} />
-              </button>
+        {/* Expanded View - Only when expanded */}
+        {isExpanded && (
+          <div className="post-card-expanded">
+            {/* Full content */}
+            {post.content.length > 35 && (
+              <div className="post-card-full-content">
+                {post.content}
+              </div>
             )}
-            {post.approvalStatus !== 'rejected' && (
-              <button
-                className="approval-btn reject"
-                onClick={(e) => { e.stopPropagation(); handleApproval(post.id, 'reject'); }}
-                disabled={actionLoading}
-                title="Reject"
-              >
-                <FaTimes size={12} />
-              </button>
+
+            {/* Media */}
+            {post.mediaUrls?.length > 0 && (
+              <div className="post-card-media">
+                <img src={post.mediaUrls[0]} alt="Post media" />
+              </div>
             )}
-            <button
-              className="approval-btn comment"
-              onClick={(e) => { e.stopPropagation(); setSelectedPost(post); setShowCommentModal(true); }}
-              disabled={actionLoading}
-              title="Comment"
-            >
-              <FaComment size={12} />
-            </button>
+
+            {/* All platforms */}
+            {post.platforms.length > 3 && (
+              <div className="post-card-all-platforms">
+                {post.platforms.map((platform, idx) => {
+                  const PlatformIcon = PLATFORM_ICONS[platform?.toLowerCase()];
+                  return PlatformIcon ? <PlatformIcon key={idx} size={12} /> : null;
+                })}
+              </div>
+            )}
+
+            {/* Approval Actions - only show for scheduled posts */}
+            {post.status !== "success" && canApprove && (
+              <div className="post-approval-actions">
+                {post.approvalStatus !== 'approved' && (
+                  <button
+                    className="approval-btn approve"
+                    onClick={(e) => { e.stopPropagation(); handleApproval(post.id, 'approve'); }}
+                    disabled={actionLoading}
+                    title="Approve"
+                  >
+                    <FaCheck size={12} /> Approve
+                  </button>
+                )}
+                {post.approvalStatus !== 'rejected' && (
+                  <button
+                    className="approval-btn reject"
+                    onClick={(e) => { e.stopPropagation(); handleApproval(post.id, 'reject'); }}
+                    disabled={actionLoading}
+                    title="Reject"
+                  >
+                    <FaTimes size={12} /> Reject
+                  </button>
+                )}
+                <button
+                  className="approval-btn comment"
+                  onClick={(e) => { e.stopPropagation(); setSelectedPost(post); setShowCommentModal(true); }}
+                  disabled={actionLoading}
+                  title="Comment"
+                >
+                  <FaComment size={12} /> Comment
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
