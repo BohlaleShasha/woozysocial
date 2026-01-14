@@ -11,6 +11,7 @@ const {
   isValidUUID,
   isServiceConfigured
 } = require("../_utils");
+const { sendSocialAccountUnlinkedNotification } = require("../notifications/helpers");
 
 const BASE_AYRSHARE = "https://api.ayrshare.com/api";
 
@@ -117,6 +118,37 @@ module.exports = async function handler(req, res) {
     }
 
     if (response.data.status === "success" || response.status === 200) {
+      // Send notification to workspace admins (non-blocking)
+      if (workspaceId) {
+        try {
+          // Get user's name for notification
+          const { data: userProfile } = await supabase
+            .from('user_profiles')
+            .select('full_name, email')
+            .eq('id', userId)
+            .single();
+
+          const userName = userProfile?.full_name || userProfile?.email || 'A team member';
+
+          // Get workspace name
+          const { data: workspace } = await supabase
+            .from('workspaces')
+            .select('name')
+            .eq('id', workspaceId)
+            .single();
+
+          sendSocialAccountUnlinkedNotification(supabase, {
+            workspaceId,
+            platform,
+            unlinkedByUserId: userId,
+            unlinkedByName: userName
+          }).catch(err => logError('social.disconnect.notification', err));
+        } catch (notifyErr) {
+          // Non-blocking, just log
+          logError('social.disconnect.notification_setup', notifyErr);
+        }
+      }
+
       return sendSuccess(res, {
         message: `${platform} disconnected successfully`
       });

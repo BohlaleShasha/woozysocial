@@ -162,13 +162,14 @@ async function sendMemberJoinedNotification(supabase, { workspaceId, newMemberNa
 
 /**
  * Send notification when a new comment is added to a post
+ * Works for both published posts and to-be-posted (pending approval) posts
  */
 async function sendNewCommentNotification(supabase, { postId, workspaceId, commenterId, commenterName, comment }) {
   try {
-    // Get the post creator and other commenters
+    // Get the post details including status
     const { data: post } = await supabase
       .from('posts')
-      .select('created_by')
+      .select('created_by, status, approval_status')
       .eq('id', postId)
       .single();
 
@@ -189,7 +190,27 @@ async function sendNewCommentNotification(supabase, { postId, workspaceId, comme
       }
     });
 
+    // For to-be-posted posts (pending approval), also notify approvers
+    if (post?.status === 'pending_approval' || post?.approval_status === 'pending') {
+      const { data: approvers } = await supabase
+        .from('workspace_members')
+        .select('user_id')
+        .eq('workspace_id', workspaceId)
+        .in('role', ['client', 'view_only', 'owner', 'admin'])
+        .neq('user_id', commenterId);
+
+      approvers?.forEach(approver => {
+        if (approver.user_id !== commenterId) {
+          usersToNotify.add(approver.user_id);
+        }
+      });
+    }
+
     if (usersToNotify.size === 0) return;
+
+    // Customize message based on post status
+    const isToBePosted = post?.status === 'pending_approval' || post?.approval_status === 'pending';
+    const postContext = isToBePosted ? 'a post awaiting approval' : 'a post';
 
     const notifications = Array.from(usersToNotify).map(userId => ({
       user_id: userId,
@@ -197,9 +218,9 @@ async function sendNewCommentNotification(supabase, { postId, workspaceId, comme
       post_id: postId,
       type: 'new_comment',
       title: 'New Comment',
-      message: `${commenterName} commented on a post: "${comment.substring(0, 50)}${comment.length > 50 ? '...' : ''}"`,
+      message: `${commenterName} commented on ${postContext}: "${comment.substring(0, 50)}${comment.length > 50 ? '...' : ''}"`,
       actor_id: commenterId,
-      metadata: {},
+      metadata: { isToBePosted },
       read: false
     }));
 
@@ -279,6 +300,206 @@ async function sendInboxMessageNotification(supabase, { workspaceId, platform, s
   }
 }
 
+/**
+ * Send notification when a workspace invitation is cancelled
+ */
+async function sendInviteCancelledNotification(supabase, { email, workspaceId, workspaceName, cancelledByUserId }) {
+  try {
+    // Check if the user exists
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .eq('email', email.toLowerCase())
+      .single();
+
+    if (!userProfile) return; // User doesn't have an account yet
+
+    await supabase.from('notifications').insert({
+      user_id: userProfile.id,
+      workspace_id: workspaceId,
+      type: 'invite_cancelled',
+      title: 'Invitation Cancelled',
+      message: `Your invitation to join ${workspaceName} has been cancelled.`,
+      actor_id: cancelledByUserId,
+      metadata: {},
+      read: false
+    });
+  } catch (error) {
+    logError('notifications.helpers.inviteCancelled', error, { email, workspaceId });
+  }
+}
+
+/**
+ * Send notification when a member is removed from workspace
+ */
+async function sendMemberRemovedNotification(supabase, { removedUserId, workspaceId, workspaceName, removedByUserId, removedByName }) {
+  try {
+    await supabase.from('notifications').insert({
+      user_id: removedUserId,
+      workspace_id: workspaceId,
+      type: 'member_removed',
+      title: 'Removed from Workspace',
+      message: `You have been removed from ${workspaceName} by ${removedByName}.`,
+      actor_id: removedByUserId,
+      metadata: {},
+      read: false
+    });
+  } catch (error) {
+    logError('notifications.helpers.memberRemoved', error, { removedUserId, workspaceId });
+  }
+}
+
+/**
+ * Send notification when a social account is linked to workspace
+ */
+async function sendSocialAccountLinkedNotification(supabase, { workspaceId, platform, linkedByUserId, linkedByName }) {
+  try {
+    // Notify workspace admins/owners (except the person who linked it)
+    const { data: admins } = await supabase
+      .from('workspace_members')
+      .select('user_id')
+      .eq('workspace_id', workspaceId)
+      .in('role', ['owner', 'admin'])
+      .neq('user_id', linkedByUserId);
+
+    if (!admins || admins.length === 0) return;
+
+    const platformLabels = {
+      'facebook': 'Facebook',
+      'instagram': 'Instagram',
+      'twitter': 'Twitter',
+      'linkedin': 'LinkedIn',
+      'tiktok': 'TikTok',
+      'youtube': 'YouTube'
+    };
+
+    const notifications = admins.map(admin => ({
+      user_id: admin.user_id,
+      workspace_id: workspaceId,
+      type: 'social_account_linked',
+      title: 'Social Account Linked',
+      message: `${linkedByName} connected ${platformLabels[platform] || platform} to the workspace.`,
+      actor_id: linkedByUserId,
+      metadata: { platform },
+      read: false
+    }));
+
+    await supabase.from('notifications').insert(notifications);
+  } catch (error) {
+    logError('notifications.helpers.socialAccountLinked', error, { workspaceId, platform });
+  }
+}
+
+/**
+ * Send notification when a social account is unlinked from workspace
+ */
+async function sendSocialAccountUnlinkedNotification(supabase, { workspaceId, platform, unlinkedByUserId, unlinkedByName }) {
+  try {
+    // Notify workspace admins/owners (except the person who unlinked it)
+    const { data: admins } = await supabase
+      .from('workspace_members')
+      .select('user_id')
+      .eq('workspace_id', workspaceId)
+      .in('role', ['owner', 'admin'])
+      .neq('user_id', unlinkedByUserId);
+
+    if (!admins || admins.length === 0) return;
+
+    const platformLabels = {
+      'facebook': 'Facebook',
+      'instagram': 'Instagram',
+      'twitter': 'Twitter',
+      'linkedin': 'LinkedIn',
+      'tiktok': 'TikTok',
+      'youtube': 'YouTube'
+    };
+
+    const notifications = admins.map(admin => ({
+      user_id: admin.user_id,
+      workspace_id: workspaceId,
+      type: 'social_account_unlinked',
+      title: 'Social Account Disconnected',
+      message: `${unlinkedByName} disconnected ${platformLabels[platform] || platform} from the workspace.`,
+      actor_id: unlinkedByUserId,
+      metadata: { platform },
+      read: false
+    }));
+
+    await supabase.from('notifications').insert(notifications);
+  } catch (error) {
+    logError('notifications.helpers.socialAccountUnlinked', error, { workspaceId, platform });
+  }
+}
+
+/**
+ * Send notification when a post fails to publish
+ */
+async function sendPostFailedNotification(supabase, { postId, workspaceId, createdByUserId, platforms, errorMessage }) {
+  try {
+    // Get workspace admins/owners to notify
+    const { data: admins } = await supabase
+      .from('workspace_members')
+      .select('user_id')
+      .eq('workspace_id', workspaceId)
+      .in('role', ['owner', 'admin', 'editor']);
+
+    if (!admins || admins.length === 0) return;
+
+    // Always notify the post creator
+    const usersToNotify = new Set([createdByUserId]);
+    admins.forEach(admin => usersToNotify.add(admin.user_id));
+
+    const notifications = Array.from(usersToNotify).map(userId => ({
+      user_id: userId,
+      workspace_id: workspaceId,
+      post_id: postId,
+      type: 'post_failed',
+      title: 'Post Failed to Publish',
+      message: `A post scheduled for ${platforms.join(', ')} failed to publish. ${errorMessage ? 'Error: ' + errorMessage.substring(0, 100) : 'Please check the post details.'}`,
+      actor_id: createdByUserId,
+      metadata: { platforms, errorMessage },
+      read: false
+    }));
+
+    await supabase.from('notifications').insert(notifications);
+  } catch (error) {
+    logError('notifications.helpers.postFailed', error, { postId, workspaceId });
+  }
+}
+
+/**
+ * Send notification when a post is published immediately (Post Now)
+ */
+async function sendPostPublishedNotification(supabase, { postId, workspaceId, createdByUserId, platforms }) {
+  try {
+    // Notify workspace admins/owners (except the person who posted)
+    const { data: admins } = await supabase
+      .from('workspace_members')
+      .select('user_id')
+      .eq('workspace_id', workspaceId)
+      .in('role', ['owner', 'admin'])
+      .neq('user_id', createdByUserId);
+
+    if (!admins || admins.length === 0) return;
+
+    const notifications = admins.map(admin => ({
+      user_id: admin.user_id,
+      workspace_id: workspaceId,
+      post_id: postId,
+      type: 'post_published',
+      title: 'Post Published',
+      message: `A new post has been published to ${platforms.join(', ')}.`,
+      actor_id: createdByUserId,
+      metadata: { platforms },
+      read: false
+    }));
+
+    await supabase.from('notifications').insert(notifications);
+  } catch (error) {
+    logError('notifications.helpers.postPublished', error, { postId, workspaceId });
+  }
+}
+
 module.exports = {
   sendApprovalNotification,
   sendWorkspaceInviteNotification,
@@ -287,5 +508,11 @@ module.exports = {
   sendMemberJoinedNotification,
   sendNewCommentNotification,
   sendPostScheduledNotification,
-  sendInboxMessageNotification
+  sendInboxMessageNotification,
+  sendInviteCancelledNotification,
+  sendMemberRemovedNotification,
+  sendSocialAccountLinkedNotification,
+  sendSocialAccountUnlinkedNotification,
+  sendPostFailedNotification,
+  sendPostPublishedNotification
 };

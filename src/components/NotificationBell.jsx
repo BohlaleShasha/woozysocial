@@ -46,6 +46,11 @@ const NOTIFICATION_CONFIG = {
     route: "/team",
     color: "#6b7280"
   },
+  invite_cancelled: {
+    icon: "🚫",
+    route: "/team",
+    color: "#ef4444"
+  },
   role_changed: {
     icon: "👤",
     route: "/team",
@@ -94,6 +99,18 @@ const NOTIFICATION_CONFIG = {
     icon: "📣",
     route: "/approvals",
     color: "#8b5cf6"
+  },
+
+  // Social Accounts
+  social_account_linked: {
+    icon: "🔗",
+    route: "/settings/social-accounts",
+    color: "#10b981"
+  },
+  social_account_unlinked: {
+    icon: "🔓",
+    route: "/settings/social-accounts",
+    color: "#f59e0b"
   },
 
   // Social Inbox

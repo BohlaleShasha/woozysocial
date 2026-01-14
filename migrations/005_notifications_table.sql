@@ -52,19 +52,24 @@ ALTER TABLE notifications ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ;
 --   'workspace_invite'      - Invited to join workspace
 --   'invite_accepted'       - Someone accepted your invite
 --   'invite_declined'       - Someone declined your invite
+--   'invite_cancelled'      - Your invitation was cancelled
 --   'role_changed'          - Your role in workspace changed
 --   'member_joined'         - New member joined workspace
 --   'member_removed'        - Member was removed from workspace
 --
 -- Posts/Scheduling:
 --   'post_scheduled'        - Post was scheduled
---   'post_published'        - Post was published successfully
+--   'post_published'        - Post was published successfully (immediate or scheduled)
 --   'post_failed'           - Post failed to publish
 --   'post_reminder'         - Reminder about upcoming post
 --
 -- Comments:
 --   'new_comment'           - New comment on a post you're involved with
 --   'comment_mention'       - Someone mentioned you in a comment
+--
+-- Social Accounts:
+--   'social_account_linked'   - Social account connected to workspace
+--   'social_account_unlinked' - Social account disconnected from workspace
 --
 -- Social Inbox:
 --   'inbox_message'         - New message in social inbox
