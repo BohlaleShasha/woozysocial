@@ -77,15 +77,15 @@
 }
 
 .subscription-badge strong {
-  color: #6961f6;
+  color: #afabf9;
   text-transform: capitalize;
 }
 
 .btn-manage {
   padding: 10px 20px;
   background: transparent;
-  border: 1px solid #6961f6;
-  color: #6961f6;
+  border: 1px solid #afabf9;
+  color: #afabf9;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
@@ -97,7 +97,7 @@
 }
 
 .btn-manage:hover:not(:disabled) {
-  background: #6961f6;
+  background: #afabf9;
   color: #000;
 }
 
@@ -147,7 +147,7 @@
 }
 
 .pricing-card.popular {
-  border-color: #6961f6;
+  border-color: #afabf9;
   box-shadow: 0 0 40px rgba(255, 200, 1, 0.15);
 }
 
@@ -160,7 +160,7 @@
   top: -12px;
   left: 50%;
   transform: translateX(-50%);
-  background: #6961f6;
+  background: #afabf9;
   color: #000;
   padding: 4px 16px;
   border-radius: 20px;
@@ -283,8 +283,8 @@
 }
 
 .btn-select.btn-popular {
-  background: #6961f6;
-  border-color: #6961f6;
+  background: #afabf9;
+  border-color: #afabf9;
   color: #000;
 }
 
@@ -332,7 +332,7 @@
 }
 
 .contact-info a {
-  color: #6961f6;
+  color: #afabf9;
   text-decoration: none;
 }
 

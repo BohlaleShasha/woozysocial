@@ -32,7 +32,7 @@
 }
 
 .client-profile-avatar {
-  background-color: #6961f6;
+  background-color: #afabf9;
   border-radius: 19.5px;
   height: 39px;
   min-width: 39px;
@@ -87,7 +87,7 @@
 .client-dropdown-role {
   font-size: 11px;
   font-weight: 500;
-  color: #6961f6;
+  color: #afabf9;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }

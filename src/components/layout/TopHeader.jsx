@@ -128,10 +128,6 @@ export const TopHeader = () => {
           ☰
         </button>
 
-        <div className="logo-container">
-          <img src="/assets/woozysocial.png" alt="Woozy Social" />
-        </div>
-
         <div className="header-right">
           <NotificationBell />
           <div className="profile-section" ref={profileRef}>

@@ -74,7 +74,7 @@
 .form-group textarea:focus,
 .form-group select:focus {
   outline: none;
-  border-color: #6961f6;
+  border-color: #afabf9;
   box-shadow: 0 0 0 3px rgba(255, 200, 1, 0.15);
 }
 
@@ -84,7 +84,7 @@
 }
 
 .save-button {
-  background-color: #6961f6;
+  background-color: #afabf9;
   color: #000;
   border: none;
   padding: 12px 24px;

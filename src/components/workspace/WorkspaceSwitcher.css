@@ -36,7 +36,7 @@
   height: 32px;
   border-radius: 6px;
   overflow: hidden;
-  background-color: #6961f6;
+  background-color: #afabf9;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -186,7 +186,7 @@
 
 .workspace-action-btn.edit:hover {
   background: #FFF9E6;
-  color: #6961f6;
+  color: #afabf9;
 }
 
 .workspace-action-btn.delete:hover {
@@ -207,7 +207,7 @@
   height: 36px;
   border-radius: 6px;
   overflow: hidden;
-  background-color: #6961f6;
+  background-color: #afabf9;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -293,7 +293,7 @@
 }
 
 .dropdown-action.add-business {
-  color: #6961f6;
+  color: #afabf9;
   font-weight: 600;
 }
 
@@ -506,7 +506,7 @@
 }
 
 .workspace-modal-body input:focus {
-  border-color: #6961f6;
+  border-color: #afabf9;
   box-shadow: 0 0 0 3px rgba(255, 200, 1, 0.15);
 }
 
@@ -551,7 +551,7 @@
 }
 
 .modal-btn.primary {
-  background: #6961f6;
+  background: #afabf9;
   color: #000;
 }
 

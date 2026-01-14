@@ -44,14 +44,14 @@
 }
 
 .approval-tab:hover {
-  border-color: #6961f6;
-  color: #6961f6;
+  border-color: #afabf9;
+  color: #afabf9;
   opacity: 1;
 }
 
 .approval-tab.active {
-  border-color: #6961f6;
-  color: #6961f6;
+  border-color: #afabf9;
+  color: #afabf9;
   opacity: 1;
 }
 
@@ -60,7 +60,7 @@
 }
 
 .tab-badge {
-  background: #6961f6;
+  background: #afabf9;
   color: #000000;
   font-size: 11px;
   font-weight: 700;
@@ -114,7 +114,7 @@
 
 .post-item.selected {
   background-color: #fff9e6;
-  border-left: 3px solid #6961f6;
+  border-left: 3px solid #afabf9;
 }
 
 .post-item-content {
@@ -288,7 +288,7 @@
 
 .detail-comment textarea:focus {
   outline: none;
-  border-color: #6961f6;
+  border-color: #afabf9;
 }
 
 /* Action Buttons */

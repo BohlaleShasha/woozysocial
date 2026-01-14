@@ -40,7 +40,7 @@
 }
 
 .top-header .profile-avatar {
-  background-color: #6961f6;
+  background-color: #afabf9;
   border-radius: 19.5px;
   height: 39px;
   min-width: 39px;
@@ -129,18 +129,6 @@
   cursor: not-allowed;
 }
 
-.logo-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-}
-
-.logo-container img {
-  height: 50px;
-  object-fit: contain;
-}
-
 /* Mobile Menu Button */
 .mobile-menu-btn {
   display: none;
@@ -224,8 +212,8 @@
 
 .mobile-nav-item:hover,
 .mobile-nav-item.active {
-  border-color: #6961f6;
-  color: #6961f6;
+  border-color: #afabf9;
+  color: #afabf9;
 }
 
 /* Responsive Styles */
@@ -249,10 +237,6 @@
     padding: 10px 12px;
   }
 
-  .logo-container img {
-    height: 45px;
-  }
-
   .top-header .header-right {
     gap: 12px;
   }
@@ -271,10 +255,6 @@
 }
 
 @media (max-width: 480px) {
-  .logo-container img {
-    height: 40px;
-  }
-
   .mobile-nav {
     width: 90vw;
     padding: 16px;
