@@ -373,13 +373,13 @@ export const ScheduleContent = () => {
     });
 
     // Calculate dynamic height for each hour slot
-    // Base height: 70px, add 40px per post to ensure proper spacing
+    // Each post card is approximately 50-55px tall with padding
     const getSlotHeight = (hour) => {
       const postCount = hourPostCounts[hour];
       if (postCount === 0) return 70;
-      // Base padding (20px) + (40px per card including gap)
-      // This ensures cards never overlap
-      return Math.max(70, 20 + (postCount * 40));
+      // Base padding (25px) + (55px per card including gap and content)
+      // This ensures cards never overlap or extend beyond cell
+      return Math.max(70, 25 + (postCount * 55));
     };
 
     return (

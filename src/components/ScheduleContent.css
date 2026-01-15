@@ -338,7 +338,7 @@
 .post-card {
   background: #f0f9ff;
   border-radius: 6px;
-  padding: 4px 6px;
+  padding: 6px 8px;
   font-size: 11px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -348,6 +348,10 @@
   box-sizing: border-box;
   position: relative;
   z-index: 1;
+  flex-shrink: 0;
+  min-height: 45px;
+  max-height: 50px;
+  overflow: hidden;
 }
 
 .post-card:hover {
@@ -386,15 +390,30 @@
   border-left-color: #ef4444;
 }
 
-/* Dim past posts (posts before today) */
-.post-card.past-post {
-  opacity: 0.5;
-  filter: grayscale(30%);
+/* Dim past posts (posts before today) with white overlay */
+.post-card.past-post::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 1;
 }
 
-.post-card.past-post:hover {
-  opacity: 0.7;
-  filter: grayscale(15%);
+.post-card.past-post:hover::before {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Ensure content appears above the overlay */
+.post-card.past-post .post-card-header,
+.post-card.past-post .post-card-content,
+.post-card.past-post .post-card-footer {
+  position: relative;
+  z-index: 2;
 }
 
 /* Card layout */
