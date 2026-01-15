@@ -472,13 +472,12 @@
   cursor: not-allowed;
 }
 
-.approved-notice {
-  background: rgba(46, 204, 113, 0.1);
-  border: 1px solid rgba(46, 204, 113, 0.3);
-  color: #27ae60;
-  padding: 16px;
-  border-radius: 8px;
+.status-notice {
+  padding: 10px;
+  border-radius: 6px;
   text-align: center;
-  font-size: 14px;
-  margin-top: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 10px;
+  border: 1px solid;
 }

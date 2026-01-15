@@ -348,38 +348,42 @@ export const Approvals = () => {
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              {selectedPost.approval_status !== 'approved' && (
-                <div className="approval-actions">
-                  <button
-                    className="btn-reject"
-                    onClick={() => handleApprovalAction('reject')}
-                    disabled={submitting}
-                  >
-                    Reject
-                  </button>
-                  <button
-                    className="btn-changes"
-                    onClick={() => handleApprovalAction('changes_requested')}
-                    disabled={submitting}
-                  >
-                    Request Changes
-                  </button>
-                  <button
-                    className="btn-approve"
-                    onClick={() => handleApprovalAction('approve')}
-                    disabled={submitting}
-                  >
-                    Approve
-                  </button>
-                </div>
-              )}
+              {/* Status Notice */}
+              <div
+                className="status-notice"
+                style={{
+                  backgroundColor: `${STATUS_COLORS[selectedPost.approval_status]}15`,
+                  borderColor: STATUS_COLORS[selectedPost.approval_status],
+                  color: STATUS_COLORS[selectedPost.approval_status]
+                }}
+              >
+                Status: {STATUS_LABELS[selectedPost.approval_status]}
+              </div>
 
-              {selectedPost.approval_status === 'approved' && (
-                <div className="approved-notice">
-                  This post has been approved and will be published as scheduled.
-                </div>
-              )}
+              {/* Action Buttons */}
+              <div className="approval-actions">
+                <button
+                  className="btn-reject"
+                  onClick={() => handleApprovalAction('reject')}
+                  disabled={submitting}
+                >
+                  Reject
+                </button>
+                <button
+                  className="btn-changes"
+                  onClick={() => handleApprovalAction('changes_requested')}
+                  disabled={submitting}
+                >
+                  Request Changes
+                </button>
+                <button
+                  className="btn-approve"
+                  onClick={() => handleApprovalAction('approve')}
+                  disabled={submitting}
+                >
+                  Approve
+                </button>
+              </div>
             </div>
           </div>
         )}
