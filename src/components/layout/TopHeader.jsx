@@ -149,6 +149,15 @@ export const TopHeader = () => {
                   <div className="profile-dropdown-email">{user?.email}</div>
                 </div>
                 <div className="profile-dropdown-divider" />
+                <button
+                  className="profile-dropdown-item notifications-link"
+                  onClick={() => {
+                    setShowDropdown(false);
+                    navigate('/notifications');
+                  }}
+                >
+                  Notifications
+                </button>
                 {canManageSocialAccounts && (
                   <button
                     className="profile-dropdown-item connect-accounts"

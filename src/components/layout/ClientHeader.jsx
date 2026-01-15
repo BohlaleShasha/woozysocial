@@ -103,6 +103,15 @@ export const ClientHeader = () => {
               </div>
               <div className="client-dropdown-divider" />
               <button
+                className="client-dropdown-item notifications-link"
+                onClick={() => {
+                  setShowDropdown(false);
+                  navigate('/client/notifications');
+                }}
+              >
+                Notifications
+              </button>
+              <button
                 className="client-dropdown-item connect-accounts"
                 onClick={handleConnectSocialAccounts}
                 disabled={isLinking}

@@ -108,6 +108,14 @@
   transition: background-color 0.2s;
 }
 
+.profile-dropdown-item.notifications-link {
+  color: #5951e5;
+}
+
+.profile-dropdown-item.notifications-link:hover {
+  background-color: #f0efff;
+}
+
 .profile-dropdown-item.connect-accounts {
   color: #3B82F6;
 }
