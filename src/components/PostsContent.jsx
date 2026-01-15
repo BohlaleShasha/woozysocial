@@ -377,7 +377,14 @@ export const PostsContent = () => {
                 className={`posts-table-row ${(activeTab === 'drafts' || activeTab === 'scheduled') ? 'clickable' : ''}`}
                 onClick={() => {
                   if (activeTab === 'drafts' || activeTab === 'scheduled') {
-                    setSelectedPost({...post, workspace_id: activeWorkspace.id});
+                    // Normalize post structure for PostDetailPanel
+                    const normalizedPost = {
+                      ...post,
+                      workspace_id: activeWorkspace.id,
+                      // Add status if missing (for drafts)
+                      status: post.status || (activeTab === 'drafts' ? 'draft' : 'scheduled')
+                    };
+                    setSelectedPost(normalizedPost);
                   }
                 }}
                 style={{ cursor: (activeTab === 'drafts' || activeTab === 'scheduled') ? 'pointer' : 'default' }}

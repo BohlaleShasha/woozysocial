@@ -7,6 +7,7 @@ import { FaTiktok } from "react-icons/fa6";
 import { SiX } from "react-icons/si";
 import { formatTimeInTimezone, formatDateOnlyInTimezone } from "../utils/timezones";
 import { SubscriptionGuard } from "./subscription/SubscriptionGuard";
+import { PostDetailPanel } from "./comments/PostDetailPanel";
 import "./ScheduleContent.css";
 
 const PLATFORM_ICONS = {
@@ -43,8 +44,6 @@ export const ScheduleContent = () => {
   const [loading, setLoading] = useState(false);
   const [approvalFilter, setApprovalFilter] = useState("all"); // all, pending, approved, rejected
   const [selectedPost, setSelectedPost] = useState(null);
-  const [showCommentModal, setShowCommentModal] = useState(false);
-  const [comment, setComment] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [expandedPostId, setExpandedPostId] = useState(null);
 
@@ -111,9 +110,7 @@ export const ScheduleContent = () => {
 
       // Refresh posts
       await fetchPosts();
-      setShowCommentModal(false);
       setSelectedPost(null);
-      setComment("");
     } catch (error) {
       console.error('Error updating approval:', error);
       alert(error.message);
@@ -122,36 +119,23 @@ export const ScheduleContent = () => {
     }
   };
 
-  // Handle adding a comment
-  const handleAddComment = async (postId) => {
-    if (!comment.trim() || !activeWorkspace) return;
+  // Wrapper functions for PostDetailPanel
+  const handleApprove = async (postId) => {
+    await handleApproval(postId, 'approve');
+    setSelectedPost(null);
+    await fetchPosts();
+  };
 
-    setActionLoading(true);
-    try {
-      const response = await fetch(`${baseURL}/api/post/comment`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          postId,
-          workspaceId: activeWorkspace.id,
-          userId: user.id,
-          comment: comment.trim(),
-        }),
-      });
+  const handleReject = async (postId) => {
+    await handleApproval(postId, 'reject');
+    setSelectedPost(null);
+    await fetchPosts();
+  };
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to add comment');
-      }
-
-      await fetchPosts();
-      setComment("");
-    } catch (error) {
-      console.error('Error adding comment:', error);
-      alert(error.message);
-    } finally {
-      setActionLoading(false);
-    }
+  const handleRequestChanges = async (postId) => {
+    await handleApproval(postId, 'changes_requested');
+    setSelectedPost(null);
+    await fetchPosts();
   };
 
   // Filter posts by approval status AND auto-remove rejected posts older than 7 days
@@ -323,7 +307,21 @@ export const ScheduleContent = () => {
       <div
         key={post.id}
         className={`post-card ${post.status === "success" ? "published" : "scheduled"} approval-${post.approvalStatus} ${isPast ? 'past-post' : ''}`}
-        onClick={() => { setSelectedPost(post); setShowCommentModal(true); }}
+        onClick={() => {
+          // Normalize post structure for PostDetailPanel
+          const normalizedPost = {
+            ...post,
+            id: post.id,
+            workspace_id: activeWorkspace.id,
+            caption: post.content || post.post,
+            media_urls: post.mediaUrls || [],
+            platforms: post.platforms || [],
+            scheduled_at: post.scheduleDate || post.schedule_date,
+            status: post.status || 'scheduled',
+            approval_status: post.approvalStatus
+          };
+          setSelectedPost(normalizedPost);
+        }}
         title="Click to view details"
       >
         <div className="post-card-header">
@@ -594,87 +592,16 @@ export const ScheduleContent = () => {
         )}
       </div>
 
-      {/* Comment Modal */}
-      {showCommentModal && selectedPost && (
-        <div className="comment-modal-overlay" onClick={() => setShowCommentModal(false)}>
-          <div className="comment-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="comment-modal-header">
-              <h3>Review Post</h3>
-              <button className="close-modal" onClick={() => setShowCommentModal(false)}>×</button>
-            </div>
-
-            <div className="comment-modal-post">
-              <div className="modal-post-content">{selectedPost.content}</div>
-              {selectedPost.mediaUrls?.length > 0 && (
-                <div className="modal-post-media">
-                  {selectedPost.mediaUrls.map((url, idx) => (
-                    <img key={idx} src={url} alt={`Media ${idx + 1}`} />
-                  ))}
-                </div>
-              )}
-              <div className="modal-post-meta">
-                <span className="modal-platforms">
-                  {selectedPost.platforms.map((p, idx) => {
-                    const PlatformIcon = PLATFORM_ICONS[p?.toLowerCase()];
-                    return PlatformIcon ? <PlatformIcon key={idx} size={14} /> : null;
-                  })}
-                </span>
-                <span className="modal-time">
-                  Scheduled: {formatTimeInTimezone(selectedPost.scheduleDate, profile?.timezone || 'UTC')} on {formatDateOnlyInTimezone(selectedPost.scheduleDate, profile?.timezone || 'UTC')}
-                </span>
-              </div>
-            </div>
-
-            {/* Existing comments */}
-            {selectedPost.comments?.length > 0 && (
-              <div className="existing-comments">
-                <h4>Comments</h4>
-                {selectedPost.comments.map((c, idx) => (
-                  <div key={idx} className={`comment-item ${c.is_system ? 'system' : ''}`}>
-                    <div className="comment-author">{c.user_name || 'User'}</div>
-                    <div className="comment-text">{c.comment}</div>
-                    <div className="comment-time">{new Date(c.created_at).toLocaleString()}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="comment-input-section">
-              <textarea
-                placeholder="Add a comment or feedback..."
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                rows={3}
-              />
-            </div>
-
-            <div className="comment-modal-actions">
-              <button
-                className="modal-btn approve"
-                onClick={() => handleApproval(selectedPost.id, 'approve', comment)}
-                disabled={actionLoading}
-              >
-                <FaCheck /> Approve
-              </button>
-              <button
-                className="modal-btn reject"
-                onClick={() => handleApproval(selectedPost.id, 'reject', comment)}
-                disabled={actionLoading}
-              >
-                <FaTimes /> Reject
-              </button>
-              {comment.trim() && (
-                <button
-                  className="modal-btn comment-only"
-                  onClick={() => handleAddComment(selectedPost.id)}
-                  disabled={actionLoading}
-                >
-                  Comment Only
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+      {/* Post Detail Panel */}
+      {selectedPost && (
+        <PostDetailPanel
+          post={selectedPost}
+          onClose={() => setSelectedPost(null)}
+          onApprove={handleApprove}
+          onReject={handleReject}
+          onRequestChanges={handleRequestChanges}
+          showApprovalActions={canApprove}
+        />
       )}
     </div>
   );
