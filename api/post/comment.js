@@ -184,7 +184,8 @@ module.exports = async function handler(req, res) {
         }
       }
 
-      const { data: comments, error } = await supabase
+      // First, try to fetch comments with user profiles using the relationship
+      let { data: comments, error } = await supabase
         .from('post_comments')
         .select(`
           id,
@@ -204,6 +205,50 @@ module.exports = async function handler(req, res) {
         .eq('post_id', postId)
         .order('priority', { ascending: false })
         .order('created_at', { ascending: true });
+
+      // If relationship error, fallback to fetching separately
+      if (error && error.message?.includes('relationship')) {
+        console.log('Relationship not found, using fallback query method');
+
+        // Get comments without relationship
+        const { data: commentsOnly, error: commentsError } = await supabase
+          .from('post_comments')
+          .select('id, comment, priority, mentions, is_system, created_at, updated_at, user_id')
+          .eq('post_id', postId)
+          .order('priority', { ascending: false })
+          .order('created_at', { ascending: true });
+
+        if (commentsError) {
+          logError('post.comment.list.fallback', commentsError, { postId });
+          return sendError(res, "Failed to fetch comments", ErrorCodes.DATABASE_ERROR);
+        }
+
+        // Get unique user IDs
+        const userIds = [...new Set(commentsOnly.map(c => c.user_id))];
+
+        // Fetch user profiles separately
+        const { data: profiles } = await supabase
+          .from('user_profiles')
+          .select('id, full_name, email, avatar_url')
+          .in('id', userIds);
+
+        // Map profiles to comments
+        const profileMap = {};
+        (profiles || []).forEach(p => {
+          profileMap[p.id] = {
+            full_name: p.full_name,
+            email: p.email,
+            avatar_url: p.avatar_url
+          };
+        });
+
+        comments = commentsOnly.map(c => ({
+          ...c,
+          user_profiles: profileMap[c.user_id] || null
+        }));
+
+        error = null;
+      }
 
       if (error) {
         logError('post.comment.list', error, { postId });
