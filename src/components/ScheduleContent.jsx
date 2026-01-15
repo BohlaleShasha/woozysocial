@@ -154,8 +154,21 @@ export const ScheduleContent = () => {
     }
   };
 
-  // Filter posts by approval status
+  // Filter posts by approval status AND auto-remove rejected posts older than 7 days
   const filteredPosts = posts.filter(post => {
+    // Remove rejected posts older than 7 days from display
+    if (post.approvalStatus === 'rejected') {
+      const postDate = new Date(post.scheduleDate || post.created_at);
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      // If rejected post is older than 7 days, hide it
+      if (postDate < sevenDaysAgo) {
+        return false;
+      }
+    }
+
+    // Apply approval filter
     if (approvalFilter === 'all') return true;
     return post.approvalStatus === approvalFilter;
   });
@@ -290,15 +303,26 @@ export const ScheduleContent = () => {
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const timeSlots = Array.from({ length: 18 }, (_, i) => i + 6); // 6 AM to 11 PM
 
+  // Check if post is in the past (before today)
+  const isPostInPast = (scheduleDate) => {
+    if (!scheduleDate) return false;
+    const postDate = new Date(scheduleDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Start of today
+    postDate.setHours(0, 0, 0, 0); // Start of post day
+    return postDate < today;
+  };
+
   // Render Post Card - Compact, click opens modal
   const renderPostCard = (post) => {
     const approvalInfo = APPROVAL_STATUS[post.approvalStatus] || APPROVAL_STATUS.pending;
     const ApprovalIcon = approvalInfo.icon;
+    const isPast = isPostInPast(post.scheduleDate);
 
     return (
       <div
         key={post.id}
-        className={`post-card ${post.status === "success" ? "published" : "scheduled"} approval-${post.approvalStatus}`}
+        className={`post-card ${post.status === "success" ? "published" : "scheduled"} approval-${post.approvalStatus} ${isPast ? 'past-post' : ''}`}
         onClick={() => { setSelectedPost(post); setShowCommentModal(true); }}
         title="Click to view details"
       >
@@ -349,12 +373,13 @@ export const ScheduleContent = () => {
     });
 
     // Calculate dynamic height for each hour slot
-    // Base height: 60px, add ~38px per post (compact card height)
+    // Base height: 70px, add 40px per post to ensure proper spacing
     const getSlotHeight = (hour) => {
       const postCount = hourPostCounts[hour];
-      if (postCount === 0) return 60;
-      // For each post: ~35px card height + 3px gap
-      return Math.max(60, 20 + (postCount * 38));
+      if (postCount === 0) return 70;
+      // Base padding (20px) + (40px per card including gap)
+      // This ensures cards never overlap
+      return Math.max(70, 20 + (postCount * 40));
     };
 
     return (
