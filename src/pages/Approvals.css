@@ -64,11 +64,11 @@
 }
 
 .filter-tab:hover {
-  background: #242424;
+  background: transparent;
   border-color: #afabf9;
-  color: #fff;
+  color: #afabf9;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(175, 171, 249, 0.15);
+  box-shadow: 0 4px 12px rgba(175, 171, 249, 0.2), 0 0 20px rgba(175, 171, 249, 0.1);
 }
 
 .filter-tab.active {
