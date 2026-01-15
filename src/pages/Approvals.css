@@ -198,13 +198,14 @@
   top: 24px;
   max-height: calc(100vh - 48px);
   overflow-y: auto;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
 }
 
 .detail-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
+  padding: 18px 24px;
   border-bottom: 1px solid #eee;
   position: sticky;
   top: 0;
@@ -214,162 +215,206 @@
 
 .detail-header h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 18px;
   color: #1a1a1a;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .close-detail {
-  background: none;
+  background: #f5f5f5;
   border: none;
-  color: #888;
+  color: #666;
   cursor: pointer;
-  padding: 4px;
+  padding: 8px;
+  border-radius: 6px;
+  transition: all 0.2s;
 }
 
 .close-detail:hover {
+  background: #eee;
   color: #1a1a1a;
 }
 
 .detail-content {
-  padding: 20px;
+  padding: 24px;
 }
 
 .detail-section {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.detail-section:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .detail-section label {
   display: block;
   font-size: 11px;
-  font-weight: 600;
-  color: #888;
+  font-weight: 700;
+  color: #7c78e8;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 8px;
+  letter-spacing: 0.8px;
+  margin-bottom: 12px;
 }
 
 .post-full-content {
-  font-size: 14px;
+  font-size: 15px;
   color: #333;
-  line-height: 1.6;
+  line-height: 1.7;
   white-space: pre-wrap;
+  background: #fafafa;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #eee;
 }
 
 .detail-media {
   width: 100%;
-  border-radius: 8px;
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
 }
 
 .detail-platforms {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
 .platform-tag {
-  padding: 6px 12px;
-  background: #f5f5f5;
-  border-radius: 6px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #f8f8ff 0%, #f0f0ff 100%);
+  border: 1px solid #e8e8f8;
+  border-radius: 20px;
   font-size: 13px;
-  color: #555;
+  color: #5951e5;
   text-transform: capitalize;
+  font-weight: 600;
 }
 
 .detail-section p {
-  font-size: 14px;
+  font-size: 15px;
   color: #444;
   margin: 0;
+  font-weight: 500;
 }
 
 /* Comments */
 .comments-section {
-  border-top: 1px solid #eee;
-  padding-top: 20px;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 20px;
+  margin-top: 24px;
+}
+
+.comments-section label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #7c78e8;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 16px;
 }
 
 .comments-list {
-  max-height: 300px;
+  max-height: 250px;
   overflow-y: auto;
   margin-bottom: 16px;
 }
 
 .comment {
-  padding: 12px;
-  background: #f9f9f9;
+  padding: 14px;
+  background: #fff;
   border-radius: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #eee;
 }
 
 .comment.system-comment {
-  background: rgba(175, 171, 249, 0.1);
+  background: linear-gradient(135deg, rgba(175, 171, 249, 0.1) 0%, rgba(175, 171, 249, 0.05) 100%);
   border-left: 3px solid #afabf9;
+  border-color: rgba(175, 171, 249, 0.2);
 }
 
 .comment-header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .comment-author {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   color: #333;
 }
 
 .comment-time {
   font-size: 11px;
-  color: #888;
+  color: #999;
 }
 
 .comment-text {
-  font-size: 13px;
+  font-size: 14px;
   color: #555;
   margin: 0;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 .loading-comments,
 .no-comments {
   font-size: 13px;
-  color: #888;
+  color: #999;
   text-align: center;
-  padding: 20px;
+  padding: 24px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px dashed #ddd;
 }
 
 .add-comment textarea {
   width: 100%;
-  padding: 12px;
+  padding: 14px;
   background: #fff;
   border: 1px solid #ddd;
   border-radius: 8px;
   color: #333;
   font-size: 14px;
   resize: none;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   box-sizing: border-box;
   font-family: inherit;
+  transition: border-color 0.2s;
 }
 
 .add-comment textarea:focus {
   outline: none;
   border-color: #afabf9;
+  box-shadow: 0 0 0 3px rgba(175, 171, 249, 0.1);
+}
+
+.add-comment textarea::placeholder {
+  color: #aaa;
 }
 
 .btn-add-comment {
-  padding: 8px 16px;
+  padding: 10px 20px;
   background: #afabf9;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   color: #000;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
 .btn-add-comment:hover:not(:disabled) {
   background: #9895f5;
+  transform: translateY(-1px);
 }
 
 .btn-add-comment:disabled {
