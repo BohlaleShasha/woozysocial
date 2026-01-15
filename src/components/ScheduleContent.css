@@ -349,9 +349,6 @@
   position: relative;
   z-index: 1;
   flex-shrink: 0;
-  min-height: 45px;
-  max-height: 50px;
-  overflow: hidden;
 }
 
 .post-card:hover {
@@ -390,7 +387,12 @@
   border-left-color: #ef4444;
 }
 
-/* Dim past posts (posts before today) with white overlay */
+/* Dim past posts (posts before today) with white overlay and dark grey border */
+.post-card.past-post {
+  border-color: #6b7280 !important;
+  border-left-color: #4b5563 !important;
+}
+
 .post-card.past-post::before {
   content: '';
   position: absolute;
@@ -398,14 +400,14 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.65);
   border-radius: 6px;
   pointer-events: none;
   z-index: 1;
 }
 
 .post-card.past-post:hover::before {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.45);
 }
 
 /* Ensure content appears above the overlay */
