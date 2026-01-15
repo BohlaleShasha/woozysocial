@@ -12,6 +12,10 @@ const {
   validateRequired,
   isValidUUID
 } = require("../_utils");
+const {
+  verifyWorkspaceMembership,
+  checkPermission
+} = require("../_utils-access-control");
 
 const BASE_AYRSHARE = "https://api.ayrshare.com/api";
 
@@ -114,20 +118,18 @@ module.exports = async function handler(req, res) {
         );
       }
 
-      // Verify user is a member of the workspace
-      const { data: membership, error: membershipError } = await supabase
-        .from('workspace_members')
-        .select('role')
-        .eq('workspace_id', workspaceId)
-        .eq('user_id', userId)
-        .single();
-
-      if (membershipError && membershipError.code !== 'PGRST116') {
-        logError('post.approve.checkMembership', membershipError, { userId, workspaceId });
+      // Verify workspace membership
+      const membershipCheck = await verifyWorkspaceMembership(supabase, userId, workspaceId);
+      if (!membershipCheck.success) {
+        return sendError(res, membershipCheck.error, ErrorCodes.FORBIDDEN);
       }
 
-      if (!membership) {
-        return sendError(res, "You are not a member of this workspace", ErrorCodes.FORBIDDEN);
+      const member = membershipCheck.member;
+
+      // Check if user has permission to approve posts
+      const permissionCheck = checkPermission(member, 'canApprovePosts');
+      if (!permissionCheck.success) {
+        return sendError(res, "Only admins and clients can approve posts", ErrorCodes.FORBIDDEN);
       }
 
       // Map action to status

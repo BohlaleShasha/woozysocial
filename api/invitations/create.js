@@ -14,6 +14,11 @@ const {
   isValidEmail,
   isServiceConfigured
 } = require("../_utils");
+const {
+  verifyWorkspaceMembership,
+  checkPermission,
+  canInviteTeamMember
+} = require("../_utils-access-control");
 
 const VALID_ROLES = ['admin', 'editor', 'view_only', 'client'];
 
@@ -64,16 +69,48 @@ module.exports = async function handler(req, res) {
 
     const inviteRole = role && VALID_ROLES.includes(role) ? role : 'editor';
 
-    // Check if user is owner/admin of workspace
-    const { data: membership } = await supabase
-      .from('workspace_members')
-      .select('role')
-      .eq('workspace_id', workspaceId)
-      .eq('user_id', userId)
+    // Verify workspace membership
+    const membershipCheck = await verifyWorkspaceMembership(supabase, userId, workspaceId);
+    if (!membershipCheck.success) {
+      return sendError(res, membershipCheck.error, ErrorCodes.FORBIDDEN);
+    }
+
+    const member = membershipCheck.member;
+
+    // Check if user has permission to invite team members
+    const permissionCheck = checkPermission(member, 'canManageTeam');
+    if (!permissionCheck.success) {
+      return sendError(res, "Only owners and admins can invite members", ErrorCodes.FORBIDDEN);
+    }
+
+    // Check team member limit based on workspace owner's subscription tier
+    const { data: workspace } = await supabase
+      .from('workspaces')
+      .select('owner_id')
+      .eq('id', workspaceId)
       .single();
 
-    if (!membership || !['owner', 'admin'].includes(membership.role)) {
-      return sendError(res, "Only owners and admins can invite members", ErrorCodes.FORBIDDEN);
+    if (workspace) {
+      const { data: ownerProfile } = await supabase
+        .from('user_profiles')
+        .select('subscription_tier, subscription_status')
+        .eq('id', workspace.owner_id)
+        .single();
+
+      if (ownerProfile) {
+        // Count current members
+        const { count: memberCount } = await supabase
+          .from('workspace_members')
+          .select('id', { count: 'exact', head: true })
+          .eq('workspace_id', workspaceId);
+
+        const tier = ownerProfile.subscription_tier || 'free';
+        const canInvite = canInviteTeamMember(tier, (memberCount || 0) + 1); // +1 for new member
+
+        if (!canInvite) {
+          return sendError(res, "Team member limit reached for current subscription tier", 'PAYMENT_REQUIRED');
+        }
+      }
     }
 
     // Check if user is already a member
