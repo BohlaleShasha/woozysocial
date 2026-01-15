@@ -21,8 +21,9 @@ export const ClientApprovals = () => {
 
   const tabs = [
     { id: "pending", label: "Pending", icon: FaClock },
+    { id: "changes_requested", label: "Changes Requested", icon: FaEdit },
     { id: "approved", label: "Approved", icon: FaCheck },
-    { id: "changes_requested", label: "Changes Requested", icon: FaEdit }
+    { id: "rejected", label: "Rejected", icon: FaTimes }
   ];
 
   useEffect(() => {
@@ -191,7 +192,10 @@ export const ClientApprovals = () => {
           ) : posts.length === 0 ? (
             <div className="empty-state">
               <span className="empty-icon">✨</span>
-              <p>No posts {activeTab === "pending" ? "awaiting approval" : "with requested changes"}</p>
+              <p>No {activeTab === "pending" ? "posts awaiting approval" :
+                     activeTab === "changes_requested" ? "posts with changes requested" :
+                     activeTab === "approved" ? "approved posts" :
+                     "rejected posts"}</p>
             </div>
           ) : (
             posts.map((post) => (
