@@ -219,19 +219,25 @@ export const DashboardContent = () => {
       <div className="dashboard-stats">
         <div className="stat-card">
           <div className="stat-label">Total Posts</div>
-          <div className="stat-value">{stats.apiCalls}</div>
+          <div className={`stat-value ${loadingPosts ? 'skeleton' : ''}`}>
+            {loadingPosts ? '' : stats.apiCalls}
+          </div>
           <div className="stat-period">All time</div>
         </div>
 
         <div className="stat-card">
           <div className="stat-label">Posts</div>
-          <div className="stat-value">{stats.postsThisMonth}</div>
+          <div className={`stat-value ${loadingPosts ? 'skeleton' : ''}`}>
+            {loadingPosts ? '' : stats.postsThisMonth}
+          </div>
           <div className="stat-period">This month</div>
         </div>
 
         <div className="stat-card">
           <div className="stat-label">Connected Accounts</div>
-          <div className="stat-value">{stats.connectedCount}</div>
+          <div className={`stat-value ${loadingAccounts ? 'skeleton' : ''}`}>
+            {loadingAccounts ? '' : stats.connectedCount}
+          </div>
           <div className="stat-period">Active</div>
         </div>
       </div>
