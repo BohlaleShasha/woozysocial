@@ -22,7 +22,8 @@ const {
   sendSuccess,
   sendError,
   ErrorCodes,
-  logError
+  logError,
+  setCors
 } = require("./_utils");
 
 const BASE_AYRSHARE = "https://app.ayrshare.com/api";
@@ -66,6 +67,14 @@ const readPrivateKey = async (privateKeyPathOrContent) => {
  * GET /api/generate-jwt?workspaceId=xxx&userId=xxx
  */
 module.exports = async (req, res) => {
+  // Set CORS headers first
+  setCors(res);
+
+  // Handle OPTIONS preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   // Apply authentication middleware
   return requireActiveProfile(req, res, async () => {
     try {

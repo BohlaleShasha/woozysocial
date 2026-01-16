@@ -2,18 +2,19 @@ import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useWorkspace } from "../../contexts/WorkspaceContext";
-import { baseURL } from "../../utils/constants";
+import { baseURL, SUBSCRIPTION_TIERS } from "../../utils/constants";
 import { NotificationBell } from "../NotificationBell";
 import "./TopHeader.css";
 
 export const TopHeader = () => {
-  const { user, profile, signOut, hasActiveProfile } = useAuth();
+  const { user, profile, signOut, hasActiveProfile, subscriptionTier } = useAuth();
   const { activeWorkspace, workspaceMembership, userWorkspaces } = useWorkspace();
   const navigate = useNavigate();
   const location = useLocation();
   const [showDropdown, setShowDropdown] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [isManagingSubscription, setIsManagingSubscription] = useState(false);
   const profileRef = useRef(null);
 
   // Allow owners, admins, and clients to connect social accounts
@@ -119,6 +120,40 @@ export const TopHeader = () => {
     }
   };
 
+  const handleManageSubscription = async () => {
+    if (!user || isManagingSubscription) return;
+
+    try {
+      setIsManagingSubscription(true);
+      setShowDropdown(false);
+
+      // If user is on Agency tier or has an active subscription, open Stripe Customer Portal
+      if (subscriptionTier === SUBSCRIPTION_TIERS.AGENCY || profile?.stripe_customer_id) {
+        const response = await fetch(`${baseURL}/api/stripe/customer-portal`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id })
+        });
+
+        if (!response.ok) throw new Error('Failed to access customer portal');
+
+        const data = await response.json();
+        if (data.url) {
+          window.location.href = data.url;
+        }
+      } else {
+        // If no active subscription, redirect to pricing page
+        navigate('/pricing');
+      }
+    } catch (err) {
+      console.error('Error managing subscription:', err);
+      // Fallback to pricing page
+      navigate('/pricing');
+    } finally {
+      setIsManagingSubscription(false);
+    }
+  };
+
   return (
     <>
       <div className="top-header">
@@ -157,6 +192,18 @@ export const TopHeader = () => {
                   }}
                 >
                   Notifications
+                </button>
+                <button
+                  className="profile-dropdown-item manage-subscription"
+                  onClick={handleManageSubscription}
+                  disabled={isManagingSubscription}
+                >
+                  {isManagingSubscription
+                    ? 'Loading...'
+                    : subscriptionTier === SUBSCRIPTION_TIERS.AGENCY
+                      ? 'Manage Subscription'
+                      : 'Upgrade Plan'
+                  }
                 </button>
                 {canManageSocialAccounts && (
                   <button

@@ -11,7 +11,7 @@
 // SUBSCRIPTION TIERS
 // ===========================
 
-export const SUBSCRIPTION_TIERS = {
+const SUBSCRIPTION_TIERS = {
   FREE: 'free',
   SOLO: 'solo',
   PRO: 'pro',
@@ -19,7 +19,7 @@ export const SUBSCRIPTION_TIERS = {
   AGENCY: 'agency'
 };
 
-export const TIER_CONFIG = {
+const TIER_CONFIG = {
   free: {
     workspaces: { max: 0 },
     team: { maxMembers: 0 },
@@ -81,7 +81,7 @@ export const TIER_CONFIG = {
 // TEAM ROLES
 // ===========================
 
-export const TEAM_ROLES = {
+const TEAM_ROLES = {
   OWNER: 'owner',
   ADMIN: 'admin',
   EDITOR: 'editor',
@@ -89,7 +89,7 @@ export const TEAM_ROLES = {
   VIEW_ONLY: 'view_only'
 };
 
-export const ROLE_PERMISSIONS = {
+const ROLE_PERMISSIONS = {
   owner: {
     canManageTeam: true,
     canManageSettings: true,
@@ -149,7 +149,7 @@ export const ROLE_PERMISSIONS = {
 /**
  * Check if a role has a specific permission
  */
-export function hasPermission(role, permissionName) {
+function hasPermission(role, permissionName) {
   if (!role) return false;
   const permissions = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.view_only;
   return permissions[permissionName] === true;
@@ -158,7 +158,7 @@ export function hasPermission(role, permissionName) {
 /**
  * Check if a tier has a specific feature
  */
-export function hasFeature(tier, featureName) {
+function hasFeature(tier, featureName) {
   if (!tier) return false;
   const config = TIER_CONFIG[tier] || TIER_CONFIG.free;
   return config.features?.[featureName] === true;
@@ -167,7 +167,7 @@ export function hasFeature(tier, featureName) {
 /**
  * Check if user can create more workspaces
  */
-export function canCreateWorkspace(tier, currentCount, addOns = 0) {
+function canCreateWorkspace(tier, currentCount, addOns = 0) {
   const config = TIER_CONFIG[tier] || TIER_CONFIG.free;
   const limit = config.workspaces.max + addOns;
 
@@ -178,7 +178,7 @@ export function canCreateWorkspace(tier, currentCount, addOns = 0) {
 /**
  * Check if user can invite more team members
  */
-export function canInviteTeamMember(tier, currentCount) {
+function canInviteTeamMember(tier, currentCount) {
   const config = TIER_CONFIG[tier] || TIER_CONFIG.free;
   const limit = config.team.maxMembers;
 
@@ -189,7 +189,7 @@ export function canInviteTeamMember(tier, currentCount) {
 /**
  * Check if user can perform action on a post
  */
-export function canPerformPostAction(role, action, isOwnPost = false) {
+function canPerformPostAction(role, action, isOwnPost = false) {
   const permissions = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.view_only;
 
   switch (action) {
@@ -210,7 +210,7 @@ export function canPerformPostAction(role, action, isOwnPost = false) {
  * Verify workspace membership and return member data
  * Returns { success: true, member: {...} } or { success: false, error: '...' }
  */
-export async function verifyWorkspaceMembership(supabase, userId, workspaceId) {
+async function verifyWorkspaceMembership(supabase, userId, workspaceId) {
   try {
     const { data: member, error } = await supabase
       .from('workspace_members')
@@ -238,7 +238,7 @@ export async function verifyWorkspaceMembership(supabase, userId, workspaceId) {
  * Check if user has required permission
  * Returns { success: true } or { success: false, error: '...' }
  */
-export function checkPermission(member, permissionName) {
+function checkPermission(member, permissionName) {
   if (!member || !member.role) {
     return { success: false, error: 'Invalid member data', code: 'INVALID_MEMBER' };
   }
@@ -259,7 +259,7 @@ export function checkPermission(member, permissionName) {
 /**
  * Send error response with consistent format
  */
-export function sendError(res, message, code = 'ERROR', statusCode = 400) {
+function sendError(res, message, code = 'ERROR', statusCode = 400) {
   const errorCodes = {
     'NOT_MEMBER': 403,
     'INSUFFICIENT_PERMISSIONS': 403,
@@ -283,10 +283,30 @@ export function sendError(res, message, code = 'ERROR', statusCode = 400) {
 /**
  * Send success response with consistent format
  */
-export function sendSuccess(res, data = {}, message = null) {
+function sendSuccess(res, data = {}, message = null) {
   return res.status(200).json({
     success: true,
     data: data,
     message: message
   });
 }
+
+// ===========================
+// EXPORTS (CommonJS)
+// ===========================
+
+module.exports = {
+  SUBSCRIPTION_TIERS,
+  TIER_CONFIG,
+  TEAM_ROLES,
+  ROLE_PERMISSIONS,
+  hasPermission,
+  hasFeature,
+  canCreateWorkspace,
+  canInviteTeamMember,
+  canPerformPostAction,
+  verifyWorkspaceMembership,
+  checkPermission,
+  sendError,
+  sendSuccess
+};

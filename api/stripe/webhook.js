@@ -23,6 +23,14 @@ function getTierFromPriceId(priceId) {
   return priceToTier[priceId] || "unknown";
 }
 
+// Normalize tier name from hyphen format to underscore format
+// Stripe metadata might have "pro-plus" but database needs "pro_plus"
+function normalizeTierName(tier) {
+  if (!tier) return tier;
+  // Convert hyphens to underscores
+  return tier.replace(/-/g, '_');
+}
+
 // Helper to get raw body from request
 async function getRawBody(req) {
   // Check if body is already a Buffer (Vercel sometimes provides this)
@@ -229,7 +237,7 @@ module.exports = async function handler(req, res) {
       case "checkout.session.completed": {
         const session = event.data.object;
         const userId = session.metadata?.supabase_user_id;
-        const tier = session.metadata?.tier;
+        const tier = normalizeTierName(session.metadata?.tier);
         const workspaceName = session.metadata?.workspace_name || "My Business";
 
         console.log(`[WEBHOOK] Session metadata:`, {
@@ -247,83 +255,121 @@ module.exports = async function handler(req, res) {
 
         console.log(`[WEBHOOK] Checkout completed for user ${userId}, tier: ${tier}`);
 
-        // Update user subscription status first
-        console.log(`[WEBHOOK] Updating user_profiles for user ${userId}...`);
-        const { data: updatedProfile, error: updateError } = await supabase
-          .from("user_profiles")
-          .update({
-            subscription_status: "active",
-            subscription_tier: tier,
-            stripe_customer_id: session.customer,
-            stripe_subscription_id: session.subscription,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", userId)
-          .select();
+        // Check if this is a BrandBolt (workspace add-on) purchase
+        const isBrandBolt = tier === 'brand_bolt';
 
-        if (updateError) {
-          console.error("[WEBHOOK] Error updating user profile:", updateError);
-          logError("stripe-webhook-update", updateError, { userId, event: event.type });
-        } else {
-          console.log(`[WEBHOOK] User profile updated successfully:`, updatedProfile);
-        }
+        if (isBrandBolt) {
+          // BrandBolt: Increment workspace add-ons, keep existing tier
+          console.log(`[WEBHOOK] BrandBolt purchase detected - incrementing workspace add-ons for user ${userId}...`);
 
-        // Check user's existing workspaces (as owner)
-        console.log(`[WEBHOOK] Checking existing workspaces for user ${userId}...`);
-        const { data: existingWorkspaces, error: workspaceQueryError } = await supabase
-          .from("workspace_members")
-          .select("workspace_id, workspaces!inner(id, name, ayr_profile_key)")
-          .eq("user_id", userId)
-          .eq("role", "owner");
+          // Get current add-on count
+          const { data: currentProfile } = await supabase
+            .from("user_profiles")
+            .select("workspace_add_ons")
+            .eq("id", userId)
+            .single();
 
-        if (workspaceQueryError) {
-          console.error("[WEBHOOK] Error querying workspaces:", workspaceQueryError);
-        } else {
-          console.log(`[WEBHOOK] Found ${existingWorkspaces?.length || 0} workspaces:`, existingWorkspaces);
-        }
+          const currentAddOns = currentProfile?.workspace_add_ons || 0;
 
-        const workspaceWithProfile = existingWorkspaces?.find(
-          (w) => w.workspaces?.ayr_profile_key
-        );
-        const workspaceWithoutProfile = existingWorkspaces?.find(
-          (w) => !w.workspaces?.ayr_profile_key
-        );
+          const { data: updatedProfile, error: updateError } = await supabase
+            .from("user_profiles")
+            .update({
+              subscription_status: "active",
+              workspace_add_ons: currentAddOns + 1,
+              stripe_customer_id: session.customer,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", userId)
+            .select();
 
-        if (workspaceWithProfile) {
-          // User already has a workspace with profile key - nothing to do
-          console.log(`[WEBHOOK] User ${userId} already has workspace with profile key: ${workspaceWithProfile.workspace_id}`);
-        } else if (workspaceWithoutProfile) {
-          // User has existing workspace WITHOUT profile key - UPDATE it
-          const existingWorkspace = workspaceWithoutProfile.workspaces;
-          console.log(`[WEBHOOK] Updating existing workspace ${existingWorkspace.id} with profile key`);
-
-          const workspace = await updateWorkspaceWithProfile(
-            supabase,
-            existingWorkspace.id,
-            tier,
-            existingWorkspace.name || workspaceName
-          );
-
-          if (workspace) {
-            console.log(`[WEBHOOK] User ${userId} subscription activated, updated workspace ${workspace.id}`);
+          if (updateError) {
+            console.error("[WEBHOOK] Error updating workspace add-ons:", updateError);
+            logError("stripe-webhook-update", updateError, { userId, event: event.type });
           } else {
-            console.error(`[WEBHOOK] User ${userId} subscription activated but workspace update failed`);
+            console.log(`[WEBHOOK] Workspace add-ons incremented successfully:`, updatedProfile);
           }
         } else {
-          // User has NO workspaces at all - CREATE new one
-          console.log(`[WEBHOOK] User ${userId} has no workspaces, creating new one`);
+          // Regular tier subscription
+          console.log(`[WEBHOOK] Updating user_profiles for user ${userId}...`);
+          const { data: updatedProfile, error: updateError } = await supabase
+            .from("user_profiles")
+            .update({
+              subscription_status: "active",
+              subscription_tier: tier,
+              stripe_customer_id: session.customer,
+              stripe_subscription_id: session.subscription,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", userId)
+            .select();
 
-          const workspace = await createWorkspaceWithProfile(
-            supabase,
-            userId,
-            tier,
-            workspaceName
+          if (updateError) {
+            console.error("[WEBHOOK] Error updating user profile:", updateError);
+            logError("stripe-webhook-update", updateError, { userId, event: event.type });
+          } else {
+            console.log(`[WEBHOOK] User profile updated successfully:`, updatedProfile);
+          }
+        }
+
+        // Skip workspace creation for BrandBolt (it's just an add-on purchase)
+        if (!isBrandBolt) {
+          // Check user's existing workspaces (as owner)
+          console.log(`[WEBHOOK] Checking existing workspaces for user ${userId}...`);
+          const { data: existingWorkspaces, error: workspaceQueryError } = await supabase
+            .from("workspace_members")
+            .select("workspace_id, workspaces!inner(id, name, ayr_profile_key)")
+            .eq("user_id", userId)
+            .eq("role", "owner");
+
+          if (workspaceQueryError) {
+            console.error("[WEBHOOK] Error querying workspaces:", workspaceQueryError);
+          } else {
+            console.log(`[WEBHOOK] Found ${existingWorkspaces?.length || 0} workspaces:`, existingWorkspaces);
+          }
+
+          const workspaceWithProfile = existingWorkspaces?.find(
+            (w) => w.workspaces?.ayr_profile_key
+          );
+          const workspaceWithoutProfile = existingWorkspaces?.find(
+            (w) => !w.workspaces?.ayr_profile_key
           );
 
-          if (workspace) {
-            console.log(`[WEBHOOK] User ${userId} subscription activated with new workspace ${workspace.id}`);
+          if (workspaceWithProfile) {
+            // User already has a workspace with profile key - nothing to do
+            console.log(`[WEBHOOK] User ${userId} already has workspace with profile key: ${workspaceWithProfile.workspace_id}`);
+          } else if (workspaceWithoutProfile) {
+            // User has existing workspace WITHOUT profile key - UPDATE it
+            const existingWorkspace = workspaceWithoutProfile.workspaces;
+            console.log(`[WEBHOOK] Updating existing workspace ${existingWorkspace.id} with profile key`);
+
+            const workspace = await updateWorkspaceWithProfile(
+              supabase,
+              existingWorkspace.id,
+              tier,
+              existingWorkspace.name || workspaceName
+            );
+
+            if (workspace) {
+              console.log(`[WEBHOOK] User ${userId} subscription activated, updated workspace ${workspace.id}`);
+            } else {
+              console.error(`[WEBHOOK] User ${userId} subscription activated but workspace update failed`);
+            }
           } else {
-            console.error(`[WEBHOOK] User ${userId} subscription activated but workspace creation failed`);
+            // User has NO workspaces at all - CREATE new one
+            console.log(`[WEBHOOK] User ${userId} has no workspaces, creating new one`);
+
+            const workspace = await createWorkspaceWithProfile(
+              supabase,
+              userId,
+              tier,
+              workspaceName
+            );
+
+            if (workspace) {
+              console.log(`[WEBHOOK] User ${userId} subscription activated with new workspace ${workspace.id}`);
+            } else {
+              console.error(`[WEBHOOK] User ${userId} subscription activated but workspace creation failed`);
+            }
           }
         }
         break;
@@ -345,7 +391,7 @@ module.exports = async function handler(req, res) {
           break;
         }
 
-        // Get tier from price ID
+        // Get tier from price ID (already normalized with underscores)
         const priceId = subscription.items?.data?.[0]?.price?.id;
         const tier = getTierFromPriceId(priceId);
 

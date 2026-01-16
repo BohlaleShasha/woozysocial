@@ -211,7 +211,7 @@ module.exports = async function handler(req, res) {
     }
 
     // Get workspace and inviter info for email
-    const { data: workspace } = await supabase
+    const { data: workspaceData } = await supabase
       .from('workspaces')
       .select('name')
       .eq('id', workspaceId)
@@ -227,7 +227,7 @@ module.exports = async function handler(req, res) {
     if (isServiceConfigured('resend')) {
       const resend = new Resend(process.env.RESEND_API_KEY);
       const inviterName = inviter?.full_name || inviter?.email || 'Someone';
-      const workspaceName = workspace?.name || 'a workspace';
+      const workspaceName = workspaceData?.name || 'a workspace';
       // Use APP_URL environment variable for invitation links (must be frontend domain)
       const appUrl = (process.env.APP_URL || 'https://woozysocial.com').trim();
       const inviteLink = `${appUrl}/accept-invite?token=${invitation.invite_token}`;
