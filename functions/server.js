@@ -3341,20 +3341,163 @@ app.post("/api/stripe/webhook", express.raw({ type: 'application/json' }), async
         const session = event.data.object;
         const userId = session.metadata?.supabase_user_id;
         const tier = session.metadata?.tier;
+        const workspaceName = session.metadata?.workspace_name || "My Business";
 
-        if (userId) {
-          // Update user subscription status
-          await supabase
-            .from("user_profiles")
-            .update({
-              subscription_status: "active",
-              subscription_tier: tier,
-              stripe_subscription_id: session.subscription,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", userId);
+        if (!userId) {
+          console.error("[WEBHOOK] No user ID in session metadata");
+          break;
+        }
 
-          console.log(`[WEBHOOK] User ${userId} subscription activated: ${tier}`);
+        console.log(`[WEBHOOK] Checkout completed for user ${userId}, tier: ${tier}`);
+
+        // Update user subscription status first
+        const { error: updateError } = await supabase
+          .from("user_profiles")
+          .update({
+            subscription_status: "active",
+            subscription_tier: tier,
+            stripe_customer_id: session.customer,
+            stripe_subscription_id: session.subscription,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", userId);
+
+        if (updateError) {
+          console.error("[WEBHOOK] Error updating user profile:", updateError);
+        }
+
+        // Check user's existing workspaces (as owner)
+        const { data: existingWorkspaces } = await supabase
+          .from("workspace_members")
+          .select("workspace_id, workspaces!inner(id, name, ayr_profile_key)")
+          .eq("user_id", userId)
+          .eq("role", "owner");
+
+        const workspaceWithProfile = existingWorkspaces?.find(
+          (w) => w.workspaces?.ayr_profile_key
+        );
+        const workspaceWithoutProfile = existingWorkspaces?.find(
+          (w) => !w.workspaces?.ayr_profile_key
+        );
+
+        if (workspaceWithProfile) {
+          // User already has a workspace with profile key - nothing to do
+          console.log(`[WEBHOOK] User ${userId} already has workspace with profile key: ${workspaceWithProfile.workspace_id}`);
+        } else if (workspaceWithoutProfile) {
+          // User has existing workspace WITHOUT profile key - UPDATE it
+          const existingWorkspace = workspaceWithoutProfile.workspaces;
+          console.log(`[WEBHOOK] Updating existing workspace ${existingWorkspace.id} with profile key`);
+
+          // Create Ayrshare profile
+          try {
+            const axios = require("axios");
+            const response = await axios.post(
+              "https://api.ayrshare.com/api/profiles/profile",
+              {
+                title: existingWorkspace.name || workspaceName,
+              },
+              {
+                headers: {
+                  Authorization: `Bearer ${env.AYRSHARE_API_KEY}`,
+                  "Content-Type": "application/json",
+                },
+                timeout: 30000,
+              }
+            );
+
+            if (response.data && response.data.profileKey) {
+              console.log(`[WEBHOOK] Created Ayrshare profile: ${response.data.profileKey}, refId: ${response.data.refId}`);
+
+              // Update workspace with profile key AND ref id
+              const { data: workspace, error: workspaceError } = await supabase
+                .from("workspaces")
+                .update({
+                  ayr_profile_key: response.data.profileKey,
+                  ayr_ref_id: response.data.refId,
+                  subscription_tier: tier,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", existingWorkspace.id)
+                .select()
+                .single();
+
+              if (workspaceError) {
+                console.error("[WEBHOOK] Error updating workspace:", workspaceError);
+              } else {
+                console.log(`[WEBHOOK] Updated workspace ${workspace.id} with profile key and ref id`);
+              }
+            } else {
+              console.error("[WEBHOOK] No profileKey in Ayrshare response");
+            }
+          } catch (error) {
+            console.error("[WEBHOOK] Error creating Ayrshare profile:", error.message);
+          }
+        } else {
+          // User has NO workspaces at all - CREATE new one
+          console.log(`[WEBHOOK] User ${userId} has no workspaces, creating new one`);
+
+          // Create Ayrshare profile
+          try {
+            const axios = require("axios");
+            const response = await axios.post(
+              "https://api.ayrshare.com/api/profiles/profile",
+              {
+                title: workspaceName,
+              },
+              {
+                headers: {
+                  Authorization: `Bearer ${env.AYRSHARE_API_KEY}`,
+                  "Content-Type": "application/json",
+                },
+                timeout: 30000,
+              }
+            );
+
+            if (response.data && response.data.profileKey) {
+              console.log(`[WEBHOOK] Created Ayrshare profile: ${response.data.profileKey}, refId: ${response.data.refId}`);
+
+              // Create workspace with profile key AND ref id
+              const { data: workspace, error: workspaceError } = await supabase
+                .from("workspaces")
+                .insert({
+                  name: workspaceName,
+                  ayr_profile_key: response.data.profileKey,
+                  ayr_ref_id: response.data.refId,
+                  subscription_tier: tier,
+                  created_from_payment: true,
+                  created_at: new Date().toISOString(),
+                })
+                .select()
+                .single();
+
+              if (workspaceError) {
+                console.error("[WEBHOOK] Error creating workspace:", workspaceError);
+              } else {
+                // Add user as owner of the workspace
+                const { error: memberError } = await supabase
+                  .from("workspace_members")
+                  .insert({
+                    workspace_id: workspace.id,
+                    user_id: userId,
+                    role: "owner",
+                    can_manage_team: true,
+                    can_manage_settings: true,
+                    can_delete_posts: true,
+                    joined_at: new Date().toISOString(),
+                  });
+
+                if (memberError) {
+                  console.error("[WEBHOOK] Error creating workspace member:", memberError);
+                } else {
+                  console.log(`[WEBHOOK] Created workspace ${workspace.id} with profile key and ref id for user ${userId}`);
+                }
+              }
+            } else {
+              console.error("[WEBHOOK] No profileKey in Ayrshare response");
+            }
+          } catch (error) {
+            console.error("[WEBHOOK] Error creating Ayrshare profile:", error.message);
+          }
         }
         break;
       }

@@ -25,6 +25,12 @@ function getTierFromPriceId(priceId) {
 
 // Helper to get raw body from request
 async function getRawBody(req) {
+  // For Vercel serverless functions, req.body is already the raw buffer
+  if (req.body) {
+    return req.body;
+  }
+
+  // Fallback for other environments
   return new Promise((resolve, reject) => {
     let data = "";
     req.on("data", (chunk) => {
@@ -167,6 +173,10 @@ async function createWorkspaceWithProfile(supabase, userId, tier, workspaceName)
 }
 
 module.exports = async function handler(req, res) {
+  console.log("[WEBHOOK] Webhook handler called");
+  console.log("[WEBHOOK] Method:", req.method);
+  console.log("[WEBHOOK] Headers:", JSON.stringify(req.headers));
+
   // Only allow POST
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -185,19 +195,33 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: "Webhook secret not configured" });
   }
 
+  console.log("[WEBHOOK] Webhook secret found:", webhookSecret.substring(0, 10) + "...");
+
   let event;
 
   try {
     const rawBody = await getRawBody(req);
     const signature = req.headers["stripe-signature"];
 
+    console.log("[WEBHOOK] Raw body type:", typeof rawBody);
+    console.log("[WEBHOOK] Raw body length:", rawBody?.length || 0);
+    console.log("[WEBHOOK] Has signature:", !!signature);
+
     event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+    console.log("[WEBHOOK] Event constructed successfully:", event.type);
   } catch (err) {
+    console.error("[WEBHOOK] Signature verification failed:", err.message);
+    console.error("[WEBHOOK] Error details:", err);
     logError("stripe-webhook-signature", err);
     return res.status(400).json({ error: `Webhook signature verification failed: ${err.message}` });
   }
 
   console.log(`[WEBHOOK] Received event: ${event.type}`);
+  console.log(`[WEBHOOK] Environment check:`, {
+    hasSupabase: !!supabase,
+    hasAyrshareKey: !!process.env.AYRSHARE_API_KEY,
+    hasStripeKey: !!process.env.STRIPE_SECRET_KEY,
+  });
 
   try {
     switch (event.type) {
@@ -207,6 +231,14 @@ module.exports = async function handler(req, res) {
         const tier = session.metadata?.tier;
         const workspaceName = session.metadata?.workspace_name || "My Business";
 
+        console.log(`[WEBHOOK] Session metadata:`, {
+          userId,
+          tier,
+          workspaceName,
+          customer: session.customer,
+          subscription: session.subscription,
+        });
+
         if (!userId) {
           console.error("[WEBHOOK] No user ID in session metadata");
           break;
@@ -215,7 +247,8 @@ module.exports = async function handler(req, res) {
         console.log(`[WEBHOOK] Checkout completed for user ${userId}, tier: ${tier}`);
 
         // Update user subscription status first
-        const { error: updateError } = await supabase
+        console.log(`[WEBHOOK] Updating user_profiles for user ${userId}...`);
+        const { data: updatedProfile, error: updateError } = await supabase
           .from("user_profiles")
           .update({
             subscription_status: "active",
@@ -224,18 +257,29 @@ module.exports = async function handler(req, res) {
             stripe_subscription_id: session.subscription,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", userId);
+          .eq("id", userId)
+          .select();
 
         if (updateError) {
+          console.error("[WEBHOOK] Error updating user profile:", updateError);
           logError("stripe-webhook-update", updateError, { userId, event: event.type });
+        } else {
+          console.log(`[WEBHOOK] User profile updated successfully:`, updatedProfile);
         }
 
         // Check user's existing workspaces (as owner)
-        const { data: existingWorkspaces } = await supabase
+        console.log(`[WEBHOOK] Checking existing workspaces for user ${userId}...`);
+        const { data: existingWorkspaces, error: workspaceQueryError } = await supabase
           .from("workspace_members")
           .select("workspace_id, workspaces!inner(id, name, ayr_profile_key)")
           .eq("user_id", userId)
           .eq("role", "owner");
+
+        if (workspaceQueryError) {
+          console.error("[WEBHOOK] Error querying workspaces:", workspaceQueryError);
+        } else {
+          console.log(`[WEBHOOK] Found ${existingWorkspaces?.length || 0} workspaces:`, existingWorkspaces);
+        }
 
         const workspaceWithProfile = existingWorkspaces?.find(
           (w) => w.workspaces?.ayr_profile_key
