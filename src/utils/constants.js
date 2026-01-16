@@ -75,7 +75,7 @@ export const TIER_CONFIG = {
       analytics: true,
       socialInbox: true
     },
-    tabs: ['dashboard', 'compose', 'schedule', 'posts', 'engagement', 'social-inbox', 'settings']
+    tabs: ['dashboard', 'compose', 'schedule', 'posts', 'assets', 'engagement', 'social-inbox', 'settings']
   },
 
   [SUBSCRIPTION_TIERS.PRO]: {
@@ -104,7 +104,7 @@ export const TIER_CONFIG = {
       analytics: true,
       socialInbox: true
     },
-    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'engagement', 'social-inbox', 'team', 'settings']
+    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'assets', 'engagement', 'social-inbox', 'team', 'settings']
   },
 
   [SUBSCRIPTION_TIERS.PRO_PLUS]: {
@@ -134,7 +134,7 @@ export const TIER_CONFIG = {
       analytics: true,
       socialInbox: true
     },
-    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'engagement', 'social-inbox', 'team', 'approvals', 'settings']
+    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'assets', 'engagement', 'social-inbox', 'team', 'approvals', 'settings']
   },
 
   [SUBSCRIPTION_TIERS.AGENCY]: {
@@ -166,7 +166,7 @@ export const TIER_CONFIG = {
       whiteLabel: true, // Future feature
       prioritySupport: true // Future feature
     },
-    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'engagement', 'social-inbox', 'team', 'approvals', 'settings']
+    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'assets', 'engagement', 'social-inbox', 'team', 'approvals', 'settings']
   }
 };
 
