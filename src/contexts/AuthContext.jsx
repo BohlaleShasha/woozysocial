@@ -23,8 +23,16 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
+  // Try to get cached data for instant load
+  const cachedProfile = (() => {
+    try {
+      const cached = localStorage.getItem('woozy_profile_cache');
+      return cached ? JSON.parse(cached) : null;
+    } catch { return null; }
+  })();
+
   const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
+  const [profile, setProfile] = useState(cachedProfile);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,6 +42,9 @@ export const AuthProvider = ({ children }) => {
       if (session?.user) {
         fetchProfile(session.user.id);
       } else {
+        // Clear cache on logout
+        localStorage.removeItem('woozy_profile_cache');
+        setProfile(null);
         setLoading(false);
       }
     });
@@ -67,6 +78,12 @@ export const AuthProvider = ({ children }) => {
       }
 
       setProfile(data);
+      // Cache profile for faster next load
+      if (data) {
+        try {
+          localStorage.setItem('woozy_profile_cache', JSON.stringify(data));
+        } catch { /* ignore storage errors */ }
+      }
     } catch (error) {
       console.error('Error fetching profile:', error);
     } finally {

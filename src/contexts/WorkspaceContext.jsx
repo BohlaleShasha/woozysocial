@@ -24,10 +24,19 @@ export const useWorkspace = () => {
 
 export const WorkspaceProvider = ({ children }) => {
   const { user } = useAuth();
-  const [activeWorkspace, setActiveWorkspace] = useState(null);
-  const [userWorkspaces, setUserWorkspaces] = useState([]);
+
+  // Try to get cached workspace data for instant load
+  const cachedData = (() => {
+    try {
+      const cached = localStorage.getItem('woozy_workspace_cache');
+      return cached ? JSON.parse(cached) : null;
+    } catch { return null; }
+  })();
+
+  const [activeWorkspace, setActiveWorkspace] = useState(cachedData?.activeWorkspace || null);
+  const [userWorkspaces, setUserWorkspaces] = useState(cachedData?.workspaces || []);
   const [loading, setLoading] = useState(true);
-  const [workspaceMembership, setWorkspaceMembership] = useState(null);
+  const [workspaceMembership, setWorkspaceMembership] = useState(cachedData?.membership || null);
 
   // Fetch user's workspaces via API
   const fetchUserWorkspaces = useCallback(async () => {
@@ -35,12 +44,14 @@ export const WorkspaceProvider = ({ children }) => {
       setUserWorkspaces([]);
       setActiveWorkspace(null);
       setWorkspaceMembership(null);
+      localStorage.removeItem('woozy_workspace_cache');
       setLoading(false);
       return;
     }
 
     try {
-      setLoading(true);
+      // Only show loading if no cached data
+      if (!cachedData) setLoading(true);
 
       // First, try to get workspaces via API
       const listRes = await fetch(`${baseURL}/api/workspace/list?userId=${user.id}`);
@@ -76,12 +87,23 @@ export const WorkspaceProvider = ({ children }) => {
       if (workspaces.length > 0) {
         const lastWorkspace = workspaces.find(w => w.id === responseData.lastWorkspaceId);
         const workspace = lastWorkspace || workspaces[0];
+        const membership = workspace.membership || { role: 'owner' };
 
         setActiveWorkspace(workspace);
-        setWorkspaceMembership(workspace.membership || { role: 'owner' });
+        setWorkspaceMembership(membership);
+
+        // Cache for faster next load
+        try {
+          localStorage.setItem('woozy_workspace_cache', JSON.stringify({
+            workspaces,
+            activeWorkspace: workspace,
+            membership
+          }));
+        } catch { /* ignore storage errors */ }
       } else {
         setActiveWorkspace(null);
         setWorkspaceMembership(null);
+        localStorage.removeItem('woozy_workspace_cache');
       }
     } catch (error) {
       console.error('Error fetching workspaces:', error);
@@ -332,8 +354,9 @@ export const WorkspaceProvider = ({ children }) => {
   const isAdmin = checkIsAdminRole(userRole);
   const isOwner = userRole === TEAM_ROLES.OWNER;
 
-  // Fetch workspace members for the active workspace
+  // Fetch workspace members - LAZY LOADED (only when requested)
   const [workspaceMembers, setWorkspaceMembers] = useState([]);
+  const [membersLoaded, setMembersLoaded] = useState(false);
 
   const fetchWorkspaceMembers = useCallback(async () => {
     if (!activeWorkspace?.id || !user) {
@@ -351,16 +374,18 @@ export const WorkspaceProvider = ({ children }) => {
 
       const responseData = payload.data || payload;
       setWorkspaceMembers(responseData.members || []);
+      setMembersLoaded(true);
     } catch (error) {
       console.error('Error fetching workspace members:', error);
       setWorkspaceMembers([]);
     }
   }, [activeWorkspace, user]);
 
-  // Fetch members when workspace changes
+  // Reset members loaded flag when workspace changes
   useEffect(() => {
-    fetchWorkspaceMembers();
-  }, [fetchWorkspaceMembers]);
+    setMembersLoaded(false);
+    setWorkspaceMembers([]);
+  }, [activeWorkspace?.id]);
 
   const value = {
     // Workspace state
@@ -368,6 +393,7 @@ export const WorkspaceProvider = ({ children }) => {
     userWorkspaces,
     workspaceMembership,
     workspaceMembers,
+    membersLoaded,
     loading,
 
     // Role information
