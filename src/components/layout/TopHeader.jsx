@@ -123,8 +123,8 @@ export const TopHeader = () => {
       setIsManagingSubscription(true);
       setShowDropdown(false);
 
-      // If user is on Agency tier or has an active subscription, open Stripe Customer Portal
-      if (subscriptionTier === SUBSCRIPTION_TIERS.AGENCY || profile?.stripe_customer_id) {
+      // If user is on Agency tier, open Stripe Customer Portal to manage subscription
+      if (subscriptionTier === SUBSCRIPTION_TIERS.AGENCY && profile?.stripe_customer_id) {
         const response = await fetch(`${baseURL}/api/stripe/customer-portal`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -138,7 +138,7 @@ export const TopHeader = () => {
           window.location.href = data.url;
         }
       } else {
-        // If no active subscription, redirect to pricing page
+        // For all other tiers, redirect to pricing page
         navigate('/pricing');
       }
     } catch (err) {
