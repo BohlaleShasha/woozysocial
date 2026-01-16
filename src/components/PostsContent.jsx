@@ -285,7 +285,8 @@ export const PostsContent = () => {
       media_urls: post.mediaUrls || (post.media_url ? [post.media_url] : []),
       platforms: post.platforms || [],
       scheduled_date: post.scheduleDate || post.schedule_date || post.scheduled_at,
-      workspace_id: activeWorkspace.id
+      workspace_id: activeWorkspace.id,
+      isEditingScheduledPost: true // Flag to indicate this is editing a scheduled post
     }));
     setSelectedPost(null); // Close panel
     navigate("/compose");

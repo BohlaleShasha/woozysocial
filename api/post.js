@@ -193,7 +193,7 @@ module.exports = async function handler(req, res) {
       body = await parseRawBody(req);
     }
 
-    const { text, networks, scheduledDate, userId, workspaceId } = body;
+    const { text, networks, scheduledDate, userId, workspaceId, postId } = body;
     let { mediaUrl } = body;
 
     // If file was uploaded, upload to Supabase Storage first
@@ -250,6 +250,50 @@ module.exports = async function handler(req, res) {
         return sendError(res, "Database service is required for scheduled posts", ErrorCodes.CONFIG_ERROR);
       }
 
+      // Check if this is an UPDATE to an existing post (editing a scheduled post)
+      if (postId) {
+        console.log('[post] Updating existing post:', postId);
+
+        const { data: updatedPost, error: updateError } = await supabase
+          .from("posts")
+          .update({
+            caption: text,
+            media_urls: mediaUrl ? [mediaUrl] : [],
+            scheduled_at: new Date(scheduledDate).toISOString(),
+            platforms: platforms,
+            approval_status: 'pending', // Reset for re-approval
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', postId)
+          .eq('workspace_id', workspaceId)
+          .select()
+          .single();
+
+        if (updateError) {
+          logError('post.update_pending', updateError, { postId, userId, workspaceId });
+          return sendError(res, "Failed to update post", ErrorCodes.DATABASE_ERROR);
+        }
+
+        console.log('[post] Post updated successfully:', updatedPost.id);
+
+        // Send approval request notification to clients (since it needs re-approval)
+        if (workspaceId) {
+          await sendApprovalRequestNotification(supabase, {
+            workspaceId,
+            postId: updatedPost.id,
+            platforms,
+            createdByUserId: userId
+          }).catch(err => logError('post.notification.approvalRequest', err, { postId: updatedPost.id }));
+        }
+
+        return sendSuccess(res, {
+          status: 'updated',
+          postId: updatedPost.id,
+          message: 'Post updated and awaiting approval'
+        });
+      }
+
+      // Otherwise, CREATE a new post
       const { data: savedPost, error: saveError } = await supabase.from("posts").insert([{
           user_id: userId,
           workspace_id: workspaceId,

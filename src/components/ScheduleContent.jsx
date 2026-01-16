@@ -148,7 +148,8 @@ export const ScheduleContent = () => {
       media_urls: post.media_urls || post.mediaUrls || [],
       platforms: post.platforms || [],
       scheduled_date: post.scheduled_at || post.scheduleDate || post.schedule_date,
-      workspace_id: activeWorkspace.id
+      workspace_id: activeWorkspace.id,
+      isEditingScheduledPost: true // Flag to indicate this is editing a scheduled post
     }));
     setSelectedPost(null);
     // Navigate to compose - you'll need to import useNavigate from react-router-dom

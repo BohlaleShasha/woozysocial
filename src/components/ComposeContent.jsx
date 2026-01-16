@@ -53,6 +53,7 @@ export const ComposeContent = () => {
   const [connectedAccounts, setConnectedAccounts] = useState([]);
   const [accountDetails, setAccountDetails] = useState([]);
   const [currentDraftId, setCurrentDraftId] = useState(null);
+  const [isEditingScheduledPost, setIsEditingScheduledPost] = useState(false); // Track if editing a scheduled post
   const [lastSaved, setLastSaved] = useState(null);
   const autoSaveTimerRef = useRef(null);
   const isSavingRef = useRef(false); // Lock to prevent concurrent saves
@@ -149,6 +150,11 @@ export const ComposeContent = () => {
 
         // Set the draft ID so we update instead of create new
         setCurrentDraftId(draft.id);
+
+        // Check if this is editing a scheduled post
+        if (draft.isEditingScheduledPost) {
+          setIsEditingScheduledPost(true);
+        }
 
         // Load caption
         if (draft.caption) {
@@ -484,6 +490,11 @@ export const ComposeContent = () => {
         formData.append("networks", JSON.stringify(networks));
         formData.append("scheduledDate", tempScheduledDate.toISOString());
 
+        // If editing a scheduled post, include the postId
+        if (isEditingScheduledPost && currentDraftId) {
+          formData.append("postId", currentDraftId);
+        }
+
         response = await fetch(`${baseURL}/api/post`, {
           method: "POST",
           body: formData
@@ -499,14 +510,16 @@ export const ComposeContent = () => {
             workspaceId: activeWorkspace.id,
             mediaUrl: mediaPreview && typeof mediaPreview === 'string' && mediaPreview.startsWith('http') ? mediaPreview : null,
             networks: JSON.stringify(networks),
-            scheduledDate: tempScheduledDate.toISOString()
+            scheduledDate: tempScheduledDate.toISOString(),
+            // If editing a scheduled post, include the postId
+            ...(isEditingScheduledPost && currentDraftId && { postId: currentDraftId })
           })
         });
       }
 
       if (response.ok) {
-        // Delete draft if this was loaded from a draft
-        if (currentDraftId) {
+        // Delete draft if this was loaded from a draft (but not if editing a scheduled post)
+        if (currentDraftId && !isEditingScheduledPost) {
           try {
             await supabase
               .from("post_drafts")
@@ -519,8 +532,10 @@ export const ComposeContent = () => {
         }
 
         toast({
-          title: "Post scheduled!",
-          description: `Your post will be published on ${tempScheduledDate.toLocaleString()}`,
+          title: isEditingScheduledPost ? "Post updated!" : "Post scheduled!",
+          description: isEditingScheduledPost
+            ? "Your changes have been saved and the post is awaiting approval"
+            : `Your post will be published on ${tempScheduledDate.toLocaleString()}`,
           status: "success",
           duration: 4000,
           isClosable: true
@@ -1321,6 +1336,11 @@ export const ComposeContent = () => {
           formData.append("scheduledDate", scheduledTime.toISOString());
         }
 
+        // If editing a scheduled post, include the postId
+        if (isEditingScheduledPost && currentDraftId) {
+          formData.append("postId", currentDraftId);
+        }
+
         response = await fetch(`${baseURL}/api/post`, {
           method: "POST",
           body: formData
@@ -1338,7 +1358,9 @@ export const ComposeContent = () => {
             workspaceId: activeWorkspace.id,
             mediaUrl,
             networks: JSON.stringify(networks),
-            scheduledDate: scheduledTime ? scheduledTime.toISOString() : null
+            scheduledDate: scheduledTime ? scheduledTime.toISOString() : null,
+            // If editing a scheduled post, include the postId
+            ...(isEditingScheduledPost && currentDraftId && { postId: currentDraftId })
           })
         });
       }
@@ -1347,8 +1369,8 @@ export const ComposeContent = () => {
         const responseData = await response.json().catch(() => ({}));
         const isPendingApproval = responseData.status === 'pending_approval';
 
-        // Delete draft after successful posting
-        if (currentDraftId) {
+        // Delete draft after successful posting (but not if editing a scheduled post)
+        if (currentDraftId && !isEditingScheduledPost) {
           try {
             await supabase
               .from("post_drafts")
@@ -1363,18 +1385,22 @@ export const ComposeContent = () => {
         // Show appropriate message based on whether approval is needed
         if (isPendingApproval) {
           toast({
-            title: "Post awaiting approval",
-            description: `Your post has been saved and is waiting for client approval before being scheduled for ${scheduledDate.toLocaleString()}.`,
+            title: isEditingScheduledPost ? "Post updated!" : "Post awaiting approval",
+            description: isEditingScheduledPost
+              ? "Your changes have been saved and the post is awaiting approval"
+              : `Your post has been saved and is waiting for client approval before being scheduled for ${scheduledDate.toLocaleString()}.`,
             status: "info",
             duration: 5000,
             isClosable: true
           });
         } else {
           toast({
-            title: scheduledDate ? "Post scheduled." : "Post submitted.",
-            description: scheduledDate
-              ? `Your post was scheduled for ${scheduledDate.toLocaleString()}.`
-              : "Your post was successfully submitted.",
+            title: isEditingScheduledPost ? "Post updated!" : (scheduledDate ? "Post scheduled." : "Post submitted."),
+            description: isEditingScheduledPost
+              ? "Your changes have been saved successfully"
+              : (scheduledDate
+                ? `Your post was scheduled for ${scheduledDate.toLocaleString()}.`
+                : "Your post was successfully submitted."),
             status: "success",
             duration: 3000,
             isClosable: true
