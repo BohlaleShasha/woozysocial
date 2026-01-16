@@ -13,6 +13,7 @@ const {
   applyRateLimit,
   isServiceConfigured
 } = require("./_utils");
+const { hasFeature } = require("./_utils-access-control");
 const { sendPostScheduledNotification, sendApprovalRequestNotification, sendPostUpdatedNotification } = require("./notifications/helpers");
 
 const BASE_AYRSHARE = "https://api.ayrshare.com/api";
@@ -240,9 +241,23 @@ module.exports = async function handler(req, res) {
 
     const isScheduled = !!scheduledDate;
 
-    // ALL scheduled posts require approval before going to Ayrshare
-    // This ensures posts are reviewed before being sent to social platforms
-    const requiresApproval = isScheduled;
+    // Get user's subscription tier to check if approval workflows are enabled
+    let requiresApproval = false;
+    if (isScheduled && supabase) {
+      const { data: userProfile } = await supabase
+        .from('user_profiles')
+        .select('subscription_tier')
+        .eq('id', userId)
+        .single();
+
+      const tier = userProfile?.subscription_tier || 'free';
+
+      // Only require approval if the tier has approval workflows feature
+      // Solo and Pro tiers don't have approval workflows, so their scheduled posts go straight to Ayrshare
+      requiresApproval = hasFeature(tier, 'approvalWorkflows');
+
+      console.log('[post] Tier:', tier, '| Has approval workflows:', requiresApproval);
+    }
 
     // If scheduled, save to DB only - wait for approval before sending to Ayrshare
     if (requiresApproval) {

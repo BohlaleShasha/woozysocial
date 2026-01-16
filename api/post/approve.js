@@ -14,7 +14,8 @@ const {
 } = require("../_utils");
 const {
   verifyWorkspaceMembership,
-  checkPermission
+  checkPermission,
+  hasFeature
 } = require("../_utils-access-control");
 
 const BASE_AYRSHARE = "https://api.ayrshare.com/api";
@@ -126,10 +127,28 @@ module.exports = async function handler(req, res) {
 
       const member = membershipCheck.member;
 
-      // Check if user has permission to approve posts
+      // Check if user has permission to approve posts (role-based)
       const permissionCheck = checkPermission(member, 'canApprovePosts');
       if (!permissionCheck.success) {
         return sendError(res, "Only admins and clients can approve posts", ErrorCodes.FORBIDDEN);
+      }
+
+      // Check if subscription tier has approval workflows feature enabled
+      // Get user's subscription tier
+      const { data: userProfile } = await supabase
+        .from('user_profiles')
+        .select('subscription_tier')
+        .eq('id', userId)
+        .single();
+
+      const tier = userProfile?.subscription_tier || 'free';
+
+      if (!hasFeature(tier, 'approvalWorkflows')) {
+        return sendError(
+          res,
+          "Approval workflows are not available on your subscription tier. Please upgrade to Pro Plus or Agency to access this feature.",
+          ErrorCodes.FORBIDDEN
+        );
       }
 
       // Map action to status
