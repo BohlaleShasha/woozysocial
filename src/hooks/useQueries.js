@@ -60,7 +60,7 @@ export function usePosts(workspaceId, userId, options = {}) {
       return data || [];
     },
     enabled: !!workspaceId && enabled,
-    staleTime: 1000 * 30, // 30 seconds - posts change more frequently
+    staleTime: 1000 * 60, // 1 minute
   });
 }
 
@@ -79,7 +79,7 @@ export function useScheduledPosts(workspaceId, userId) {
       return data || [];
     },
     enabled: !!workspaceId,
-    staleTime: 1000 * 30,
+    staleTime: 1000 * 60, // 1 minute
   });
 }
 
@@ -96,7 +96,7 @@ export function usePendingApprovals(workspaceId, userId, status = "pending") {
       return responseData.grouped?.[status] || [];
     },
     enabled: !!(workspaceId && userId),
-    staleTime: 1000 * 15, // 15 seconds - approvals are time-sensitive
+    staleTime: 1000 * 60, // 1 minute
   });
 }
 
@@ -113,7 +113,7 @@ export function useUnifiedSchedule(workspaceId, userId, status = "all") {
       return responseData.posts || [];
     },
     enabled: !!(workspaceId && userId),
-    staleTime: 1000 * 30, // 30 seconds
+    staleTime: 1000 * 60 * 2, // 2 minutes
   });
 }
 
@@ -194,7 +194,7 @@ export function useNotifications(userId, workspaceId, options = {}) {
       return data.data || data;
     },
     enabled: !!userId,
-    staleTime: 1000 * 30, // 30 seconds
+    staleTime: 1000 * 60, // 1 minute
   });
 }
 
