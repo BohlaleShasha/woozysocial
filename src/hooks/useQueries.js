@@ -28,7 +28,7 @@ export function useConnectedAccounts(workspaceId, userId) {
 // ============================================
 
 export function usePosts(workspaceId, userId, options = {}) {
-  const { status, limit = 50 } = options;
+  const { status, limit = 50, enabled = true } = options;
 
   return useQuery({
     queryKey: ["posts", workspaceId, status, limit],
@@ -59,7 +59,7 @@ export function usePosts(workspaceId, userId, options = {}) {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!workspaceId,
+    enabled: !!workspaceId && enabled,
     staleTime: 1000 * 30, // 30 seconds - posts change more frequently
   });
 }
@@ -121,7 +121,9 @@ export function useUnifiedSchedule(workspaceId, userId, status = "all") {
 // DRAFTS
 // ============================================
 
-export function useDrafts(workspaceId, userId) {
+export function useDrafts(workspaceId, userId, options = {}) {
+  const { enabled = true } = options;
+
   return useQuery({
     queryKey: ["drafts", workspaceId],
     queryFn: async () => {
@@ -134,7 +136,7 @@ export function useDrafts(workspaceId, userId) {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!workspaceId,
+    enabled: !!workspaceId && enabled,
     staleTime: 1000 * 60, // 1 minute
   });
 }

@@ -42,21 +42,24 @@ export const PostsContent = () => {
     failed: "failed"
   };
 
-  // Use React Query for drafts
+  // Use React Query for drafts - only fetch when on drafts tab
   const {
     data: drafts = [],
     isLoading: draftsLoading,
     refetch: refetchDrafts
-  } = useDrafts(activeWorkspace?.id, user?.id);
+  } = useDrafts(activeWorkspace?.id, user?.id, {
+    enabled: activeTab === "drafts"
+  });
 
-  // Use React Query for posts (scheduled, history, failed)
+  // Use React Query for posts (scheduled, history, failed) - only fetch when NOT on drafts tab
   const {
     data: postsData = [],
     isLoading: postsLoading,
     refetch: refetchPosts
   } = usePosts(activeWorkspace?.id, user?.id, {
     status: statusMap[activeTab],
-    limit: 100
+    limit: 100,
+    enabled: activeTab !== "drafts"
   });
 
   // Get current posts based on active tab
