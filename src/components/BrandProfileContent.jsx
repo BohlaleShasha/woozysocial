@@ -2,14 +2,16 @@ import React, { useState, useEffect } from "react";
 import { useToast } from "@chakra-ui/react";
 import { useAuth } from "../contexts/AuthContext";
 import { useWorkspace } from "../contexts/WorkspaceContext";
+import { useUserBrandProfile } from "../hooks/useQueries";
 import { supabase } from "../utils/supabaseClient";
+import { useQueryClient } from "@tanstack/react-query";
 import "./BrandProfileContent.css";
 
 export const BrandProfileContent = () => {
   const { user } = useAuth();
   const { activeWorkspace } = useWorkspace();
   const toast = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+  const queryClient = useQueryClient();
   const [isSaving, setIsSaving] = useState(false);
 
   const [brandName, setBrandName] = useState("");
@@ -21,49 +23,22 @@ export const BrandProfileContent = () => {
   const [brandValues, setBrandValues] = useState("");
   const [samplePosts, setSamplePosts] = useState("");
 
-  // Load brand profile on mount
+  // Use React Query for brand profile (cached!)
+  const { data: profileData, isLoading } = useUserBrandProfile(user?.id);
+
+  // Populate form when data loads
   useEffect(() => {
-    const loadBrandProfile = async () => {
-      if (!user) return;
-
-      setIsLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('brand_profiles')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-
-        if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-          throw error;
-        }
-
-        if (data) {
-          setBrandName(data.brand_name || "");
-          setWebsiteUrl(data.website_url || "");
-          setBrandDescription(data.brand_description || "");
-          setToneOfVoice(data.tone_of_voice || "Professional");
-          setTargetAudience(data.target_audience || "");
-          setKeyTopics(data.key_topics || "");
-          setBrandValues(data.brand_values || "");
-          setSamplePosts(data.sample_posts || "");
-        }
-      } catch (error) {
-        console.error("Error loading brand profile:", error);
-        toast({
-          title: "Error loading brand profile",
-          description: error.message,
-          status: "error",
-          duration: 3000,
-          isClosable: true
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadBrandProfile();
-  }, [user, toast]);
+    if (profileData) {
+      setBrandName(profileData.brand_name || "");
+      setWebsiteUrl(profileData.website_url || "");
+      setBrandDescription(profileData.brand_description || "");
+      setToneOfVoice(profileData.tone_of_voice || "Professional");
+      setTargetAudience(profileData.target_audience || "");
+      setKeyTopics(profileData.key_topics || "");
+      setBrandValues(profileData.brand_values || "");
+      setSamplePosts(profileData.sample_posts || "");
+    }
+  }, [profileData]);
 
   const handleSave = async () => {
     if (!user) {
@@ -97,6 +72,9 @@ export const BrandProfileContent = () => {
         .upsert(profileData, { onConflict: 'user_id' });
 
       if (error) throw error;
+
+      // Invalidate cache so next load is fresh
+      queryClient.invalidateQueries({ queryKey: ["userBrandProfile", user.id] });
 
       toast({
         title: "Brand profile saved!",
