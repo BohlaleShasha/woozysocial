@@ -224,7 +224,14 @@ export const ClientApprovals = () => {
                 </div>
                 {post.media_urls?.length > 0 && (
                   <div className="post-thumbnail">
-                    <img src={post.media_urls[0]} alt="Post media" />
+                    <img
+                      src={post.media_urls[0]}
+                      alt="Post media"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.parentElement.innerHTML = '<span class="thumbnail-fallback">🖼️</span>';
+                      }}
+                    />
                   </div>
                 )}
               </div>
@@ -246,9 +253,45 @@ export const ClientApprovals = () => {
               {/* Media Preview */}
               {selectedPost.media_urls?.length > 0 && (
                 <div className="detail-media">
-                  {selectedPost.media_urls.map((url, index) => (
-                    <img key={index} src={url} alt={`Media ${index + 1}`} />
-                  ))}
+                  {selectedPost.media_urls.map((url, index) => {
+                    // Check if it's a video
+                    const isVideo = url?.match(/\.(mp4|mov|webm|avi)$/i);
+
+                    if (isVideo) {
+                      return (
+                        <video
+                          key={index}
+                          src={url}
+                          controls
+                          className="media-preview-video"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling?.style && (e.target.nextSibling.style.display = 'flex');
+                          }}
+                        />
+                      );
+                    }
+
+                    return (
+                      <div key={index} className="media-preview-container">
+                        <img
+                          src={url}
+                          alt={`Media ${index + 1}`}
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.parentElement.classList.add('media-error');
+                          }}
+                        />
+                        <div className="media-fallback">
+                          <span className="media-fallback-icon">🖼️</span>
+                          <span className="media-fallback-text">Media attached</span>
+                          <a href={url} target="_blank" rel="noopener noreferrer" className="media-fallback-link">
+                            View media
+                          </a>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
