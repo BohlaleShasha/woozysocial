@@ -1,4 +1,5 @@
 const { createClient } = require("@supabase/supabase-js");
+const axios = require("axios");
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -8,24 +9,14 @@ const supabase = createClient(
 // Fetch and extract text content from a URL
 async function fetchWebsiteContent(url) {
   try {
-    // Create abort controller for timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-    const response = await fetch(url, {
+    const response = await axios.get(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; WoozySocial/1.0; +https://woozysocial.com)'
       },
-      signal: controller.signal
+      timeout: 10000
     });
 
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch URL: ${response.status}`);
-    }
-
-    const html = await response.text();
+    const html = response.data;
 
     // Extract text content from HTML
     // Remove scripts, styles, and HTML tags
@@ -162,31 +153,22 @@ INSTRUCTIONS:
 
 Format your response as exactly 3 variations, numbered 1-3, with each on its own line.`;
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
+  const response = await axios.post('https://api.openai.com/v1/chat/completions', {
+    model: 'gpt-4o-mini',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: `Create social media posts about: ${prompt}` }
+    ],
+    temperature: 0.8,
+    max_tokens: 1000
+  }, {
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${openaiKey}`
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Create social media posts about: ${prompt}` }
-      ],
-      temperature: 0.8,
-      max_tokens: 1000
-    })
+    }
   });
 
-  if (!response.ok) {
-    const error = await response.json();
-    console.error('OpenAI API error:', error);
-    throw new Error(error.error?.message || 'Failed to generate content');
-  }
-
-  const data = await response.json();
-  const content = data.choices[0]?.message?.content || '';
+  const content = response.data.choices[0]?.message?.content || '';
 
   // Parse variations from response
   const variations = content
