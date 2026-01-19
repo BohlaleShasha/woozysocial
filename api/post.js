@@ -179,23 +179,45 @@ module.exports = async function handler(req, res) {
   const supabase = getSupabase();
 
   try {
+    console.log('[POST] Request received:', {
+      method: req.method,
+      contentType: req.headers['content-type']
+    });
+
     const contentType = req.headers['content-type'] || '';
     let body = {};
     let uploadedFiles = {};
 
     // Handle both JSON and FormData (bodyParser is disabled)
     if (contentType.includes('multipart/form-data')) {
+      console.log('[POST] Parsing FormData...');
       // Parse FormData with busboy
       const { fields, files } = await parseFormData(req);
       body = fields;
       uploadedFiles = files;
+      console.log('[POST] FormData parsed:', {
+        fieldKeys: Object.keys(fields),
+        fileKeys: Object.keys(files)
+      });
     } else {
+      console.log('[POST] Parsing JSON body...');
       // Parse JSON
       body = await parseRawBody(req);
+      console.log('[POST] JSON parsed, keys:', Object.keys(body));
     }
 
     const { text, networks, scheduledDate, userId, workspaceId, postId } = body;
     let { mediaUrl } = body;
+
+    console.log('[POST] Extracted params:', {
+      hasText: !!text,
+      hasNetworks: !!networks,
+      hasScheduledDate: !!scheduledDate,
+      userId,
+      workspaceId,
+      postId,
+      hasMediaUrl: !!mediaUrl
+    });
 
     // If file was uploaded, upload to Supabase Storage first
     if (uploadedFiles.media) {
@@ -215,31 +237,40 @@ module.exports = async function handler(req, res) {
     }
 
     // Validate required fields
+    console.log('[POST] Validating required fields...');
     const validation = validateRequired(body, ['text', 'networks', 'userId']);
     if (!validation.valid) {
+      console.error('[POST] Validation failed:', validation.missing);
       return sendError(
         res,
         `Missing required fields: ${validation.missing.join(', ')}`,
         ErrorCodes.VALIDATION_ERROR
       );
     }
+    console.log('[POST] Required fields validated');
 
     // Parse and validate networks
+    console.log('[POST] Parsing networks:', networks);
     const { valid: networksValid, platforms, error: networksError } = parseNetworks(networks);
     if (!networksValid) {
+      console.error('[POST] Networks validation failed:', networksError);
       return sendError(res, networksError, ErrorCodes.VALIDATION_ERROR);
     }
 
     if (platforms.length === 0) {
+      console.error('[POST] No platforms selected');
       return sendError(res, "At least one social platform must be selected", ErrorCodes.VALIDATION_ERROR);
     }
+    console.log('[POST] Platforms selected:', platforms);
 
     // Validate text length
     if (text.length > 5000) {
+      console.error('[POST] Text too long:', text.length);
       return sendError(res, "Post text exceeds maximum length of 5000 characters", ErrorCodes.VALIDATION_ERROR);
     }
 
     const isScheduled = !!scheduledDate;
+    console.log('[POST] Is scheduled:', isScheduled);
 
     // Get user's subscription tier to check if approval workflows are enabled
     let requiresApproval = false;
@@ -375,26 +406,35 @@ module.exports = async function handler(req, res) {
     }
 
     // Check Ayrshare is configured
+    console.log('[POST] Checking Ayrshare configuration...');
     if (!isServiceConfigured('ayrshare')) {
+      console.error('[POST] Ayrshare not configured');
       return sendError(res, "Social posting service is not configured", ErrorCodes.CONFIG_ERROR);
     }
+    console.log('[POST] Ayrshare configured');
 
     // Get profile key
+    console.log('[POST] Getting profile key for workspaceId:', workspaceId, 'userId:', userId);
     let profileKey;
     if (workspaceId) {
       profileKey = await getWorkspaceProfileKey(workspaceId);
+      console.log('[POST] Workspace profile key:', profileKey ? 'FOUND' : 'NOT FOUND');
     }
     if (!profileKey && userId) {
+      console.log('[POST] Trying user profile key...');
       profileKey = await getWorkspaceProfileKeyForUser(userId);
+      console.log('[POST] User profile key:', profileKey ? 'FOUND' : 'NOT FOUND');
     }
 
     if (!profileKey) {
+      console.error('[POST] No profile key found for workspace or user');
       return sendError(
         res,
         "No social media accounts connected. Please connect your accounts first.",
         ErrorCodes.VALIDATION_ERROR
       );
     }
+    console.log('[POST] Using profile key:', profileKey.substring(0, 8) + '...');
 
     // Build post data
     const postData = { post: text, platforms };
@@ -417,6 +457,10 @@ module.exports = async function handler(req, res) {
     }
 
     // Send to Ayrshare
+    console.log('[POST] Sending to Ayrshare...', {
+      endpoint: `${BASE_AYRSHARE}/post`,
+      postData: { ...postData, post: postData.post?.substring(0, 50) + '...' }
+    });
     let response;
     try {
       response = await axios.post(`${BASE_AYRSHARE}/post`, postData, {
@@ -427,7 +471,16 @@ module.exports = async function handler(req, res) {
         },
         timeout: 30000 // 30 second timeout
       });
+      console.log('[POST] Ayrshare response received:', {
+        status: response.data?.status,
+        id: response.data?.id || response.data?.postId
+      });
     } catch (axiosError) {
+      console.error('[POST] Ayrshare request failed:', {
+        message: axiosError.message,
+        status: axiosError.response?.status,
+        data: axiosError.response?.data
+      });
       logError('post.ayrshare_request', axiosError, { platforms });
 
       // Save failed post to database
@@ -478,9 +531,10 @@ module.exports = async function handler(req, res) {
     }
 
     // Save successful post to database
+    console.log('[POST] Saving successful post to database...');
     if (supabase) {
       const ayrPostId = response.data.id || response.data.postId;
-      await supabase.from("posts").insert([{
+      const postRecord = {
         user_id: userId,
         workspace_id: workspaceId,
         created_by: userId,
@@ -493,9 +547,27 @@ module.exports = async function handler(req, res) {
         platforms: platforms,
         approval_status: 'approved',
         requires_approval: false
-      }]).catch(dbErr => logError('post.save_success', dbErr));
+      };
+      console.log('[POST] Post record to save:', {
+        ...postRecord,
+        caption: postRecord.caption?.substring(0, 50) + '...'
+      });
+
+      const { data: savedPost, error: dbError } = await supabase
+        .from("posts")
+        .insert([postRecord])
+        .select()
+        .single();
+
+      if (dbError) {
+        console.error('[POST] Database save error:', dbError);
+        logError('post.save_success', dbError);
+      } else {
+        console.log('[POST] Post saved to database:', savedPost?.id);
+      }
     }
 
+    console.log('[POST] Returning success response');
     return sendSuccess(res, {
       status: isScheduled ? 'scheduled' : 'posted',
       postId: response.data.id || response.data.postId,
@@ -504,8 +576,27 @@ module.exports = async function handler(req, res) {
     });
 
   } catch (error) {
-    logError('post.handler', error, { method: req.method });
-    return sendError(res, "An unexpected error occurred while posting", ErrorCodes.INTERNAL_ERROR);
+    // Enhanced error logging to identify exact failure point
+    console.error('=== POST HANDLER ERROR ===');
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Request method:', req.method);
+    console.error('Content-Type:', req.headers['content-type']);
+    console.error('Has body:', !!req.body);
+
+    logError('post.handler', error, {
+      method: req.method,
+      contentType: req.headers['content-type'],
+      errorMessage: error.message,
+      errorStack: error.stack
+    });
+
+    return sendError(
+      res,
+      `An unexpected error occurred while posting: ${error.message}`,
+      ErrorCodes.INTERNAL_ERROR,
+      process.env.NODE_ENV !== 'production' ? { stack: error.stack } : null
+    );
   }
 };
 
