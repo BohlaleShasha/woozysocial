@@ -66,6 +66,7 @@ export const ComposeContent = () => {
 
   // AI Generation state
   const [aiPrompt, setAiPrompt] = useState("");
+  const [aiWebsiteUrl, setAiWebsiteUrl] = useState("");
   const [aiVariations, setAiVariations] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -1482,7 +1483,8 @@ export const ComposeContent = () => {
         body: JSON.stringify({
           workspaceId: activeWorkspace.id,
           prompt: aiPrompt,
-          platforms: selectedPlatforms
+          platforms: selectedPlatforms,
+          websiteUrl: aiWebsiteUrl || null
         })
       });
 
@@ -1493,7 +1495,16 @@ export const ComposeContent = () => {
       const data = await response.json();
       setAiVariations(data.variations || []);
 
-      if (!data.brandProfileUsed) {
+      // Show helpful tips based on what was used
+      if (data.websiteUsed) {
+        toast({
+          title: "Website analyzed",
+          description: `Content from "${data.websiteTitle || 'website'}" was used to generate posts`,
+          status: "success",
+          duration: 3000,
+          isClosable: true
+        });
+      } else if (!data.brandProfileUsed) {
         toast({
           title: "Tip",
           description: "Complete your Brand Profile for better AI suggestions!",
@@ -1522,6 +1533,7 @@ export const ComposeContent = () => {
     setPost({ ...post, text: cleanText });
     onAiClose();
     setAiPrompt("");
+    setAiWebsiteUrl("");
     setAiVariations([]);
   };
 
@@ -2032,7 +2044,7 @@ export const ComposeContent = () => {
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
                   placeholder="E.g., Announce our new product launch, share a customer success story, promote our upcoming webinar..."
-                  rows="4"
+                  rows="3"
                   style={{
                     width: '100%',
                     padding: '12px',
@@ -2043,7 +2055,29 @@ export const ComposeContent = () => {
                     resize: 'vertical'
                   }}
                 />
-                <p style={{ marginTop: '10px', fontSize: '12px', color: '#999' }}>
+
+                <p style={{ marginTop: '16px', marginBottom: '8px', color: '#666', fontSize: '14px' }}>
+                  🔗 Website URL (optional)
+                </p>
+                <input
+                  type="url"
+                  value={aiWebsiteUrl}
+                  onChange={(e) => setAiWebsiteUrl(e.target.value)}
+                  placeholder="https://example.com/product-page"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: '1px solid #ddd',
+                    fontSize: '14px',
+                    fontFamily: 'inherit'
+                  }}
+                />
+                <p style={{ marginTop: '6px', fontSize: '12px', color: '#999' }}>
+                  AI will analyze the page content to create more relevant posts
+                </p>
+
+                <p style={{ marginTop: '12px', fontSize: '12px', color: '#999' }}>
                   💡 Tip: Complete your Brand Profile for better AI-generated content
                 </p>
               </div>
@@ -2085,6 +2119,7 @@ export const ComposeContent = () => {
                   onClick={() => {
                     setAiVariations([]);
                     setAiPrompt("");
+                    setAiWebsiteUrl("");
                   }}
                   style={{ marginTop: '10px' }}
                 >
