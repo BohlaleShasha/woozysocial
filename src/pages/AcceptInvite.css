@@ -88,11 +88,11 @@
 }
 
 .detail-value.role-badge {
-  background: #afabf9;
+  background: white;
   color: #114C5A;
   padding: 6px 16px;
   border-radius: 8px;
-  border: 2px solid rgba(0, 0, 0, 0.4);
+  border: 2px solid #afabf9;
   font-weight: 600;
 }
 
@@ -142,14 +142,14 @@
 }
 
 .accept-button {
-  background: #114C5A;
-  color: #afabf9;
+  background: #afabf9;
+  color: #114C5A;
 }
 
 .accept-button:hover:not(:disabled) {
-  background: #0d3a47;
+  background: #9995e8;
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(17, 76, 90, 0.2);
+  box-shadow: 0 6px 16px rgba(175, 171, 249, 0.3);
 }
 
 .accept-button:disabled {
