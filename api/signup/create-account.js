@@ -95,6 +95,43 @@ module.exports = async function handler(req, res) {
 
     console.log("[CREATE ACCOUNT] Starting account creation for:", email);
 
+    // Check if user already exists in user_profiles (from previous partial signup)
+    const { data: existingProfile } = await supabase
+      .from('user_profiles')
+      .select('id, email, onboarding_completed')
+      .eq('email', email.toLowerCase())
+      .maybeSingle();
+
+    if (existingProfile) {
+      console.log("[CREATE ACCOUNT] User already exists:", existingProfile.id);
+
+      // If onboarding is already completed, they should login instead
+      if (existingProfile.onboarding_completed) {
+        return sendError(
+          res,
+          "Account already exists. Please login instead.",
+          ErrorCodes.VALIDATION_ERROR
+        );
+      }
+
+      // User exists but didn't complete payment - allow them to continue
+      // Check if they have a workspace
+      const { data: existingWorkspace } = await supabase
+        .from('workspaces')
+        .select('id')
+        .eq('owner_id', existingProfile.id)
+        .maybeSingle();
+
+      if (existingWorkspace) {
+        console.log("[CREATE ACCOUNT] Returning existing account for retry");
+        return sendSuccess(res, {
+          userId: existingProfile.id,
+          workspaceId: existingWorkspace.id,
+          message: "Account already exists, continuing signup"
+        });
+      }
+    }
+
     // STEP 1: Create Supabase auth user
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: email.toLowerCase(),
@@ -127,16 +164,19 @@ module.exports = async function handler(req, res) {
     const userId = authData.user.id;
     console.log("[CREATE ACCOUNT] Auth user created:", userId);
 
-    // STEP 2: Create user profile
+    // STEP 2: Create user profile (use upsert to handle duplicates)
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
-      .insert({
+      .upsert({
         id: userId,
         email: email.toLowerCase(),
         full_name: fullName,
         questionnaire_answers: questionnaireAnswers || {},
         onboarding_step: 4, // At payment step
         onboarding_completed: false
+      }, {
+        onConflict: 'id',
+        ignoreDuplicates: false
       })
       .select()
       .single();
@@ -156,43 +196,62 @@ module.exports = async function handler(req, res) {
 
     console.log("[CREATE ACCOUNT] User profile created");
 
-    // STEP 3: Create workspace (pending payment)
-    const { data: workspace, error: workspaceError } = await supabase
+    // STEP 3: Create workspace (pending payment) - check if already exists
+    let workspace;
+    const { data: existingWorkspace } = await supabase
       .from('workspaces')
-      .insert({
-        name: workspaceName,
-        owner_id: userId,
-        onboarding_status: 'pending_payment',
-        questionnaire_data: questionnaireAnswers || {},
-        subscription_tier: selectedTier,
-        subscription_status: 'inactive'
-      })
-      .select()
-      .single();
+      .select('id')
+      .eq('owner_id', userId)
+      .maybeSingle();
 
-    if (workspaceError) {
-      logError("create-account-workspace", workspaceError, { userId, email });
+    if (existingWorkspace) {
+      console.log("[CREATE ACCOUNT] Using existing workspace:", existingWorkspace.id);
+      workspace = existingWorkspace;
+    } else {
+      const { data: newWorkspace, error: workspaceError } = await supabase
+        .from('workspaces')
+        .insert({
+          name: workspaceName,
+          owner_id: userId,
+          onboarding_status: 'pending_payment',
+          questionnaire_data: questionnaireAnswers || {},
+          subscription_tier: selectedTier,
+          subscription_status: 'inactive'
+        })
+        .select()
+        .single();
 
-      // Cleanup: delete profile and auth user
-      await supabase.from('user_profiles').delete().eq('id', userId);
-      await supabase.auth.admin.deleteUser(userId);
+      if (workspaceError) {
+        logError("create-account-workspace", workspaceError, { userId, email });
 
-      return sendError(
-        res,
-        "Failed to create workspace",
-        ErrorCodes.DATABASE_ERROR
-      );
+        // Cleanup: delete profile and auth user
+        await supabase.from('user_profiles').delete().eq('id', userId);
+        await supabase.auth.admin.deleteUser(userId);
+
+        return sendError(
+          res,
+          "Failed to create workspace",
+          ErrorCodes.DATABASE_ERROR
+        );
+      }
+
+      workspace = newWorkspace;
     }
 
     console.log("[CREATE ACCOUNT] Workspace created:", workspace.id);
 
-    // STEP 4: Add user as workspace owner in workspace_members
+    // STEP 4: Add user as workspace owner in workspace_members (idempotent)
     const { error: memberError } = await supabase
       .from('workspace_members')
-      .insert({
+      .upsert({
         workspace_id: workspace.id,
         user_id: userId,
-        role: 'owner'
+        role: 'owner',
+        can_manage_team: true,
+        can_manage_settings: true
+      }, {
+        onConflict: 'workspace_id,user_id',
+        ignoreDuplicates: false
       });
 
     if (memberError) {
