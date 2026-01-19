@@ -117,7 +117,7 @@
 }
 
 .platform-filter-btn.active {
-  background: #114C5A;
+  background: #afabf9;
   color: white;
 }
 
@@ -127,7 +127,7 @@
 
 .platform-filter-btn.active .filter-count {
   background: #afabf9;
-  color: #114C5A;
+  color: #afabf9;
 }
 
 .filter-icon {
@@ -184,8 +184,8 @@
 }
 
 .filter-tab.active {
-  background: white;
-  color: #114C5A;
+  background: #afabf9;
+  color: white;
   font-weight: 600;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
@@ -221,8 +221,8 @@
 }
 
 .conversation-item.active {
-  background: #eff6ff;
-  border-left: 3px solid #114C5A;
+  background: #f5f3ff;
+  border-left: 3px solid #afabf9;
 }
 
 .conversation-item.unread {
@@ -400,7 +400,7 @@
 }
 
 .message-bubble.outgoing .message-content {
-  background: #114C5A;
+  background: #afabf9;
   padding: 12px 16px;
   border-radius: 12px 12px 4px 12px;
 }
@@ -454,8 +454,8 @@
 
 .reply-textarea:focus {
   outline: none;
-  border-color: #114C5A;
-  box-shadow: 0 0 0 3px rgba(17, 76, 90, 0.1);
+  border-color: #afabf9;
+  box-shadow: 0 0 0 3px rgba(175, 171, 249, 0.1);
 }
 
 .reply-actions {
@@ -465,7 +465,7 @@
 
 .reply-btn {
   padding: 10px 24px;
-  background: #114C5A;
+  background: #afabf9;
   color: white;
   border: none;
   border-radius: 8px;
@@ -476,9 +476,9 @@
 }
 
 .reply-btn:hover {
-  background: #0d3a47;
+  background: #9b97f7;
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(17, 76, 90, 0.2);
+  box-shadow: 0 4px 8px rgba(175, 171, 249, 0.3);
 }
 
 /* Empty State */
@@ -542,7 +542,7 @@
 
 .refresh-btn {
   padding: 10px 20px;
-  background: #114C5A;
+  background: #afabf9;
   color: white;
   border: none;
   border-radius: 8px;
@@ -553,7 +553,7 @@
 }
 
 .refresh-btn:hover:not(:disabled) {
-  background: #0d3a47;
+  background: #9b97f7;
 }
 
 .refresh-btn:disabled {
@@ -599,7 +599,7 @@
   width: 32px;
   height: 32px;
   border: 3px solid #e5e7eb;
-  border-top-color: #114C5A;
+  border-top-color: #afabf9;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 12px;
@@ -656,7 +656,7 @@
 
 /* You prefix in conversation preview */
 .you-prefix {
-  color: #114C5A;
+  color: #afabf9;
   font-weight: 600;
 }
 
@@ -733,7 +733,7 @@
   border-radius: 10px;
   font-size: 11px;
   font-weight: 600;
-  color: #114C5A;
+  color: #afabf9;
   display: flex;
   align-items: center;
   justify-content: center;
