@@ -73,6 +73,30 @@
   box-shadow: 0 4px 12px rgba(255, 200, 1, 0.3);
 }
 
+.header-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.add-client-button {
+  padding: 14px 32px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid rgba(0, 0, 0, 0.4);
+  background: #114C5A;
+  color: #ffffff;
+  font-family: inherit;
+}
+
+.add-client-button:hover {
+  background: #0d3a47;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(17, 76, 90, 0.3);
+}
+
 .team-content {
   display: flex;
   flex-direction: column;

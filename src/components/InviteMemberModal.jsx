@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import "./InviteMemberModal.css";
 
+// Team member roles only - Clients are invited separately
 const ROLES = [
   {
     value: "admin",
@@ -16,11 +17,6 @@ const ROLES = [
     value: "view_only",
     label: "View Only",
     description: "Read-only access - can view posts and team members"
-  },
-  {
-    value: "client",
-    label: "Client",
-    description: "Can view and approve scheduled posts before they go live"
   }
 ];
 

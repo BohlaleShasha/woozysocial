@@ -8,7 +8,6 @@ export const InviteClientModal = ({ isOpen, onClose, onInviteSent }) => {
   const { activeWorkspace } = useWorkspace();
   const { user } = useAuth();
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState('client');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -39,7 +38,7 @@ export const InviteClientModal = ({ isOpen, onClose, onInviteSent }) => {
         body: JSON.stringify({
           workspaceId: activeWorkspace.id,
           email: email.trim().toLowerCase(),
-          role: role,
+          role: 'client', // Clients can only be invited as clients
           invitedBy: user.id
         })
       });
@@ -116,31 +115,8 @@ export const InviteClientModal = ({ isOpen, onClose, onInviteSent }) => {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="clientRole">Permission Level</label>
-              <select
-                id="clientRole"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                disabled={loading}
-                className="role-select"
-              >
-                <option value="client">Client - Can approve/reject posts</option>
-                <option value="editor">Editor - Can edit and approve posts</option>
-                <option value="admin">Admin - Full access</option>
-              </select>
-            </div>
-
             <div className="role-description">
-              {role === 'client' && (
-                <p>Clients can view scheduled posts, add comments, and approve or reject content before it's published.</p>
-              )}
-              {role === 'editor' && (
-                <p>Editors can create and edit posts, connect accounts, and approve content.</p>
-              )}
-              {role === 'admin' && (
-                <p>Admins have full access including inviting other members and managing settings.</p>
-              )}
+              <p>Clients can view scheduled posts, add comments, and approve or reject content before it's published. They cannot create their own workspace or access business settings.</p>
             </div>
 
             {error && <div className="error-message">{error}</div>}

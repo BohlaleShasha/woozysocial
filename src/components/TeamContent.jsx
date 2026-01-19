@@ -25,6 +25,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useWorkspace } from "../contexts/WorkspaceContext";
 import { InviteMemberModal } from "./InviteMemberModal";
+import { InviteClientModal } from "./workspace/InviteClientModal";
 import TeamMemberLimitGate from "./subscription/TeamMemberLimitGate";
 import RoleGuard from "./roles/RoleGuard";
 import { baseURL } from "../utils/constants";
@@ -36,6 +37,7 @@ export const TeamContent = () => {
   const [teamMembers, setTeamMembers] = useState([]);
   const [pendingInvites, setPendingInvites] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [invitesLoading, setInvitesLoading] = useState(true);
 
@@ -304,11 +306,16 @@ export const TeamContent = () => {
             <h2 className="section-title">Team Members</h2>
             <p className="section-subtitle">Invite and manage your team collaborators</p>
           </div>
-          <TeamMemberLimitGate onAllowed={handleAddMember}>
-            <button className="add-member-button">
-              + Add Member
+          <div className="header-buttons">
+            <TeamMemberLimitGate onAllowed={handleAddMember}>
+              <button className="add-member-button">
+                + Add Member
+              </button>
+            </TeamMemberLimitGate>
+            <button className="add-client-button" onClick={() => setIsClientModalOpen(true)}>
+              + Invite Client
             </button>
-          </TeamMemberLimitGate>
+          </div>
         </div>
 
         <div className="team-content">
@@ -383,7 +390,6 @@ export const TeamContent = () => {
                               <option value="admin">Admin</option>
                               <option value="editor">Editor</option>
                               <option value="view_only">View Only</option>
-                              <option value="client">Client</option>
                             </select>
                             <button
                               className="remove-button"
@@ -511,6 +517,14 @@ export const TeamContent = () => {
         onClose={() => setIsModalOpen(false)}
         onInvite={handleInvite}
         currentUserEmail={user?.email}
+      />
+
+      <InviteClientModal
+        isOpen={isClientModalOpen}
+        onClose={() => setIsClientModalOpen(false)}
+        onInviteSent={() => {
+          fetchPendingInvites();
+        }}
       />
     </div>
   );
