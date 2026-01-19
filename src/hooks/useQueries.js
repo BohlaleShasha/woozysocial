@@ -215,6 +215,41 @@ export function useBrandProfile(workspaceId) {
 }
 
 // ============================================
+// DASHBOARD STATS (Post History)
+// ============================================
+
+export function useDashboardStats(workspaceId, userId) {
+  return useQuery({
+    queryKey: ["dashboardStats", workspaceId],
+    queryFn: async () => {
+      const queryParam = workspaceId
+        ? `workspaceId=${workspaceId}`
+        : `userId=${userId}`;
+      const res = await fetch(`${baseURL}/api/post-history?${queryParam}`);
+      if (!res.ok) throw new Error("Failed to fetch post history");
+      const data = await res.json();
+      const posts = data.history || [];
+
+      // Calculate stats
+      const now = new Date();
+      const thisMonthPosts = posts.filter(post => {
+        const postDate = new Date(post.created || post.scheduleDate);
+        return postDate.getMonth() === now.getMonth() &&
+               postDate.getFullYear() === now.getFullYear();
+      });
+
+      return {
+        recentPosts: posts.slice(0, 5),
+        totalPosts: posts.length,
+        postsThisMonth: thisMonthPosts.length
+      };
+    },
+    enabled: !!(workspaceId || userId),
+    staleTime: 1000 * 60 * 2, // 2 minutes - stats don't change rapidly
+  });
+}
+
+// ============================================
 // CACHE INVALIDATION HELPERS
 // ============================================
 
@@ -229,6 +264,7 @@ export function useInvalidateQueries() {
       queryClient.invalidateQueries({ queryKey: ["pendingApprovals", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["drafts", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["unifiedSchedule", workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardStats", workspaceId] });
     },
 
     // Invalidate after connecting/disconnecting accounts
@@ -254,6 +290,7 @@ export function useInvalidateQueries() {
       queryClient.invalidateQueries({ queryKey: ["pendingApprovals", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["drafts", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["unifiedSchedule", workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardStats", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["connectedAccounts", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["teamMembers", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["brandProfile", workspaceId] });

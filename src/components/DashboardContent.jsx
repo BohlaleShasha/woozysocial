@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useWorkspace } from "../contexts/WorkspaceContext";
-import { useConnectedAccounts, useInvalidateQueries } from "../hooks/useQueries";
+import { useConnectedAccounts, useDashboardStats, useInvalidateQueries } from "../hooks/useQueries";
 import { baseURL } from "../utils/constants";
 import "./DashboardContent.css";
 import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaReddit, FaTelegram, FaPinterest } from "react-icons/fa";
@@ -30,6 +30,7 @@ export const DashboardContent = () => {
   const { activeWorkspace } = useWorkspace();
   const navigate = useNavigate();
   const { invalidateAccounts } = useInvalidateQueries();
+  const [connectingPlatform, setConnectingPlatform] = useState(null);
 
   // Use React Query for connected accounts (cached!)
   const {
@@ -38,21 +39,19 @@ export const DashboardContent = () => {
     refetch: refetchAccounts
   } = useConnectedAccounts(activeWorkspace?.id, user?.id);
 
+  // Use React Query for dashboard stats (cached!)
+  const {
+    data: statsData,
+    isLoading: loadingPosts
+  } = useDashboardStats(activeWorkspace?.id, user?.id);
+
   const connectedAccounts = accountsData?.accounts || [];
-
-  const [loadingPosts, setLoadingPosts] = useState(true);
-  const [recentPosts, setRecentPosts] = useState([]);
-  const [connectingPlatform, setConnectingPlatform] = useState(null);
-  const [stats, setStats] = useState({
-    apiCalls: 0,
-    postsThisMonth: 0,
-    connectedCount: 0
-  });
-
-  // Update stats when accounts change
-  useEffect(() => {
-    setStats(prev => ({ ...prev, connectedCount: connectedAccounts.length }));
-  }, [connectedAccounts]);
+  const recentPosts = statsData?.recentPosts || [];
+  const stats = {
+    apiCalls: statsData?.totalPosts || 0,
+    postsThisMonth: statsData?.postsThisMonth || 0,
+    connectedCount: connectedAccounts.length
+  };
 
   const socialAccounts = [
     { name: "Facebook", icon: FaFacebookF, key: "facebook", color: "#1877F2" },
@@ -139,58 +138,6 @@ export const DashboardContent = () => {
     }
   };
 
-  // Fetch dashboard data in parallel
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      if (!user) return;
-
-      // Build query params - use workspaceId if available, otherwise userId
-      const queryParam = activeWorkspace?.id
-        ? `workspaceId=${activeWorkspace.id}`
-        : `userId=${user.id}`;
-
-      // Fetch accounts and posts in parallel
-      const fetchAccounts = fetch(`${baseURL}/api/user-accounts?${queryParam}`)
-        .then(res => res.ok ? res.json() : null)
-        .then(accountsData => {
-          if (accountsData) {
-            const data = accountsData.data || accountsData;
-            setConnectedAccounts(data.accounts || []);
-            setStats(prev => ({ ...prev, connectedCount: data.accounts?.length || 0 }));
-          }
-        })
-        .catch(error => console.error("Error fetching accounts:", error))
-        .finally(() => setLoadingAccounts(false));
-
-      const fetchPosts = fetch(`${baseURL}/api/post-history?${queryParam}`)
-        .then(res => res.ok ? res.json() : null)
-        .then(postsData => {
-          if (postsData) {
-            const posts = postsData.history || [];
-            setRecentPosts(posts.slice(0, 5));
-
-            const now = new Date();
-            const thisMonthPosts = posts.filter(post => {
-              const postDate = new Date(post.created || post.scheduleDate);
-              return postDate.getMonth() === now.getMonth() &&
-                     postDate.getFullYear() === now.getFullYear();
-            });
-            setStats(prev => ({
-              ...prev,
-              postsThisMonth: thisMonthPosts.length,
-              apiCalls: posts.length
-            }));
-          }
-        })
-        .catch(error => console.error("Error fetching posts:", error))
-        .finally(() => setLoadingPosts(false));
-
-      await Promise.all([fetchAccounts, fetchPosts]);
-    };
-
-    fetchDashboardData();
-  }, [user, activeWorkspace]);
-
   // Listen for social accounts updates from other components (e.g., TopHeader)
   useEffect(() => {
     const handleAccountsUpdated = () => {
@@ -199,7 +146,7 @@ export const DashboardContent = () => {
 
     window.addEventListener('socialAccountsUpdated', handleAccountsUpdated);
     return () => window.removeEventListener('socialAccountsUpdated', handleAccountsUpdated);
-  }, [refreshAccounts]);
+  }, []);
 
   return (
     <div className="dashboard-content">
