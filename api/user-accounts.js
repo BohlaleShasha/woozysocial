@@ -1,4 +1,11 @@
 const axios = require("axios");
+let kv;
+try {
+  kv = require("@vercel/kv").kv;
+} catch (e) {
+  // KV not available in development
+  kv = null;
+}
 const {
   setCors,
   getWorkspaceProfileKey,
@@ -12,6 +19,7 @@ const {
 } = require("./_utils");
 
 const BASE_AYRSHARE = "https://api.ayrshare.com/api";
+const AYRSHARE_CACHE_TTL = 300; // Cache user accounts for 5 minutes (rarely changes)
 
 module.exports = async function handler(req, res) {
   setCors(res);
@@ -55,24 +63,48 @@ module.exports = async function handler(req, res) {
       return sendError(res, "Social media service is not configured", ErrorCodes.CONFIG_ERROR);
     }
 
-    let response;
-    try {
-      response = await axios.get(`${BASE_AYRSHARE}/user`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.AYRSHARE_API_KEY}`,
-          "Profile-Key": profileKey
-        },
-        timeout: 30000
-      });
-    } catch (axiosError) {
-      logError('user-accounts.ayrshare', axiosError);
+    // Try cache first
+    const cacheKey = `ayrshare:user:${profileKey}`;
+    let displayNames = null;
 
-      // Return empty accounts on error rather than failing
-      return sendSuccess(res, { accounts: [], activeSocialAccounts: [] });
+    if (kv) {
+      try {
+        const cached = await kv.get(cacheKey);
+        if (cached) {
+          displayNames = cached;
+        }
+      } catch (cacheErr) {
+        // Cache miss or error, continue to fetch
+      }
     }
 
-    const { displayNames } = response.data;
+    // If not in cache, fetch from Ayrshare
+    if (!displayNames) {
+      try {
+        const response = await axios.get(`${BASE_AYRSHARE}/user`, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.AYRSHARE_API_KEY}`,
+            "Profile-Key": profileKey
+          },
+          timeout: 30000
+        });
+        displayNames = response.data.displayNames;
+
+        // Cache the response
+        if (kv && displayNames && Array.isArray(displayNames)) {
+          try {
+            await kv.set(cacheKey, displayNames, { ex: AYRSHARE_CACHE_TTL });
+          } catch (setCacheErr) {
+            // Ignore cache set errors
+          }
+        }
+      } catch (axiosError) {
+        logError('user-accounts.ayrshare', axiosError);
+        // Return empty accounts on error rather than failing
+        return sendSuccess(res, { accounts: [], activeSocialAccounts: [] });
+      }
+    }
 
     if (!displayNames || !Array.isArray(displayNames)) {
       return sendSuccess(res, { accounts: [], activeSocialAccounts: [] });

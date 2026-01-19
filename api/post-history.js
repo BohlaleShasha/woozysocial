@@ -1,4 +1,11 @@
 const axios = require("axios");
+let kv;
+try {
+  kv = require("@vercel/kv").kv;
+} catch (e) {
+  // KV not available in development
+  kv = null;
+}
 const {
   setCors,
   getWorkspaceProfileKey,
@@ -13,6 +20,7 @@ const {
 } = require("./_utils");
 
 const BASE_AYRSHARE = "https://api.ayrshare.com/api";
+const AYRSHARE_CACHE_TTL = 120; // Cache Ayrshare responses for 2 minutes
 
 module.exports = async function handler(req, res) {
   setCors(res);
@@ -53,21 +61,47 @@ module.exports = async function handler(req, res) {
       return sendError(res, "Social media service is not configured", ErrorCodes.CONFIG_ERROR);
     }
 
-    // Fetch from Ayrshare
+    // Fetch from Ayrshare (with caching)
     let ayrshareHistory = [];
-    try {
-      const response = await axios.get(`${BASE_AYRSHARE}/history`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.AYRSHARE_API_KEY}`,
-          "Profile-Key": profileKey
-        },
-        timeout: 30000
-      });
-      ayrshareHistory = response.data.history || [];
-    } catch (axiosError) {
-      logError('post-history.ayrshare', axiosError);
-      // Continue with empty Ayrshare history instead of failing
+    const cacheKey = `ayrshare:history:${profileKey}`;
+
+    // Try to get from cache first
+    if (kv) {
+      try {
+        const cached = await kv.get(cacheKey);
+        if (cached) {
+          ayrshareHistory = cached;
+        }
+      } catch (cacheErr) {
+        // Cache miss or error, continue to fetch
+      }
+    }
+
+    // If not in cache, fetch from Ayrshare
+    if (ayrshareHistory.length === 0) {
+      try {
+        const response = await axios.get(`${BASE_AYRSHARE}/history`, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.AYRSHARE_API_KEY}`,
+            "Profile-Key": profileKey
+          },
+          timeout: 30000
+        });
+        ayrshareHistory = response.data.history || [];
+
+        // Store in cache for next request
+        if (kv && ayrshareHistory.length > 0) {
+          try {
+            await kv.set(cacheKey, ayrshareHistory, { ex: AYRSHARE_CACHE_TTL });
+          } catch (setCacheErr) {
+            // Ignore cache set errors
+          }
+        }
+      } catch (axiosError) {
+        logError('post-history.ayrshare', axiosError);
+        // Continue with empty Ayrshare history instead of failing
+      }
     }
 
     // Fetch posts from Supabase (including pending approval)
