@@ -485,7 +485,7 @@ module.exports = async function handler(req, res) {
 
       // Save failed post to database
       if (supabase) {
-        await supabase.from("posts").insert([{
+        const { error: dbErr } = await supabase.from("posts").insert([{
           user_id: userId,
           workspace_id: workspaceId,
           created_by: userId,
@@ -495,7 +495,8 @@ module.exports = async function handler(req, res) {
           scheduled_at: scheduledDate ? new Date(scheduledDate).toISOString() : null,
           platforms: platforms,
           last_error: axiosError.response?.data?.message || axiosError.message
-        }]).catch(dbErr => logError('post.save_failed', dbErr));
+        }]);
+        if (dbErr) logError('post.save_failed', dbErr);
       }
 
       return sendError(
@@ -509,7 +510,7 @@ module.exports = async function handler(req, res) {
     if (response.data.status === 'error') {
       // Save failed post to database
       if (supabase) {
-        await supabase.from("posts").insert([{
+        const { error: dbErr } = await supabase.from("posts").insert([{
           user_id: userId,
           workspace_id: workspaceId,
           created_by: userId,
@@ -519,7 +520,8 @@ module.exports = async function handler(req, res) {
           scheduled_at: scheduledDate ? new Date(scheduledDate).toISOString() : null,
           platforms: platforms,
           last_error: response.data.message || 'Post failed'
-        }]).catch(dbErr => logError('post.save_failed', dbErr));
+        }]);
+        if (dbErr) logError('post.save_failed', dbErr);
       }
 
       return sendError(
