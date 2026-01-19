@@ -269,11 +269,15 @@ module.exports = async function handler(req, res) {
         const userId = session.metadata?.supabase_user_id;
         const tier = normalizeTierName(session.metadata?.tier);
         const workspaceName = session.metadata?.workspace_name || "My Business";
+        const isOnboarding = session.metadata?.onboarding === 'true';
+        const workspaceId = session.metadata?.workspace_id; // For onboarding flow
 
         console.log(`[WEBHOOK] Session metadata:`, {
           userId,
           tier,
           workspaceName,
+          isOnboarding,
+          workspaceId,
           customer: session.customer,
           subscription: session.subscription,
         });
@@ -283,8 +287,69 @@ module.exports = async function handler(req, res) {
           break;
         }
 
-        console.log(`[WEBHOOK] Checkout completed for user ${userId}, tier: ${tier}`);
+        console.log(`[WEBHOOK] Checkout completed for user ${userId}, tier: ${tier}, onboarding: ${isOnboarding}`);
 
+        // ONBOARDING FLOW (from marketing site)
+        if (isOnboarding && workspaceId) {
+          console.log(`[WEBHOOK] Processing ONBOARDING payment for workspace ${workspaceId}`);
+
+          // Update workspace status
+          const { error: workspaceUpdateError } = await supabase
+            .from('workspaces')
+            .update({
+              onboarding_status: 'payment_completed',
+              subscription_status: 'active',
+              subscription_tier: tier,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', workspaceId);
+
+          if (workspaceUpdateError) {
+            console.error("[WEBHOOK] Error updating workspace for onboarding:", workspaceUpdateError);
+            logError("webhook-onboarding-workspace", workspaceUpdateError, { workspaceId, userId });
+          } else {
+            console.log(`[WEBHOOK] Workspace ${workspaceId} updated to active status`);
+          }
+
+          // Update user profile
+          const { error: profileUpdateError } = await supabase
+            .from('user_profiles')
+            .update({
+              subscription_status: 'active',
+              subscription_tier: tier,
+              stripe_customer_id: session.customer,
+              stripe_subscription_id: session.subscription,
+              onboarding_completed: true,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId);
+
+          if (profileUpdateError) {
+            console.error("[WEBHOOK] Error updating user profile for onboarding:", profileUpdateError);
+            logError("webhook-onboarding-profile", profileUpdateError, { userId });
+          } else {
+            console.log(`[WEBHOOK] User ${userId} profile updated to active subscription`);
+          }
+
+          // Create Ayrshare profile for the workspace
+          console.log(`[WEBHOOK] Creating Ayrshare profile for workspace ${workspaceId}`);
+          const workspace = await updateWorkspaceWithProfile(
+            supabase,
+            workspaceId,
+            tier,
+            workspaceName
+          );
+
+          if (workspace) {
+            console.log(`[WEBHOOK] Onboarding complete - workspace ${workspaceId} has Ayrshare profile`);
+          } else {
+            console.error(`[WEBHOOK] Onboarding payment processed but Ayrshare profile creation failed`);
+          }
+
+          break; // Exit after handling onboarding
+        }
+
+        // EXISTING FLOW (regular checkout or upgrade)
         // Check if this is a BrandBolt (workspace add-on) purchase
         const isBrandBolt = tier === 'brand_bolt';
 

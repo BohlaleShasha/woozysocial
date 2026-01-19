@@ -15,6 +15,7 @@ const LoginPage = lazy(() => import("./components/auth/LoginPage").then(m => ({ 
 const SignUpPage = lazy(() => import("./components/auth/SignUpPage").then(m => ({ default: m.SignUpPage })));
 const ResetPasswordPage = lazy(() => import("./components/auth/ResetPasswordPage").then(m => ({ default: m.ResetPasswordPage })));
 const AcceptInvite = lazy(() => import("./pages/AcceptInvite").then(m => ({ default: m.AcceptInvite })));
+const TokenLogin = lazy(() => import("./pages/TokenLogin"));
 
 // Main app pages - lazy loaded
 const DashboardContent = lazy(() => import("./components/DashboardContent").then(m => ({ default: m.DashboardContent })));
@@ -70,6 +71,7 @@ function App() {
               <Route path="/signup" element={<SignUpPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/accept-invite" element={<AcceptInvite />} />
+              <Route path="/auth/token-login" element={<TokenLogin />} />
 
             {/* Client Portal Routes */}
             <Route
