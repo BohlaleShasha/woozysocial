@@ -1,69 +1,27 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 import { useWorkspace } from "../../contexts/WorkspaceContext";
 import { useAuth } from "../../contexts/AuthContext";
-import { baseURL } from "../../utils/constants";
+import { useClientDashboardStats } from "../../hooks/useQueries";
 import "./ClientDashboard.css";
 
 export const ClientDashboard = () => {
   const { activeWorkspace } = useWorkspace();
   const { user } = useAuth();
-  const [stats, setStats] = useState({
+
+  // Use React Query for cached data fetching
+  const { data, isLoading: loading } = useClientDashboardStats(
+    activeWorkspace?.id,
+    user?.id
+  );
+
+  const stats = data?.stats || {
     pending: 0,
     changesRequested: 0,
     approved: 0,
     rejected: 0
-  });
-  const [recentActivity, setRecentActivity] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      if (!activeWorkspace || !user) return;
-
-      try {
-        setLoading(true);
-
-        // Fetch all posts to get accurate stats
-        const res = await fetch(
-          `${baseURL}/api/post/pending-approvals?workspaceId=${activeWorkspace.id}&userId=${user.id}&status=all`
-        );
-
-        if (res.ok) {
-          const data = await res.json();
-          const responseData = data.data || data;
-
-          setStats({
-            pending: responseData.counts?.pending || 0,
-            changesRequested: responseData.counts?.changes_requested || 0,
-            approved: responseData.counts?.approved || 0,
-            rejected: responseData.counts?.rejected || 0
-          });
-
-          // Get recent posts for activity
-          const allPosts = [
-            ...(responseData.grouped?.pending || []),
-            ...(responseData.grouped?.changes_requested || []),
-            ...(responseData.grouped?.approved || []),
-            ...(responseData.grouped?.rejected || [])
-          ];
-
-          // Sort by date and take last 5
-          const sorted = allPosts
-            .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))
-            .slice(0, 5);
-
-          setRecentActivity(sorted);
-        }
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
-  }, [activeWorkspace, user]);
+  };
+  const recentActivity = data?.recentActivity || [];
 
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);

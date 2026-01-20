@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useWorkspace } from "../../contexts/WorkspaceContext";
 import { useAuth } from "../../contexts/AuthContext";
-import { baseURL } from "../../utils/constants";
+import { useClientApprovedPosts } from "../../hooks/useQueries";
 import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaReddit, FaTelegram, FaPinterest, FaCheck, FaTimes } from "react-icons/fa";
 import { FaTiktok, FaThreads } from "react-icons/fa6";
 import { SiX, SiBluesky } from "react-icons/si";
@@ -10,36 +10,13 @@ import "./ClientApproved.css";
 export const ClientApproved = () => {
   const { activeWorkspace } = useWorkspace();
   const { user } = useAuth();
-  const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all"); // all, approved, rejected
 
-  useEffect(() => {
-    fetchPosts();
-  }, [activeWorkspace]);
-
-  const fetchPosts = async () => {
-    if (!activeWorkspace || !user) return;
-
-    try {
-      setLoading(true);
-      const res = await fetch(
-        `${baseURL}/api/post/pending-approvals?workspaceId=${activeWorkspace.id}&userId=${user.id}&status=all`
-      );
-
-      if (res.ok) {
-        const data = await res.json();
-        const responseData = data.data || data;
-        const approvedPosts = responseData.grouped?.approved || [];
-        const rejectedPosts = responseData.grouped?.rejected || [];
-        setPosts([...approvedPosts, ...rejectedPosts]);
-      }
-    } catch (error) {
-      console.error("Error fetching posts:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Use React Query for cached data fetching
+  const { data: posts = [], isLoading: loading } = useClientApprovedPosts(
+    activeWorkspace?.id,
+    user?.id
+  );
 
   const filteredPosts = posts.filter((post) => {
     if (filter === "all") return true;

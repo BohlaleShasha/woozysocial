@@ -29,3 +29,9 @@ uploads
 
 .vercel
 .env*.local
+
+# Temp files
+nul
+*.tmp
+tmpclaude-*
+*.bak

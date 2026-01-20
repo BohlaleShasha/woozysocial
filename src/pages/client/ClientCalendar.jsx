@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useWorkspace } from "../../contexts/WorkspaceContext";
 import { useAuth } from "../../contexts/AuthContext";
-import { baseURL } from "../../utils/constants";
+import { useClientCalendarPosts, useInvalidateQueries } from "../../hooks/useQueries";
 import { CalendarPostModal } from "../../components/client/CalendarPostModal";
 import "./ClientCalendar.css";
 
@@ -9,14 +9,15 @@ export const ClientCalendar = () => {
   const { activeWorkspace } = useWorkspace();
   const { user } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedPosts, setSelectedPosts] = useState([]);
+  const { invalidatePosts } = useInvalidateQueries();
 
-  useEffect(() => {
-    fetchPosts();
-  }, [activeWorkspace, currentDate]);
+  // Use React Query for cached data fetching
+  const { data: posts = [], isLoading: loading, refetch } = useClientCalendarPosts(
+    activeWorkspace?.id,
+    user?.id
+  );
 
   // Handle body scroll lock when modal is open
   useEffect(() => {
@@ -42,31 +43,10 @@ export const ClientCalendar = () => {
     return () => document.removeEventListener('keydown', handleEscape);
   }, [selectedDate]);
 
-  const fetchPosts = async () => {
-    if (!activeWorkspace || !user) return;
-
-    try {
-      setLoading(true);
-      const res = await fetch(
-        `${baseURL}/api/post/pending-approvals?workspaceId=${activeWorkspace.id}&userId=${user.id}&status=all`
-      );
-
-      if (res.ok) {
-        const data = await res.json();
-        const responseData = data.data || data;
-        const allPosts = [
-          ...(responseData.grouped?.pending || []),
-          ...(responseData.grouped?.changes_requested || []),
-          ...(responseData.grouped?.approved || []),
-          ...(responseData.grouped?.rejected || [])
-        ];
-        setPosts(allPosts);
-      }
-    } catch (error) {
-      console.error("Error fetching posts:", error);
-    } finally {
-      setLoading(false);
-    }
+  // Callback for when a post is updated in the modal
+  const handlePostUpdated = () => {
+    invalidatePosts(activeWorkspace?.id);
+    refetch();
   };
 
   const getDaysInMonth = (date) => {
@@ -234,7 +214,7 @@ export const ClientCalendar = () => {
             setSelectedDate(null);
             setSelectedPosts([]);
           }}
-          onPostUpdated={fetchPosts}
+          onPostUpdated={handlePostUpdated}
         />
       )}
     </div>
