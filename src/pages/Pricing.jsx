@@ -376,6 +376,23 @@ export const Pricing = () => {
       {/* FAQ or Additional Info */}
       <div className="pricing-footer">
         <p>All plans include 14-day free trial. Cancel anytime.</p>
+        {user && profile?.stripe_customer_id && (
+          <p className="manage-subscription-footer">
+            <button
+              className="btn-manage-footer"
+              onClick={handleManageSubscription}
+              disabled={loading === 'manage'}
+            >
+              {loading === 'manage' ? (
+                <>
+                  <FaSpinner className="spinner" /> Loading...
+                </>
+              ) : (
+                'Manage Your Subscription'
+              )}
+            </button>
+          </p>
+        )}
         <p className="contact-info">
           Need a custom plan? <a href="mailto:support@woozysocial.com">Contact us</a>
         </p>

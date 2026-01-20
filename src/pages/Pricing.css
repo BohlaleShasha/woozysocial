@@ -509,3 +509,34 @@
   border-bottom-color: #afabf9;
   color: #8b85ff;
 }
+
+.manage-subscription-footer {
+  margin: 24px 0;
+}
+
+.btn-manage-footer {
+  padding: 16px 32px;
+  background: linear-gradient(135deg, #afabf9 0%, #8b85ff 100%);
+  border: none;
+  color: #000;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 16px rgba(175, 171, 249, 0.3);
+}
+
+.btn-manage-footer:hover:not(:disabled) {
+  background: linear-gradient(135deg, #8b85ff 0%, #6d67e4 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(175, 171, 249, 0.5);
+}
+
+.btn-manage-footer:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
