@@ -286,19 +286,6 @@ export const Pricing = () => {
           <span className="subscription-badge">
             Current Plan: <strong>{subscriptionTier?.replace('-', ' ').toUpperCase() || 'Active'}</strong>
           </span>
-          <button
-            className="btn-manage"
-            onClick={handleManageSubscription}
-            disabled={loading === 'manage'}
-          >
-            {loading === 'manage' ? (
-              <>
-                <FaSpinner className="spinner" /> Loading...
-              </>
-            ) : (
-              'Manage Subscription'
-            )}
-          </button>
         </div>
       )}
 
@@ -388,7 +375,7 @@ export const Pricing = () => {
                   <FaSpinner className="spinner" /> Loading...
                 </>
               ) : (
-                'Manage Your Subscription'
+                'Manage Billing & Payment Methods'
               )}
             </button>
           </p>

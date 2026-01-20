@@ -116,54 +116,10 @@ export const TopHeader = () => {
     }
   };
 
-  const handleManageSubscription = async () => {
-    if (!user || isManagingSubscription) return;
-
-    console.log('[TOPHEADER] Managing subscription for user:', user.id, 'Tier:', subscriptionTier);
-
-    try {
-      setIsManagingSubscription(true);
-      setShowDropdown(false);
-
-      // If user has an active subscription with stripe_customer_id, open Stripe Customer Portal
-      if (profile?.stripe_customer_id) {
-        console.log('[TOPHEADER] Opening billing portal for stripe_customer_id:', profile.stripe_customer_id);
-
-        const response = await fetch(`${baseURL}/api/stripe/customer-portal`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: user.id,
-            returnUrl: `${window.location.origin}/pricing`
-          })
-        });
-
-        const data = await response.json();
-        console.log('[TOPHEADER] Portal response:', data);
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to access customer portal');
-        }
-
-        if (data.data?.url) {
-          console.log('[TOPHEADER] Redirecting to portal:', data.data.url);
-          window.location.href = data.data.url;
-        } else {
-          throw new Error('No portal URL received');
-        }
-      } else {
-        // For users without a subscription, redirect to pricing page
-        console.log('[TOPHEADER] No stripe_customer_id found, redirecting to pricing');
-        navigate('/pricing');
-      }
-    } catch (err) {
-      console.error('[TOPHEADER] Error managing subscription:', err);
-      alert(`Unable to open billing portal: ${err.message}`);
-      // Fallback to pricing page
-      navigate('/pricing');
-    } finally {
-      setIsManagingSubscription(false);
-    }
+  const handleManageSubscription = () => {
+    // Always route to pricing page
+    setShowDropdown(false);
+    navigate('/pricing');
   };
 
   return (
@@ -208,14 +164,8 @@ export const TopHeader = () => {
                 <button
                   className="profile-dropdown-item manage-subscription"
                   onClick={handleManageSubscription}
-                  disabled={isManagingSubscription}
                 >
-                  {isManagingSubscription
-                    ? 'Loading...'
-                    : profile?.stripe_customer_id
-                      ? 'Manage Subscription'
-                      : 'Upgrade Plan'
-                  }
+                  Manage Subscription
                 </button>
                 {canManageSocialAccounts && (
                   <button
