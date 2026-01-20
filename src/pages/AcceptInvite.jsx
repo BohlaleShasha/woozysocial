@@ -128,7 +128,7 @@ export const AcceptInvite = () => {
       }
 
       // Clear workspace cache to ensure fresh data is loaded
-      localStorage.removeItem('woozy_workspace_cache');
+      sessionStorage.removeItem('woozy_workspace_cache');
 
       // Refresh workspaces to load the newly joined workspace
       await refreshWorkspaces();

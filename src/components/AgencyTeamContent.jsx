@@ -3,15 +3,18 @@
  * Only visible to users with agency subscription tier
  */
 import React, { useState } from "react";
+import { useToast } from "@chakra-ui/react";
 import { useAuth } from "../contexts/AuthContext";
 import { useAgencyTeam, useInvalidateQueries } from "../hooks/useQueries";
 import { AddAgencyTeamMemberModal } from "./AddAgencyTeamMemberModal";
+import { ConfirmDialog } from "./ui/ConfirmDialog";
 import { baseURL, SUBSCRIPTION_TIERS } from "../utils/constants";
 import "./AgencyTeamContent.css";
 
 export const AgencyTeamContent = () => {
   const { user, subscriptionTier } = useAuth();
   const { invalidateAgencyTeam } = useInvalidateQueries();
+  const toast = useToast();
 
   // Use React Query for cached data fetching
   const {
@@ -23,6 +26,7 @@ export const AgencyTeamContent = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, memberId: null });
 
   // Refresh function that invalidates cache
   const refreshTeam = () => {
@@ -71,10 +75,13 @@ export const AgencyTeamContent = () => {
     setIsModalOpen(true);
   };
 
-  const handleRemoveMember = async (memberId) => {
-    if (!window.confirm('Are you sure you want to remove this team member from your roster?')) {
-      return;
-    }
+  const handleRemoveClick = (memberId) => {
+    setConfirmDialog({ isOpen: true, memberId });
+  };
+
+  const handleRemoveMember = async () => {
+    const memberId = confirmDialog.memberId;
+    if (!memberId) return;
 
     try {
       const response = await fetch(`${baseURL}/api/agency-team/remove`, {
@@ -92,10 +99,22 @@ export const AgencyTeamContent = () => {
         throw new Error(data.error || 'Failed to remove team member');
       }
 
+      toast({
+        title: "Team member removed",
+        status: "success",
+        duration: 3000,
+        isClosable: true
+      });
       refreshTeam();
     } catch (error) {
       console.error('Error removing team member:', error);
-      alert(error.message || 'Failed to remove team member');
+      toast({
+        title: "Failed to remove team member",
+        description: error.message,
+        status: "error",
+        duration: 4000,
+        isClosable: true
+      });
     }
   };
 
@@ -117,10 +136,22 @@ export const AgencyTeamContent = () => {
         throw new Error(data.error || 'Failed to update team member');
       }
 
+      toast({
+        title: "Role updated",
+        status: "success",
+        duration: 2000,
+        isClosable: true
+      });
       refreshTeam();
     } catch (error) {
       console.error('Error updating team member:', error);
-      alert(error.message || 'Failed to update team member');
+      toast({
+        title: "Failed to update role",
+        description: error.message,
+        status: "error",
+        duration: 4000,
+        isClosable: true
+      });
     }
   };
 
@@ -265,7 +296,7 @@ export const AgencyTeamContent = () => {
                     </button>
                     <button
                       className="remove-button"
-                      onClick={() => handleRemoveMember(member.id)}
+                      onClick={() => handleRemoveClick(member.id)}
                     >
                       Remove
                     </button>
@@ -314,6 +345,16 @@ export const AgencyTeamContent = () => {
         onSuccess={refreshTeam}
         editingMember={editingMember}
         userId={user?.id}
+      />
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog({ isOpen: false, memberId: null })}
+        onConfirm={handleRemoveMember}
+        title="Remove Team Member"
+        message="Are you sure you want to remove this team member from your roster?"
+        confirmText="Remove"
+        confirmVariant="danger"
       />
     </div>
   );

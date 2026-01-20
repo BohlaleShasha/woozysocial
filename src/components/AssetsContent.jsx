@@ -3,6 +3,7 @@ import { useToast } from "@chakra-ui/react";
 import { useAuth } from "../contexts/AuthContext";
 import { useWorkspace } from "../contexts/WorkspaceContext";
 import { supabase } from "../utils/supabaseClient";
+import { ConfirmDialog } from "./ui/ConfirmDialog";
 import "./AssetsContent.css";
 
 export const AssetsContent = () => {
@@ -17,6 +18,7 @@ export const AssetsContent = () => {
   const [filter, setFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isDragging, setIsDragging] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, asset: null });
 
   // Fetch assets on mount
   useEffect(() => {
@@ -149,8 +151,13 @@ export const AssetsContent = () => {
     }
   };
 
-  const handleDelete = async (asset) => {
-    if (!confirm(`Delete ${asset.file_name}?`)) return;
+  const handleDeleteClick = (asset) => {
+    setDeleteConfirm({ isOpen: true, asset });
+  };
+
+  const handleDelete = async () => {
+    const asset = deleteConfirm.asset;
+    if (!asset) return;
 
     try {
       // Delete from storage
@@ -362,7 +369,7 @@ export const AssetsContent = () => {
                     </button>
                     <button
                       className="action-btn delete-btn"
-                      onClick={() => handleDelete(asset)}
+                      onClick={() => handleDeleteClick(asset)}
                       title="Delete"
                     >
                       🗑️
@@ -374,6 +381,16 @@ export const AssetsContent = () => {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, asset: null })}
+        onConfirm={handleDelete}
+        title="Delete Asset"
+        message={`Are you sure you want to delete "${deleteConfirm.asset?.file_name}"?`}
+        confirmText="Delete"
+        confirmVariant="danger"
+      />
     </div>
   );
 };

@@ -9,6 +9,7 @@ import { Sidebar } from "./components/layout/Sidebar";
 import { TopHeader } from "./components/layout/TopHeader";
 import { MainContent } from "./components/layout/MainContent";
 import { ClientLayout } from "./components/layout/ClientLayout";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { getOrganizationSchema, getWebSiteSchema } from "./utils/seoConfig";
 import "./App.css";
 
@@ -41,6 +42,9 @@ const ClientApprovals = lazy(() => import("./pages/client/ClientApprovals").then
 const ClientApproved = lazy(() => import("./pages/client/ClientApproved").then(m => ({ default: m.ClientApproved })));
 const ClientCalendar = lazy(() => import("./pages/client/ClientCalendar").then(m => ({ default: m.ClientCalendar })));
 
+// 404 page
+const NotFound = lazy(() => import("./pages/NotFound"));
+
 // Loading fallback component
 const PageLoader = () => (
   <div style={{
@@ -64,9 +68,10 @@ const PageLoader = () => (
 
 function App() {
   return (
-    <AuthProvider>
-      <WorkspaceProvider>
-        <Router>
+    <ErrorBoundary>
+      <AuthProvider>
+        <WorkspaceProvider>
+          <Router>
           {/* Global Schema.org Structured Data */}
           <Helmet>
             <script type="application/ld+json">
@@ -139,11 +144,15 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
+            {/* 404 catch-all route */}
+            <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
-        </Router>
-      </WorkspaceProvider>
-    </AuthProvider>
+          </Router>
+        </WorkspaceProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

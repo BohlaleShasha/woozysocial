@@ -28,7 +28,7 @@ export const WorkspaceProvider = ({ children }) => {
   // Try to get cached workspace data for instant load
   const cachedData = (() => {
     try {
-      const cached = localStorage.getItem('woozy_workspace_cache');
+      const cached = sessionStorage.getItem('woozy_workspace_cache');
       return cached ? JSON.parse(cached) : null;
     } catch { return null; }
   })();
@@ -44,7 +44,7 @@ export const WorkspaceProvider = ({ children }) => {
       setUserWorkspaces([]);
       setActiveWorkspace(null);
       setWorkspaceMembership(null);
-      localStorage.removeItem('woozy_workspace_cache');
+      sessionStorage.removeItem('woozy_workspace_cache');
       setLoading(false);
       return;
     }
@@ -93,7 +93,7 @@ export const WorkspaceProvider = ({ children }) => {
 
         // Cache for faster next load
         try {
-          localStorage.setItem('woozy_workspace_cache', JSON.stringify({
+          sessionStorage.setItem('woozy_workspace_cache', JSON.stringify({
             workspaces,
             activeWorkspace: workspace,
             membership
@@ -102,7 +102,7 @@ export const WorkspaceProvider = ({ children }) => {
       } else {
         setActiveWorkspace(null);
         setWorkspaceMembership(null);
-        localStorage.removeItem('woozy_workspace_cache');
+        sessionStorage.removeItem('woozy_workspace_cache');
       }
     } catch (error) {
       console.error('Error fetching workspaces:', error);

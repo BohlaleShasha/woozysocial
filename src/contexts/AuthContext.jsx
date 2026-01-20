@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }) => {
   // Try to get cached data for instant load
   const cachedProfile = (() => {
     try {
-      const cached = localStorage.getItem('woozy_profile_cache');
+      const cached = sessionStorage.getItem('woozy_profile_cache');
       return cached ? JSON.parse(cached) : null;
     } catch { return null; }
   })();
@@ -48,8 +48,8 @@ export const AuthProvider = ({ children }) => {
         fetchProfile(session.user.id);
       } else {
         // No session - clear cache
-        localStorage.removeItem('woozy_profile_cache');
-        localStorage.removeItem('woozy_workspace_cache');
+        sessionStorage.removeItem('woozy_profile_cache');
+        sessionStorage.removeItem('woozy_workspace_cache');
         setProfile(null);
         setLoading(false);
       }
@@ -87,7 +87,7 @@ export const AuthProvider = ({ children }) => {
       // Cache profile for faster next load
       if (data) {
         try {
-          localStorage.setItem('woozy_profile_cache', JSON.stringify(data));
+          sessionStorage.setItem('woozy_profile_cache', JSON.stringify(data));
         } catch { /* ignore storage errors */ }
       }
     } catch (error) {

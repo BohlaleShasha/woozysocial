@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@chakra-ui/react";
 import { useAuth } from "../contexts/AuthContext";
 import { useWorkspace } from "../contexts/WorkspaceContext";
 import { useConnectedAccounts, useDashboardStats, useInvalidateQueries } from "../hooks/useQueries";
 import { baseURL } from "../utils/constants";
+import { ConfirmDialog } from "./ui/ConfirmDialog";
 import "./DashboardContent.css";
 import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaReddit, FaTelegram, FaPinterest } from "react-icons/fa";
 import { FaTiktok } from "react-icons/fa6";
@@ -29,8 +31,10 @@ export const DashboardContent = () => {
   const { user } = useAuth();
   const { activeWorkspace } = useWorkspace();
   const navigate = useNavigate();
+  const toast = useToast();
   const { invalidateAccounts } = useInvalidateQueries();
   const [connectingPlatform, setConnectingPlatform] = useState(null);
+  const [popupBlockedDialog, setPopupBlockedDialog] = useState({ isOpen: false, url: null });
 
   // Use React Query for connected accounts (cached!)
   const {
@@ -93,7 +97,13 @@ export const DashboardContent = () => {
 
       if (!res.ok || !url) {
         console.error("Failed to get JWT URL:", data);
-        alert(data.error || "Failed to connect. Please try again.");
+        toast({
+          title: "Connection failed",
+          description: data.error || "Failed to connect. Please try again.",
+          status: "error",
+          duration: 4000,
+          isClosable: true
+        });
         setConnectingPlatform(null);
         return;
       }
@@ -112,9 +122,7 @@ export const DashboardContent = () => {
 
       // Check if popup was blocked
       if (!popup || popup.closed || typeof popup.closed === 'undefined') {
-        if (window.confirm('Popup was blocked. Click OK to open in a new tab, or allow popups for this site.')) {
-          window.open(url, '_blank');
-        }
+        setPopupBlockedDialog({ isOpen: true, url });
         setConnectingPlatform(null);
         return;
       }
@@ -133,9 +141,22 @@ export const DashboardContent = () => {
       }, 500);
     } catch (error) {
       console.error("Error connecting platform:", error);
-      alert("Failed to connect. Please try again.");
+      toast({
+        title: "Connection failed",
+        description: "Failed to connect. Please try again.",
+        status: "error",
+        duration: 4000,
+        isClosable: true
+      });
       setConnectingPlatform(null);
     }
+  };
+
+  const handleOpenInNewTab = () => {
+    if (popupBlockedDialog.url) {
+      window.open(popupBlockedDialog.url, '_blank');
+    }
+    setPopupBlockedDialog({ isOpen: false, url: null });
   };
 
   // Listen for social accounts updates from other components (e.g., TopHeader)
@@ -324,6 +345,17 @@ export const DashboardContent = () => {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={popupBlockedDialog.isOpen}
+        onClose={() => setPopupBlockedDialog({ isOpen: false, url: null })}
+        onConfirm={handleOpenInNewTab}
+        title="Popup Blocked"
+        message="The popup was blocked by your browser. Would you like to open the connection page in a new tab instead? You can also allow popups for this site in your browser settings."
+        confirmText="Open in New Tab"
+        cancelText="Cancel"
+        confirmVariant="primary"
+      />
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@chakra-ui/react';
 import { useWorkspace } from '../../contexts/WorkspaceContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { CreateWorkspaceModal } from './CreateWorkspaceModal';
@@ -10,6 +11,7 @@ import './WorkspaceSwitcher.css';
 export const WorkspaceSwitcher = () => {
   const { activeWorkspace, userWorkspaces, switchWorkspace, loading, refreshWorkspaces } = useWorkspace();
   const { user, profile, hasActiveProfile } = useAuth();
+  const toast = useToast();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingWorkspace, setEditingWorkspace] = useState(null);
@@ -63,7 +65,13 @@ export const WorkspaceSwitcher = () => {
     const { error } = await switchWorkspace(workspaceId);
     if (error) {
       console.error('Failed to switch workspace:', error);
-      // TODO: Show error toast notification
+      toast({
+        title: "Failed to switch workspace",
+        description: error,
+        status: "error",
+        duration: 4000,
+        isClosable: true
+      });
     }
     setShowDropdown(false);
     // Context switch triggers re-render of all components using workspace data

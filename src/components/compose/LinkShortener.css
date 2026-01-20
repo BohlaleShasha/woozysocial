@@ -1,0 +1,119 @@
+.link-shortener {
+  margin-top: 20px;
+  padding: 16px;
+  background-color: #F1F6F4;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.link-shortener-title {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #114C5A;
+}
+
+.link-shortener-input-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.link-shortener-input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: Inter, sans-serif;
+}
+
+.link-shortener-input:focus {
+  outline: none;
+  border-color: #114C5A;
+  box-shadow: 0 0 0 3px rgba(17, 76, 90, 0.1);
+}
+
+.link-shortener-btn {
+  padding: 10px 20px;
+  background-color: #afabf9;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #114C5A;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.link-shortener-btn:hover:not(:disabled) {
+  background-color: #9f9af7;
+}
+
+.link-shortener-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.link-shortener-result {
+  padding: 12px;
+  background-color: rgba(175, 171, 249, 0.1);
+  border-radius: 8px;
+  border: 1px solid #afabf9;
+}
+
+.link-shortener-result-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.link-shortener-result-input {
+  flex: 1;
+  padding: 8px 12px;
+  background-color: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: monospace;
+}
+
+.link-shortener-copy-btn,
+.link-shortener-insert-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.link-shortener-copy-btn {
+  background-color: #114C5A;
+  color: #ffffff;
+}
+
+.link-shortener-copy-btn:hover {
+  background-color: #0d3a47;
+}
+
+.link-shortener-insert-btn {
+  background-color: #afabf9;
+  color: #114C5A;
+}
+
+.link-shortener-insert-btn:hover {
+  background-color: #9f9af7;
+}
+
+.link-shortener-info {
+  margin: 8px 0 0 0;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.link-shortener-info::before {
+  content: "✓ ";
+  color: #10b981;
+}
