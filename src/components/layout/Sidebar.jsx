@@ -37,10 +37,9 @@ export const Sidebar = () => {
   // Filter menu items based on subscription tier, role, and team status
   const visibleMenuItems = menuItems.filter(item => {
     // Agency-only items require agency subscription tier
+    // If user has agency tier, show the item (skip role-based checks for agency features)
     if (item.agencyOnly) {
-      if (subscriptionTier !== 'agency') {
-        return false;
-      }
+      return subscriptionTier === 'agency';
     }
 
     // If user is a workspace member, check role-based tab access
