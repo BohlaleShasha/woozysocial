@@ -244,33 +244,6 @@ export const BrandProfileContent = () => {
       <div className="brand-profile-header">
         <h1 className="page-title">Brand Profile</h1>
         <p className="page-subtitle">Define your brand to help AI generate better content</p>
-        {hasDraft && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            marginTop: '8px',
-            padding: '8px 12px',
-            background: '#FFF3CD',
-            borderRadius: '6px',
-            fontSize: '14px'
-          }}>
-            <span style={{ color: '#856404' }}>Unsaved draft</span>
-            <button
-              onClick={handleDiscardDraft}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#856404',
-                textDecoration: 'underline',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-            >
-              Discard
-            </button>
-          </div>
-        )}
       </div>
 
       <div className="brand-profile-content">
