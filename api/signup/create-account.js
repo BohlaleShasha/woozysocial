@@ -114,21 +114,30 @@ module.exports = async function handler(req, res) {
         );
       }
 
-      // User exists but didn't complete payment - allow them to continue
-      // Check if they have a workspace
-      const { data: existingWorkspace } = await supabase
-        .from('workspaces')
-        .select('id')
-        .eq('owner_id', existingProfile.id)
-        .maybeSingle();
+      // User exists but didn't complete payment - check if auth user still exists
+      const { data: authUser } = await supabase.auth.admin.getUserById(existingProfile.id);
 
-      if (existingWorkspace) {
-        console.log("[CREATE ACCOUNT] Returning existing account for retry");
-        return sendSuccess(res, {
-          userId: existingProfile.id,
-          workspaceId: existingWorkspace.id,
-          message: "Account already exists, continuing signup"
-        });
+      if (authUser?.user) {
+        // Auth user exists, check for workspace
+        const { data: existingWorkspace } = await supabase
+          .from('workspaces')
+          .select('id')
+          .eq('owner_id', existingProfile.id)
+          .maybeSingle();
+
+        if (existingWorkspace) {
+          console.log("[CREATE ACCOUNT] Returning existing account for retry");
+          return sendSuccess(res, {
+            userId: existingProfile.id,
+            workspaceId: existingWorkspace.id,
+            message: "Account already exists, continuing signup"
+          });
+        }
+      } else {
+        // Auth user was deleted but profile remains - clean up orphaned profile
+        console.log("[CREATE ACCOUNT] Cleaning up orphaned profile:", existingProfile.id);
+        await supabase.from('user_profiles').delete().eq('id', existingProfile.id);
+        // Continue with fresh signup below
       }
     }
 
