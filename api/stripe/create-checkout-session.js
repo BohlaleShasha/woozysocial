@@ -15,15 +15,28 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Price ID mapping for each tier
 const PRICE_IDS = {
-  // Free internal tiers (no checkout needed, handled separately)
-  "ccs-brand-bolt": null,
-  "css-internal": null,
-  // Paid tiers
-  solo: process.env.STRIPE_PRICE_SOLO,
-  pro: process.env.STRIPE_PRICE_PRO,
-  "pro-plus": process.env.STRIPE_PRICE_PRO_PLUS,
-  agency: process.env.STRIPE_PRICE_AGENCY,
-  "brand-bolt": process.env.STRIPE_PRICE_BRAND_BOLT,
+  monthly: {
+    // Free internal tiers (no checkout needed, handled separately)
+    "ccs-brand-bolt": null,
+    "css-internal": null,
+    // Paid tiers
+    solo: process.env.STRIPE_PRICE_SOLO,
+    pro: process.env.STRIPE_PRICE_PRO,
+    "pro-plus": process.env.STRIPE_PRICE_PRO_PLUS,
+    agency: process.env.STRIPE_PRICE_AGENCY,
+    "brand-bolt": process.env.STRIPE_PRICE_BRAND_BOLT,
+  },
+  annual: {
+    // Free internal tiers (no checkout needed, handled separately)
+    "ccs-brand-bolt": null,
+    "css-internal": null,
+    // Paid tiers
+    solo: process.env.STRIPE_PRICE_SOLO_ANNUAL,
+    pro: process.env.STRIPE_PRICE_PRO_ANNUAL,
+    "pro-plus": process.env.STRIPE_PRICE_PRO_PLUS_ANNUAL,
+    agency: process.env.STRIPE_PRICE_AGENCY_ANNUAL,
+    "brand-bolt": process.env.STRIPE_PRICE_BRAND_BOLT_ANNUAL,
+  },
 };
 
 // Tier display names
@@ -74,10 +87,10 @@ module.exports = async function handler(req, res) {
     );
   }
 
-  let userId, tier, successUrl, cancelUrl; // Declare outside try block for error handler access
+  let userId, tier, successUrl, cancelUrl, billingPeriod; // Declare outside try block for error handler access
 
   try {
-    ({ userId, tier, successUrl, cancelUrl } = req.body);
+    ({ userId, tier, successUrl, cancelUrl, billingPeriod = 'monthly' } = req.body);
 
     // Validate required fields
     const validation = validateRequired(req.body, ["userId", "tier"]);
@@ -89,17 +102,26 @@ module.exports = async function handler(req, res) {
       );
     }
 
-    // Validate tier
-    if (!PRICE_IDS.hasOwnProperty(tier)) {
+    // Validate billing period
+    if (!['monthly', 'annual'].includes(billingPeriod)) {
       return sendError(
         res,
-        `Invalid tier: ${tier}. Valid tiers: ${Object.keys(PRICE_IDS).join(", ")}`,
+        `Invalid billing period: ${billingPeriod}. Valid values: monthly, annual`,
+        ErrorCodes.VALIDATION_ERROR
+      );
+    }
+
+    // Validate tier
+    if (!PRICE_IDS[billingPeriod].hasOwnProperty(tier)) {
+      return sendError(
+        res,
+        `Invalid tier: ${tier}. Valid tiers: ${Object.keys(PRICE_IDS[billingPeriod]).join(", ")}`,
         ErrorCodes.VALIDATION_ERROR
       );
     }
 
     // Check if it's a free tier
-    if (PRICE_IDS[tier] === null) {
+    if (PRICE_IDS[billingPeriod][tier] === null) {
       return sendError(
         res,
         "This tier does not require payment. Contact support for access.",
@@ -107,11 +129,11 @@ module.exports = async function handler(req, res) {
       );
     }
 
-    const priceId = PRICE_IDS[tier];
+    const priceId = PRICE_IDS[billingPeriod][tier];
     if (!priceId) {
       return sendError(
         res,
-        `Price not configured for tier: ${tier}`,
+        `Price not configured for tier: ${tier} with ${billingPeriod} billing`,
         ErrorCodes.CONFIG_ERROR
       );
     }
@@ -156,6 +178,7 @@ module.exports = async function handler(req, res) {
       customerId,
       priceId,
       tier,
+      billingPeriod,
       userId,
       appUrl,
       hasStripeKey: !!process.env.STRIPE_SECRET_KEY,
@@ -178,11 +201,13 @@ module.exports = async function handler(req, res) {
         metadata: {
           supabase_user_id: userId,
           tier: tier,
+          billing_period: billingPeriod,
         },
       },
       metadata: {
         supabase_user_id: userId,
         tier: tier,
+        billing_period: billingPeriod,
       },
       allow_promotion_codes: true,
       billing_address_collection: "auto",
@@ -217,14 +242,16 @@ module.exports = async function handler(req, res) {
       rawError: error.raw,
       userId,
       tier,
-      priceId: PRICE_IDS[tier],
+      billingPeriod,
+      priceId: PRICE_IDS[billingPeriod]?.[tier],
       timestamp: new Date().toISOString()
     });
 
     logError("stripe-checkout", error, {
       userId,
       tier,
-      priceId: PRICE_IDS[tier],
+      billingPeriod,
+      priceId: PRICE_IDS[billingPeriod]?.[tier],
       errorDetails: {
         type: error.type,
         code: error.code,

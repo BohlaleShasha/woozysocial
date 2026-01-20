@@ -19,7 +19,64 @@
 .pricing-header p {
   font-size: 16px;
   color: #888;
-  margin: 0;
+  margin: 0 0 24px 0;
+}
+
+/* Billing Period Toggle */
+.billing-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin: 24px auto 0;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 4px;
+  max-width: 320px;
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 12px 24px;
+  border: none;
+  background: transparent;
+  color: #888;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.toggle-btn.active {
+  background: #afabf9;
+  color: #000;
+}
+
+.toggle-btn:hover:not(.active) {
+  color: #ccc;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.savings-badge {
+  background: #2ecc71;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.toggle-btn.active .savings-badge {
+  background: #000;
+  color: #2ecc71;
 }
 
 /* Payment Status Messages */
@@ -206,6 +263,9 @@
   margin-bottom: 24px;
   padding-bottom: 20px;
   border-bottom: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .price {
@@ -218,6 +278,13 @@
   font-size: 14px;
   color: #888;
   margin-left: 4px;
+}
+
+.annual-info {
+  font-size: 12px;
+  color: #2ecc71;
+  margin-top: 6px;
+  font-weight: 500;
 }
 
 /* Features List */

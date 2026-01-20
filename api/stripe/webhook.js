@@ -14,11 +14,18 @@ module.exports.config = {
 // Map Stripe price IDs back to tier names
 function getTierFromPriceId(priceId) {
   const priceToTier = {
+    // Monthly prices
     [process.env.STRIPE_PRICE_SOLO]: "solo",
     [process.env.STRIPE_PRICE_PRO]: "pro",
     [process.env.STRIPE_PRICE_PRO_PLUS]: "pro_plus",
     [process.env.STRIPE_PRICE_AGENCY]: "agency",
     [process.env.STRIPE_PRICE_BRAND_BOLT]: "brand_bolt",
+    // Annual prices (same tier names, just different billing frequency)
+    [process.env.STRIPE_PRICE_SOLO_ANNUAL]: "solo",
+    [process.env.STRIPE_PRICE_PRO_ANNUAL]: "pro",
+    [process.env.STRIPE_PRICE_PRO_PLUS_ANNUAL]: "pro_plus",
+    [process.env.STRIPE_PRICE_AGENCY_ANNUAL]: "agency",
+    [process.env.STRIPE_PRICE_BRAND_BOLT_ANNUAL]: "brand_bolt",
   };
   return priceToTier[priceId] || "unknown";
 }

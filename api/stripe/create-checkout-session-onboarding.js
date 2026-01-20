@@ -14,10 +14,18 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Price ID mapping for each tier
 const PRICE_IDS = {
-  solo: process.env.STRIPE_PRICE_SOLO,
-  pro: process.env.STRIPE_PRICE_PRO,
-  "pro-plus": process.env.STRIPE_PRICE_PRO_PLUS,
-  agency: process.env.STRIPE_PRICE_AGENCY,
+  monthly: {
+    solo: process.env.STRIPE_PRICE_SOLO,
+    pro: process.env.STRIPE_PRICE_PRO,
+    "pro-plus": process.env.STRIPE_PRICE_PRO_PLUS,
+    agency: process.env.STRIPE_PRICE_AGENCY,
+  },
+  annual: {
+    solo: process.env.STRIPE_PRICE_SOLO_ANNUAL,
+    pro: process.env.STRIPE_PRICE_PRO_ANNUAL,
+    "pro-plus": process.env.STRIPE_PRICE_PRO_PLUS_ANNUAL,
+    agency: process.env.STRIPE_PRICE_AGENCY_ANNUAL,
+  },
 };
 
 /**
@@ -75,7 +83,8 @@ module.exports = async function handler(req, res) {
       email,
       fullName,
       successUrl,
-      cancelUrl
+      cancelUrl,
+      billingPeriod = 'monthly'
     } = req.body;
 
     // Validate required fields
@@ -95,25 +104,34 @@ module.exports = async function handler(req, res) {
       );
     }
 
-    // Validate tier
-    if (!PRICE_IDS.hasOwnProperty(tier)) {
+    // Validate billing period
+    if (!['monthly', 'annual'].includes(billingPeriod)) {
       return sendError(
         res,
-        `Invalid tier: ${tier}. Valid tiers: ${Object.keys(PRICE_IDS).join(", ")}`,
+        `Invalid billing period: ${billingPeriod}. Valid values: monthly, annual`,
         ErrorCodes.VALIDATION_ERROR
       );
     }
 
-    const priceId = PRICE_IDS[tier];
+    // Validate tier
+    if (!PRICE_IDS[billingPeriod].hasOwnProperty(tier)) {
+      return sendError(
+        res,
+        `Invalid tier: ${tier}. Valid tiers: ${Object.keys(PRICE_IDS[billingPeriod]).join(", ")}`,
+        ErrorCodes.VALIDATION_ERROR
+      );
+    }
+
+    const priceId = PRICE_IDS[billingPeriod][tier];
     if (!priceId) {
       return sendError(
         res,
-        `Price not configured for tier: ${tier}`,
+        `Price not configured for tier: ${tier} with ${billingPeriod} billing`,
         ErrorCodes.CONFIG_ERROR
       );
     }
 
-    console.log("[ONBOARDING CHECKOUT] Creating session for:", { userId, tier, email });
+    console.log("[ONBOARDING CHECKOUT] Creating session for:", { userId, tier, billingPeriod, email });
 
     // Get or create Stripe customer
     const { data: profile } = await supabase
@@ -171,6 +189,7 @@ module.exports = async function handler(req, res) {
           supabase_user_id: userId,
           workspace_id: workspaceId,
           tier: tier,
+          billing_period: billingPeriod,
           onboarding: 'true'
         }
       },
@@ -178,6 +197,7 @@ module.exports = async function handler(req, res) {
         supabase_user_id: userId,
         workspace_id: workspaceId,
         tier: tier,
+        billing_period: billingPeriod,
         onboarding: 'true'
       },
       allow_promotion_codes: true,
@@ -190,6 +210,7 @@ module.exports = async function handler(req, res) {
 
     console.log("[ONBOARDING CHECKOUT] Creating session with config:", {
       tier,
+      billingPeriod,
       priceId,
       customerId,
       metadata: sessionConfig.metadata
