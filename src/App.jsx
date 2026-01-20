@@ -28,6 +28,7 @@ const ScheduleContent = lazy(() => import("./components/ScheduleContent").then(m
 const AssetsContent = lazy(() => import("./components/AssetsContent").then(m => ({ default: m.AssetsContent })));
 const SocialInboxContent = lazy(() => import("./components/SocialInboxContent").then(m => ({ default: m.SocialInboxContent })));
 const TeamContent = lazy(() => import("./components/TeamContent").then(m => ({ default: m.TeamContent })));
+const AgencyTeamContent = lazy(() => import("./components/AgencyTeamContent").then(m => ({ default: m.AgencyTeamContent })));
 const SettingsContent = lazy(() => import("./components/SettingsContent").then(m => ({ default: m.SettingsContent })));
 const EngagementContent = lazy(() => import("./components/EngagementContent").then(m => ({ default: m.EngagementContent })));
 const Approvals = lazy(() => import("./pages/Approvals").then(m => ({ default: m.Approvals })));
@@ -126,6 +127,7 @@ function App() {
                           <Route path="/engagement" element={<EngagementContent />} />
                           <Route path="/social-inbox" element={<SocialInboxContent />} />
                           <Route path="/team" element={<TeamContent />} />
+                          <Route path="/agency-team" element={<AgencyTeamContent />} />
                           <Route path="/approvals" element={<Approvals />} />
                           <Route path="/notifications" element={<Notifications />} />
                           <Route path="/settings" element={<SettingsContent />} />

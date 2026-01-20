@@ -29,12 +29,20 @@ export const Sidebar = () => {
     { name: "Engagement", path: "/engagement", tabName: "engagement" },
     { name: "Social Inbox", path: "/social-inbox", tabName: "social-inbox" },
     { name: "Team", path: "/team", tabName: "team", requiresSubscriptionOrTeam: true },
+    { name: "Agency Team", path: "/agency-team", tabName: "agency-team", agencyOnly: true },
     { name: "Approvals", path: "/approvals", tabName: "approvals", requiresSubscriptionOrTeam: true },
     { name: "Settings", path: "/settings", tabName: "settings" }
   ];
 
   // Filter menu items based on subscription tier, role, and team status
   const visibleMenuItems = menuItems.filter(item => {
+    // Agency-only items require agency subscription tier
+    if (item.agencyOnly) {
+      if (subscriptionTier !== 'agency') {
+        return false;
+      }
+    }
+
     // If user is a workspace member, check role-based tab access
     // This allows team members to see tabs based on their role, not personal subscription
     if (isWorkspaceMember && canAccessTab) {

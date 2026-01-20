@@ -166,7 +166,7 @@ export const TIER_CONFIG = {
       whiteLabel: true, // Future feature
       prioritySupport: true // Future feature
     },
-    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'assets', 'engagement', 'social-inbox', 'team', 'approvals', 'settings']
+    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'assets', 'engagement', 'social-inbox', 'team', 'agency-team', 'approvals', 'settings']
   }
 };
 

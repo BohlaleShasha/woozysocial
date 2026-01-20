@@ -1,14 +1,26 @@
 import React, { useState } from 'react';
 import { useWorkspace } from '../../contexts/WorkspaceContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { useAgencyTeam } from '../../hooks/useQueries';
+import { WorkspaceTeamProvisionModal } from './WorkspaceTeamProvisionModal';
+import { SUBSCRIPTION_TIERS } from '../../utils/constants';
 import './CreateWorkspaceModal.css';
 
 export const CreateWorkspaceModal = ({ isOpen, onClose }) => {
   const { createWorkspace } = useWorkspace();
+  const { user, subscriptionTier } = useAuth();
+  const isAgencyUser = subscriptionTier === SUBSCRIPTION_TIERS.AGENCY;
+
+  // Fetch agency team for provisioning (only for agency users)
+  const { data: teamMembers = [] } = useAgencyTeam(isAgencyUser ? user?.id : null);
+
   const [businessName, setBusinessName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showProvisionModal, setShowProvisionModal] = useState(false);
+  const [newWorkspace, setNewWorkspace] = useState(null);
 
-  if (!isOpen) return null;
+  if (!isOpen && !showProvisionModal) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,9 +41,17 @@ export const CreateWorkspaceModal = ({ isOpen, onClose }) => {
         return;
       }
 
-      // Success - close modal
-      setBusinessName('');
-      onClose();
+      // Success - check if agency user with team members
+      if (isAgencyUser && teamMembers.length > 0 && data) {
+        // Show provision modal
+        setNewWorkspace(data);
+        setShowProvisionModal(true);
+        setBusinessName('');
+      } else {
+        // Regular close
+        setBusinessName('');
+        onClose();
+      }
     } catch (err) {
       setError('Failed to create business. Please try again.');
     } finally {
@@ -44,6 +64,25 @@ export const CreateWorkspaceModal = ({ isOpen, onClose }) => {
       onClose();
     }
   };
+
+  const handleProvisionClose = () => {
+    setShowProvisionModal(false);
+    setNewWorkspace(null);
+    onClose();
+  };
+
+  // Show provision modal if active
+  if (showProvisionModal && newWorkspace) {
+    return (
+      <WorkspaceTeamProvisionModal
+        isOpen={true}
+        onClose={handleProvisionClose}
+        workspace={newWorkspace}
+        teamMembers={teamMembers}
+        userId={user?.id}
+      />
+    );
+  }
 
   return (
     <div className="modal-overlay" onClick={handleOverlayClick}>

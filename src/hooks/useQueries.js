@@ -142,6 +142,24 @@ export function useDrafts(workspaceId, userId, options = {}) {
 }
 
 // ============================================
+// AGENCY TEAM (Central Roster)
+// ============================================
+
+export function useAgencyTeam(userId) {
+  return useQuery({
+    queryKey: ["agencyTeam", userId],
+    queryFn: async () => {
+      const res = await fetch(`${baseURL}/api/agency-team/list?userId=${userId}`);
+      if (!res.ok) throw new Error("Failed to fetch agency team");
+      const data = await res.json();
+      return data.data?.teamMembers || [];
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+}
+
+// ============================================
 // TEAM MEMBERS
 // ============================================
 
@@ -239,6 +257,93 @@ export function useUserBrandProfile(userId) {
 }
 
 // ============================================
+// CLIENT PORTAL
+// ============================================
+
+// Client Dashboard Stats - fetches all approval counts at once
+export function useClientDashboardStats(workspaceId, userId) {
+  return useQuery({
+    queryKey: ["clientDashboardStats", workspaceId],
+    queryFn: async () => {
+      const res = await fetch(
+        `${baseURL}/api/post/pending-approvals?workspaceId=${workspaceId}&userId=${userId}&status=all`
+      );
+      if (!res.ok) throw new Error("Failed to fetch dashboard stats");
+      const data = await res.json();
+      const responseData = data.data || data;
+
+      // Calculate stats from response
+      const stats = {
+        pending: responseData.counts?.pending || 0,
+        changesRequested: responseData.counts?.changes_requested || 0,
+        approved: responseData.counts?.approved || 0,
+        rejected: responseData.counts?.rejected || 0
+      };
+
+      // Get recent posts for activity
+      const allPosts = [
+        ...(responseData.grouped?.pending || []),
+        ...(responseData.grouped?.changes_requested || []),
+        ...(responseData.grouped?.approved || []),
+        ...(responseData.grouped?.rejected || [])
+      ];
+
+      // Sort by date and take last 5
+      const recentActivity = allPosts
+        .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))
+        .slice(0, 5);
+
+      return { stats, recentActivity };
+    },
+    enabled: !!(workspaceId && userId),
+    staleTime: 1000 * 30, // 30 seconds - client needs fresh approval data
+  });
+}
+
+// Client Approved/Rejected Posts History
+export function useClientApprovedPosts(workspaceId, userId) {
+  return useQuery({
+    queryKey: ["clientApprovedPosts", workspaceId],
+    queryFn: async () => {
+      const res = await fetch(
+        `${baseURL}/api/post/pending-approvals?workspaceId=${workspaceId}&userId=${userId}&status=all`
+      );
+      if (!res.ok) throw new Error("Failed to fetch post history");
+      const data = await res.json();
+      const responseData = data.data || data;
+      const approvedPosts = responseData.grouped?.approved || [];
+      const rejectedPosts = responseData.grouped?.rejected || [];
+      return [...approvedPosts, ...rejectedPosts];
+    },
+    enabled: !!(workspaceId && userId),
+    staleTime: 1000 * 60, // 1 minute - historical data doesn't change often
+  });
+}
+
+// Client Calendar Posts - all posts for calendar view
+export function useClientCalendarPosts(workspaceId, userId) {
+  return useQuery({
+    queryKey: ["clientCalendarPosts", workspaceId],
+    queryFn: async () => {
+      const res = await fetch(
+        `${baseURL}/api/post/pending-approvals?workspaceId=${workspaceId}&userId=${userId}&status=all`
+      );
+      if (!res.ok) throw new Error("Failed to fetch calendar posts");
+      const data = await res.json();
+      const responseData = data.data || data;
+      return [
+        ...(responseData.grouped?.pending || []),
+        ...(responseData.grouped?.changes_requested || []),
+        ...(responseData.grouped?.approved || []),
+        ...(responseData.grouped?.rejected || [])
+      ];
+    },
+    enabled: !!(workspaceId && userId),
+    staleTime: 1000 * 30, // 30 seconds
+  });
+}
+
+// ============================================
 // DASHBOARD STATS (Post History)
 // ============================================
 
@@ -289,6 +394,10 @@ export function useInvalidateQueries() {
       queryClient.invalidateQueries({ queryKey: ["drafts", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["unifiedSchedule", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["dashboardStats", workspaceId] });
+      // Also invalidate client portal caches
+      queryClient.invalidateQueries({ queryKey: ["clientDashboardStats", workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["clientApprovedPosts", workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["clientCalendarPosts", workspaceId] });
     },
 
     // Invalidate after connecting/disconnecting accounts
@@ -300,6 +409,11 @@ export function useInvalidateQueries() {
     invalidateTeam: (workspaceId) => {
       queryClient.invalidateQueries({ queryKey: ["teamMembers", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["pendingInvites", workspaceId] });
+    },
+
+    // Invalidate agency team roster
+    invalidateAgencyTeam: (userId) => {
+      queryClient.invalidateQueries({ queryKey: ["agencyTeam", userId] });
     },
 
     // Invalidate notifications
@@ -318,6 +432,10 @@ export function useInvalidateQueries() {
       queryClient.invalidateQueries({ queryKey: ["connectedAccounts", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["teamMembers", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["brandProfile", workspaceId] });
+      // Client portal caches
+      queryClient.invalidateQueries({ queryKey: ["clientDashboardStats", workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["clientApprovedPosts", workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["clientCalendarPosts", workspaceId] });
     },
   };
 }
