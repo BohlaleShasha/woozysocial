@@ -280,7 +280,10 @@ module.exports = async function handler(req, res) {
         user_id: userId,
         role: 'owner',
         can_manage_team: true,
-        can_manage_settings: true
+        can_manage_settings: true,
+        can_delete_posts: true,
+        can_approve_posts: true,
+        joined_at: new Date().toISOString()
       }, {
         onConflict: 'workspace_id,user_id',
         ignoreDuplicates: false

@@ -134,13 +134,18 @@ module.exports = async function handler(req, res) {
       return sendError(res, "Failed to create workspace", ErrorCodes.DATABASE_ERROR);
     }
 
-    // Add user as owner of the workspace
+    // Add user as owner of the workspace with full permissions
     const { error: memberError } = await supabase
       .from('workspace_members')
       .insert({
         workspace_id: workspace.id,
         user_id: userId,
-        role: 'owner'
+        role: 'owner',
+        can_manage_team: true,
+        can_manage_settings: true,
+        can_delete_posts: true,
+        can_approve_posts: true,
+        joined_at: new Date().toISOString()
       });
 
     if (memberError) {
