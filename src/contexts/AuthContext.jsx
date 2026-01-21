@@ -105,31 +105,45 @@ export const AuthProvider = ({ children }) => {
         options: {
           data: {
             full_name: fullName,
-          }
+          },
+          emailRedirectTo: `${window.location.origin}/dashboard`
         }
       });
 
       if (error) throw error;
 
-      // Create user profile (trigger will handle this, but we still try for fallback)
+      // CRITICAL: Create user profile - this is REQUIRED for invites and upgrades to work
       if (data.user) {
+        console.log('[SIGNUP] Creating user profile for:', data.user.id);
+
         try {
           const { error: profileError } = await supabase
             .from('user_profiles')
             .insert([
               {
                 id: data.user.id,
-                email: email,
+                email: email.toLowerCase(),
                 full_name: fullName,
+                onboarding_completed: false,
+                subscription_status: 'inactive',
+                subscription_tier: 'free'
               },
             ]);
 
-          // Ignore duplicate key errors (trigger already created profile)
-          if (profileError && !profileError.message.includes('duplicate')) {
+          // Check if error is NOT a duplicate key error
+          if (profileError && !profileError.message.includes('duplicate') && !profileError.code?.includes('23505')) {
+            console.error('[SIGNUP] Failed to create user profile:', profileError);
             throw profileError;
           }
+
+          console.log('[SIGNUP] User profile created successfully');
         } catch (err) {
-          console.warn('Profile insert error (may be expected if trigger created it):', err);
+          console.error('[SIGNUP] Profile insert error:', err);
+          // If profile creation fails and it's not a duplicate, throw error
+          if (err.message && !err.message.includes('duplicate')) {
+            console.error('[SIGNUP] Critical error - profile creation failed');
+            throw new Error('Failed to create user profile. Please contact support.');
+          }
         }
 
         // Check if user is whitelisted and create Ayrshare profile if eligible
