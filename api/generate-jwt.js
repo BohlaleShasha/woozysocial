@@ -103,15 +103,17 @@ module.exports = async (req, res) => {
         return sendError(res, "Social media service not configured", ErrorCodes.CONFIG_ERROR);
       }
 
-      // Get workspace's profile key from database, or fall back to user's key, or env variable
-      let profileKey = AYRSHARE_PROFILE_KEY;
-      console.log(`[generate-jwt] Default profile key from env: ${profileKey ? 'present' : 'MISSING'}`);
+      // Get workspace's profile key from database
+      let profileKey = null;
+      let usingFallback = false;
 
       if (workspaceId) {
         const workspaceProfileKey = await getWorkspaceProfileKey(workspaceId);
         if (workspaceProfileKey) {
           profileKey = workspaceProfileKey;
-          console.log(`[generate-jwt] Using workspace profile key`);
+          console.log(`[generate-jwt] Using workspace profile key for workspace ${workspaceId}`);
+        } else {
+          console.warn(`[generate-jwt] Workspace ${workspaceId} has no profile key!`);
         }
       } else if (userId) {
         // Backwards compatibility: support userId for existing code
@@ -122,7 +124,24 @@ module.exports = async (req, res) => {
         }
       }
 
-      console.log(`[generate-jwt] Final profile key: ${profileKey ? 'present' : 'MISSING'}`);
+      // If no workspace/user profile key, fall back to env (but warn)
+      if (!profileKey && AYRSHARE_PROFILE_KEY) {
+        profileKey = AYRSHARE_PROFILE_KEY;
+        usingFallback = true;
+        console.warn(`[generate-jwt] FALLBACK: Using environment profile key - workspace may need profile creation`);
+      }
+
+      // If still no profile key, return error with helpful message
+      if (!profileKey) {
+        console.error(`[generate-jwt] No profile key available for workspace ${workspaceId}`);
+        return sendError(
+          res,
+          "Your workspace needs to be set up before connecting social accounts. Please contact support if this issue persists.",
+          ErrorCodes.CONFIG_ERROR
+        );
+      }
+
+      console.log(`[generate-jwt] Final profile key: present (fallback: ${usingFallback})`);
       console.log(`[generate-jwt] AYRSHARE_DOMAIN: ${AYRSHARE_DOMAIN ? 'present' : 'MISSING'}`);
       console.log(`[generate-jwt] AYRSHARE_PRIVATE_KEY: ${AYRSHARE_PRIVATE_KEY ? 'present (length: ' + AYRSHARE_PRIVATE_KEY.length + ')' : 'MISSING'}`);
       console.log(`[generate-jwt] AYRSHARE_API_KEY: ${AYRSHARE_API_KEY ? 'present' : 'MISSING'}`);
