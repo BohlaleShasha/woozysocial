@@ -68,26 +68,42 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 async function createAyrshareProfile(workspaceName, maxRetries = 3) {
   const axios = require("axios");
 
+  // CRITICAL: Validate API key exists before attempting
+  const apiKey = process.env.AYRSHARE_API_KEY;
+  if (!apiKey) {
+    console.error(`[WEBHOOK] CRITICAL: AYRSHARE_API_KEY environment variable is not set!`);
+    logError("ayrshare-profile-create", new Error("AYRSHARE_API_KEY not configured"), { workspaceName });
+    return null;
+  }
+
+  // Log API key presence (not the actual key)
+  console.log(`[WEBHOOK] Ayrshare API key present: ${apiKey.length} characters, starts with: ${apiKey.substring(0, 8)}...`);
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`[WEBHOOK] Ayrshare profile creation attempt ${attempt}/${maxRetries} for "${workspaceName}"`);
+      const title = workspaceName || "My Business";
+      console.log(`[WEBHOOK] Ayrshare profile creation attempt ${attempt}/${maxRetries}`);
+      console.log(`[WEBHOOK] Request details: { title: "${title}" }`);
 
       const response = await axios.post(
         "https://api.ayrshare.com/api/profiles/profile",
         {
-          title: workspaceName || "My Business",
+          title: title,
         },
         {
           headers: {
-            Authorization: `Bearer ${process.env.AYRSHARE_API_KEY}`,
+            Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
           },
           timeout: 30000,
         }
       );
 
+      console.log(`[WEBHOOK] Ayrshare response status: ${response.status}`);
+      console.log(`[WEBHOOK] Ayrshare response data:`, JSON.stringify(response.data));
+
       if (response.data && response.data.profileKey) {
-        console.log(`[WEBHOOK] Created Ayrshare profile: ${response.data.profileKey}, refId: ${response.data.refId}`);
+        console.log(`[WEBHOOK] SUCCESS: Created Ayrshare profile: ${response.data.profileKey}, refId: ${response.data.refId}`);
         return {
           profileKey: response.data.profileKey,
           refId: response.data.refId || null
@@ -95,7 +111,7 @@ async function createAyrshareProfile(workspaceName, maxRetries = 3) {
       }
 
       // No profileKey in response - this is an unexpected response format
-      console.error(`[WEBHOOK] Ayrshare API returned unexpected response (attempt ${attempt}):`, response.data);
+      console.error(`[WEBHOOK] Ayrshare API returned unexpected response (attempt ${attempt}):`, JSON.stringify(response.data));
 
       if (attempt < maxRetries) {
         const retryDelay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
@@ -103,14 +119,29 @@ async function createAyrshareProfile(workspaceName, maxRetries = 3) {
         await delay(retryDelay);
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message;
-      console.error(`[WEBHOOK] Ayrshare API error (attempt ${attempt}/${maxRetries}):`, errorMessage);
+      // Log FULL error details for debugging
+      const statusCode = error.response?.status;
+      const errorData = error.response?.data;
+      const errorMessage = errorData?.message || error.message;
+
+      console.error(`[WEBHOOK] ============ AYRSHARE ERROR DETAILS ============`);
+      console.error(`[WEBHOOK] Attempt: ${attempt}/${maxRetries}`);
+      console.error(`[WEBHOOK] Status code: ${statusCode}`);
+      console.error(`[WEBHOOK] Error message: ${errorMessage}`);
+      console.error(`[WEBHOOK] Full error response:`, JSON.stringify(errorData));
+      console.error(`[WEBHOOK] Error stack:`, error.stack);
+      console.error(`[WEBHOOK] ================================================`);
 
       // Don't retry on certain errors (bad request, unauthorized)
-      const statusCode = error.response?.status;
       if (statusCode === 400 || statusCode === 401 || statusCode === 403) {
         console.error(`[WEBHOOK] Non-retryable error (${statusCode}), giving up`);
-        logError("ayrshare-profile-create", error, { workspaceName, attempt, statusCode });
+        console.error(`[WEBHOOK] This usually means: 400=bad request data, 401=invalid API key, 403=forbidden/quota exceeded`);
+        logError("ayrshare-profile-create", error, {
+          workspaceName,
+          attempt,
+          statusCode,
+          errorData: JSON.stringify(errorData)
+        });
         return null;
       }
 
@@ -119,12 +150,17 @@ async function createAyrshareProfile(workspaceName, maxRetries = 3) {
         console.log(`[WEBHOOK] Retrying in ${retryDelay}ms...`);
         await delay(retryDelay);
       } else {
-        logError("ayrshare-profile-create", error, { workspaceName, attempts: maxRetries });
+        logError("ayrshare-profile-create", error, {
+          workspaceName,
+          attempts: maxRetries,
+          statusCode,
+          errorData: JSON.stringify(errorData)
+        });
       }
     }
   }
 
-  console.error(`[WEBHOOK] Failed to create Ayrshare profile after ${maxRetries} attempts`);
+  console.error(`[WEBHOOK] FAILED: Could not create Ayrshare profile after ${maxRetries} attempts for "${workspaceName}"`);
   return null;
 }
 
@@ -330,26 +366,54 @@ module.exports = async function handler(req, res) {
         // ONBOARDING FLOW (from marketing site)
         if (isOnboarding && workspaceId) {
           console.log(`[WEBHOOK] Processing ONBOARDING payment for workspace ${workspaceId}`);
+          console.log(`[WEBHOOK] Workspace name for Ayrshare profile: "${workspaceName}"`);
 
-          // Update workspace status
+          // STEP 1: Create Ayrshare profile FIRST (before marking as active)
+          // This way if it fails, we can track it properly
+          console.log(`[WEBHOOK] STEP 1: Creating Ayrshare profile for workspace ${workspaceId}`);
+          const ayrshareProfile = await createAyrshareProfile(workspaceName);
+
+          let profileCreationSucceeded = false;
+          if (ayrshareProfile) {
+            profileCreationSucceeded = true;
+            console.log(`[WEBHOOK] Ayrshare profile created successfully: ${ayrshareProfile.profileKey}`);
+          } else {
+            console.error(`[WEBHOOK] WARNING: Ayrshare profile creation FAILED for workspace ${workspaceId}`);
+            console.error(`[WEBHOOK] The workspace will be marked active but NEEDS manual profile creation`);
+          }
+
+          // STEP 2: Update workspace status (include profile key if we have it)
+          const workspaceUpdateData = {
+            onboarding_status: profileCreationSucceeded ? 'completed' : 'profile_creation_failed',
+            subscription_status: 'active',
+            subscription_tier: tier,
+            updated_at: new Date().toISOString()
+          };
+
+          // Add profile key if creation succeeded
+          if (ayrshareProfile) {
+            workspaceUpdateData.ayr_profile_key = ayrshareProfile.profileKey;
+            workspaceUpdateData.ayr_ref_id = ayrshareProfile.refId;
+          }
+
           const { error: workspaceUpdateError } = await supabase
             .from('workspaces')
-            .update({
-              onboarding_status: 'payment_completed',
-              subscription_status: 'active',
-              subscription_tier: tier,
-              updated_at: new Date().toISOString()
-            })
+            .update(workspaceUpdateData)
             .eq('id', workspaceId);
 
           if (workspaceUpdateError) {
             console.error("[WEBHOOK] Error updating workspace for onboarding:", workspaceUpdateError);
             logError("webhook-onboarding-workspace", workspaceUpdateError, { workspaceId, userId });
           } else {
-            console.log(`[WEBHOOK] Workspace ${workspaceId} updated to active status`);
+            console.log(`[WEBHOOK] Workspace ${workspaceId} updated:`, {
+              status: 'active',
+              tier: tier,
+              hasProfileKey: !!ayrshareProfile,
+              onboardingStatus: workspaceUpdateData.onboarding_status
+            });
           }
 
-          // Update user profile
+          // STEP 3: Update user profile
           const { error: profileUpdateError } = await supabase
             .from('user_profiles')
             .update({
@@ -369,19 +433,19 @@ module.exports = async function handler(req, res) {
             console.log(`[WEBHOOK] User ${userId} profile updated to active subscription`);
           }
 
-          // Create Ayrshare profile for the workspace
-          console.log(`[WEBHOOK] Creating Ayrshare profile for workspace ${workspaceId}`);
-          const workspace = await updateWorkspaceWithProfile(
-            supabase,
-            workspaceId,
-            tier,
-            workspaceName
-          );
-
-          if (workspace) {
-            console.log(`[WEBHOOK] Onboarding complete - workspace ${workspaceId} has Ayrshare profile`);
+          // Final summary
+          if (profileCreationSucceeded) {
+            console.log(`[WEBHOOK] ✓ ONBOARDING COMPLETE - workspace ${workspaceId} fully set up with Ayrshare profile`);
           } else {
-            console.error(`[WEBHOOK] Onboarding payment processed but Ayrshare profile creation failed`);
+            console.error(`[WEBHOOK] ⚠ ONBOARDING PARTIAL - workspace ${workspaceId} is active but MISSING Ayrshare profile`);
+            console.error(`[WEBHOOK] ⚠ Action required: Run fix-ayrshare-profile endpoint for workspace ${workspaceId}`);
+            // Log error for monitoring/alerting
+            logError("webhook-profile-creation-failed", new Error("Ayrshare profile creation failed during onboarding"), {
+              workspaceId,
+              userId,
+              workspaceName,
+              tier
+            });
           }
 
           break; // Exit after handling onboarding
