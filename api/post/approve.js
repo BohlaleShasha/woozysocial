@@ -149,7 +149,11 @@ module.exports = async function handler(req, res) {
 
       const tier = ownerProfile?.subscription_tier || 'free';
 
-      // Check if workspace has clients (clients viewing means approval was required)
+      // If the current user is a client, they can approve (they ARE the client, so approval workflow is valid)
+      // This is the most reliable check - if a client has access to approve, workflows must be enabled
+      const userIsClient = member.role === 'client';
+
+      // Also check if workspace has other clients
       const { data: clients } = await supabase
         .from('workspace_members')
         .select('id')
@@ -159,8 +163,11 @@ module.exports = async function handler(req, res) {
 
       const hasClients = clients && clients.length > 0;
 
-      // Allow approval if tier has the feature OR if workspace has clients
-      if (!hasFeature(tier, 'approvalWorkflows') && !hasClients) {
+      // Allow approval if:
+      // 1. User is a client (if they're a client with approval access, workflows are valid)
+      // 2. OR tier has the approvalWorkflows feature
+      // 3. OR workspace has clients (clients viewing means approval was required)
+      if (!userIsClient && !hasFeature(tier, 'approvalWorkflows') && !hasClients) {
         return sendError(
           res,
           "Approval workflows are not available on your subscription tier. Please upgrade to Pro Plus or Agency to access this feature.",
