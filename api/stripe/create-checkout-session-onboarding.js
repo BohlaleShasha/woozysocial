@@ -82,6 +82,7 @@ module.exports = async function handler(req, res) {
       tier,
       email,
       fullName,
+      workspaceName,
       successUrl,
       cancelUrl,
       billingPeriod = 'monthly'
@@ -93,7 +94,8 @@ module.exports = async function handler(req, res) {
       "workspaceId",
       "tier",
       "email",
-      "fullName"
+      "fullName",
+      "workspaceName"
     ]);
 
     if (!validation.valid) {
@@ -188,6 +190,7 @@ module.exports = async function handler(req, res) {
         metadata: {
           supabase_user_id: userId,
           workspace_id: workspaceId,
+          workspace_name: workspaceName,
           tier: tier,
           billing_period: billingPeriod,
           onboarding: 'true'
@@ -196,6 +199,7 @@ module.exports = async function handler(req, res) {
       metadata: {
         supabase_user_id: userId,
         workspace_id: workspaceId,
+        workspace_name: workspaceName,
         tier: tier,
         billing_period: billingPeriod,
         onboarding: 'true'
