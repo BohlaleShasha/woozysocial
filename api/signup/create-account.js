@@ -239,6 +239,9 @@ module.exports = async function handler(req, res) {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '');
 
+      // Normalize tier name: convert hyphens to underscores for database
+      const normalizedTier = selectedTier.replace(/-/g, '_');
+
       const { data: newWorkspace, error: workspaceError } = await supabase
         .from('workspaces')
         .insert({
@@ -247,7 +250,7 @@ module.exports = async function handler(req, res) {
           owner_id: userId,
           onboarding_status: 'pending_payment',
           questionnaire_data: questionnaireAnswers || {},
-          subscription_tier: selectedTier,
+          subscription_tier: normalizedTier,
           subscription_status: 'inactive'
         })
         .select()
