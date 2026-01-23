@@ -6,7 +6,7 @@ import "./SettingsContent.css";
 
 export const SettingsContent = () => {
   const { user, profile, updateProfile, resetPassword } = useAuth();
-  const { currentWorkspace, updateWorkspace } = useWorkspace();
+  const { activeWorkspace, updateWorkspace } = useWorkspace();
   const [loading, setLoading] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
   const [passwordResetLoading, setPasswordResetLoading] = useState(false);
@@ -29,8 +29,8 @@ export const SettingsContent = () => {
       setSettings({
         fullName: profile.full_name || "",
         email: profile.email || user?.email || "",
-        // IMPORTANT: Use WORKSPACE timezone, not user timezone
-        timezone: currentWorkspace?.timezone || getBrowserTimezone() || "UTC",
+        // IMPORTANT: Use WORKSPACE timezone, defaults to UTC
+        timezone: activeWorkspace?.timezone || "UTC",
         language: "English",
         theme: "Light",
         twoFactorEnabled: false,
@@ -39,7 +39,7 @@ export const SettingsContent = () => {
         teamActivityAlerts: profile.team_activity_alerts ?? true
       });
     }
-  }, [profile, user, currentWorkspace]);
+  }, [profile, user, activeWorkspace]);
 
   const handleSaveProfile = async () => {
     setLoading(true);
@@ -61,8 +61,8 @@ export const SettingsContent = () => {
       }
 
       // Update workspace timezone (workspace-level setting)
-      if (currentWorkspace) {
-        const { error: workspaceError } = await updateWorkspace(currentWorkspace.id, {
+      if (activeWorkspace) {
+        const { error: workspaceError } = await updateWorkspace(activeWorkspace.id, {
           timezone: settings.timezone
         });
 
