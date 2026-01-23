@@ -275,13 +275,38 @@ module.exports = async function handler(req, res) {
     // Check if approval is required - either by tier feature OR if workspace has clients
     let requiresApproval = false;
     if (isScheduled && supabase) {
-      const { data: userProfile } = await supabase
-        .from('user_profiles')
-        .select('subscription_tier')
-        .eq('id', userId)
-        .single();
+      // CRITICAL: Check the WORKSPACE OWNER'S tier, not the current user's tier
+      // Approval workflows are a workspace-level feature based on the owner's subscription
+      let tier = 'free';
 
-      const tier = userProfile?.subscription_tier || 'free';
+      if (workspaceId) {
+        // Get workspace owner's tier
+        const { data: workspace } = await supabase
+          .from('workspaces')
+          .select('owner_id')
+          .eq('id', workspaceId)
+          .single();
+
+        if (workspace?.owner_id) {
+          const { data: ownerProfile } = await supabase
+            .from('user_profiles')
+            .select('subscription_tier')
+            .eq('id', workspace.owner_id)
+            .single();
+
+          tier = ownerProfile?.subscription_tier || 'free';
+        }
+      } else {
+        // Fallback: If no workspace, check current user's tier
+        const { data: userProfile } = await supabase
+          .from('user_profiles')
+          .select('subscription_tier')
+          .eq('id', userId)
+          .single();
+
+        tier = userProfile?.subscription_tier || 'free';
+      }
+
       const tierHasApproval = hasFeature(tier, 'approvalWorkflows');
 
       // Check if workspace has clients - if so, require approval for client review
@@ -290,7 +315,7 @@ module.exports = async function handler(req, res) {
       // Require approval if tier has the feature OR if workspace has clients
       requiresApproval = tierHasApproval || hasClients;
 
-      console.log('[post] Tier:', tier, '| Tier has approval:', tierHasApproval, '| Has clients:', hasClients, '| Requires approval:', requiresApproval);
+      console.log('[post] Workspace owner tier:', tier, '| Tier has approval:', tierHasApproval, '| Has clients:', hasClients, '| Requires approval:', requiresApproval);
     }
 
     // If scheduled, save to DB only - wait for approval before sending to Ayrshare
