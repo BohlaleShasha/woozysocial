@@ -98,7 +98,7 @@ async function getBrandProfile(workspaceId, userId) {
   }
 }
 
-// Generate post using OpenAI
+// Generate post using OpenAI - ENHANCED VERSION
 async function generateWithOpenAI(prompt, websiteData, brandProfile, platforms) {
   const openaiKey = process.env.OPENAI_API_KEY;
 
@@ -110,11 +110,12 @@ async function generateWithOpenAI(prompt, websiteData, brandProfile, platforms) 
   let websiteContext = '';
   if (websiteData) {
     websiteContext = `
-WEBSITE INFORMATION:
+═══ WEBSITE CONTENT TO REFERENCE ═══
 URL: ${websiteData.url}
-Title: ${websiteData.title || 'N/A'}
-Description: ${websiteData.description || 'N/A'}
-Content Summary: ${websiteData.content}
+Page Title: ${websiteData.title || 'N/A'}
+Meta Description: ${websiteData.description || 'N/A'}
+Key Content: ${websiteData.content}
+════════════════════════════════════
 `;
   }
 
@@ -122,61 +123,129 @@ Content Summary: ${websiteData.content}
   let brandContext = '';
   if (brandProfile) {
     brandContext = `
-BRAND PROFILE:
-Brand Name: ${brandProfile.brand_name || 'N/A'}
-Brand Description: ${brandProfile.brand_description || 'N/A'}
-Target Audience: ${brandProfile.target_audience || 'N/A'}
-Tone of Voice: ${brandProfile.tone_of_voice || 'N/A'}
-Key Topics: ${brandProfile.key_topics || 'N/A'}
-Brand Values: ${brandProfile.brand_values || 'N/A'}
-Sample Posts Style: ${brandProfile.sample_posts || 'N/A'}
+═══ BRAND IDENTITY ═══
+Brand: ${brandProfile.brand_name || 'N/A'}
+About: ${brandProfile.brand_description || 'N/A'}
+Target Audience: ${brandProfile.target_audience || 'General audience'}
+Voice & Tone: ${brandProfile.tone_of_voice || 'Professional yet approachable'}
+Core Topics: ${brandProfile.key_topics || 'N/A'}
+Values: ${brandProfile.brand_values || 'N/A'}
+Writing Style Examples: ${brandProfile.sample_posts || 'N/A'}
+══════════════════════
 `;
   }
 
-  // Platform-specific guidelines
+  // Enhanced platform-specific guidelines with character limits and best practices
   const platformGuidelines = {
-    twitter: 'Twitter/X: Max 280 characters, use hashtags sparingly (1-2), be concise and punchy',
-    instagram: 'Instagram: Can be longer, use emojis, include 5-10 relevant hashtags at the end',
-    facebook: 'Facebook: Conversational tone, can be longer, encourage engagement with questions',
-    linkedin: 'LinkedIn: Professional tone, industry insights, thought leadership, 1-3 hashtags',
-    threads: 'Threads: Casual, conversational, similar to Twitter but can be slightly longer',
-    tiktok: 'TikTok: Fun, trendy, use popular hashtags, hook in first line',
-    pinterest: 'Pinterest: Descriptive, keyword-rich, include a call to action'
+    twitter: `Twitter/X:
+    - STRICT 280 character limit
+    - Hook in first 5 words
+    - 1-2 hashtags MAX (at end, not inline)
+    - Use line breaks for readability
+    - Questions boost replies 100%
+    - Threads format: Start with hook, end with CTA`,
+
+    instagram: `Instagram:
+    - First line is CRUCIAL (shows in feed)
+    - 2,200 char limit but 125-150 optimal
+    - Use 1-2 emojis per line
+    - 5-10 hashtags at the VERY END (after line breaks)
+    - Include clear CTA
+    - Use line breaks every 1-2 sentences`,
+
+    facebook: `Facebook:
+    - 40-80 characters get 86% more engagement
+    - Ask questions to boost comments
+    - Conversational, relatable tone
+    - 1-2 hashtags maximum
+    - Stories/personal angles work best
+    - Use emojis sparingly`,
+
+    linkedin: `LinkedIn:
+    - Open with a HOOK (controversial take, surprising stat, or question)
+    - Use line breaks after every sentence
+    - 1,300 chars for full visibility (before "see more")
+    - 3-5 hashtags at end
+    - Professional but human tone
+    - End with question or CTA for engagement
+    - Avoid buzzwords, be authentic`,
+
+    threads: `Threads:
+    - 500 character limit
+    - Casual, conversational tone
+    - No hashtags needed (algorithm-based)
+    - Hot takes and opinions perform well
+    - Reply-style content works
+    - Emojis welcome`,
+
+    tiktok: `TikTok Caption:
+    - First 3 words must HOOK
+    - 150 chars optimal (shows without tapping)
+    - 3-5 trending hashtags
+    - Include CTA (follow, like, comment)
+    - Casual, Gen-Z friendly language
+    - Use trending sounds/challenges references`,
+
+    pinterest: `Pinterest:
+    - 100-200 characters optimal
+    - Keyword-rich for SEO
+    - Describe WHAT, WHY, HOW
+    - Clear CTA (Click, Save, Shop)
+    - No hashtags needed
+    - Benefits-focused copy`
   };
 
   const selectedPlatformGuidelines = platforms
     .map(p => platformGuidelines[p.toLowerCase()])
     .filter(Boolean)
-    .join('\n');
+    .join('\n\n');
 
-  const systemPrompt = `You are a social media content expert. Generate engaging social media posts based on the provided information.
+  const systemPrompt = `You are an elite social media copywriter who has generated viral content for Fortune 500 brands. Your posts consistently achieve 10x average engagement rates.
 
 ${brandContext}
 
 ${websiteContext}
 
-PLATFORM GUIDELINES:
-${selectedPlatformGuidelines || 'Create versatile content suitable for multiple platforms'}
+═══ PLATFORM-SPECIFIC REQUIREMENTS ═══
+${selectedPlatformGuidelines || 'Create versatile content optimized for engagement across platforms'}
+═══════════════════════════════════════
 
-INSTRUCTIONS:
-1. Generate 3 unique variations of a social media post
-2. Each variation should have a different angle or style
-3. Match the brand voice if provided
-4. Incorporate key information from the website if provided
-5. Optimize for the selected platforms
-6. Include relevant hashtags where appropriate
-7. Keep posts engaging and shareable
+═══ VIRAL CONTENT FORMULAS TO USE ═══
+1. HOOK → VALUE → CTA (Classic structure)
+2. Controversial opinion → Explanation → Invitation to discuss
+3. "Most people think X. But actually Y." (Pattern interrupt)
+4. Number list: "5 things I learned about X"
+5. Story format: "Last week I [experience]. Here's what happened..."
+6. Question hook: "Why do [surprising behavior]?"
+═══════════════════════════════════════
 
-Format your response as exactly 3 variations, numbered 1-3, with each on its own line.`;
+═══ YOUR TASK ═══
+Generate 3 DISTINCT variations for: "${prompt}"
+
+Each variation MUST:
+✓ Start with an attention-grabbing hook (first 5-7 words are critical)
+✓ Be ready to copy-paste (no placeholders like [your name])
+✓ Match the brand voice exactly if provided
+✓ Follow platform character limits strictly
+✓ Include strategic emoji placement (not excessive)
+✓ End with engagement driver (question, CTA, or thought-provoker)
+✓ Put hashtags at the END only (not inline with text)
+
+Each variation should use a DIFFERENT approach:
+- Variation 1: Emotional/Story-based angle
+- Variation 2: Value/Educational angle
+- Variation 3: Bold/Controversial or Curiosity angle
+
+FORMAT: Number each variation 1., 2., 3. with the full post text ready to use.`;
 
   const response = await axios.post('https://api.openai.com/v1/chat/completions', {
-    model: 'gpt-4o-mini',
+    model: 'gpt-4o',  // Upgraded from gpt-4o-mini for better quality
     messages: [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: `Create social media posts about: ${prompt}` }
+      { role: 'user', content: `Create 3 high-performing social media posts about: ${prompt}\n\nMake them ready to copy and paste immediately. No placeholders.` }
     ],
-    temperature: 0.8,
-    max_tokens: 1000
+    temperature: 0.85,  // Slightly higher for more creativity
+    max_tokens: 1500    // More tokens for detailed responses
   }, {
     headers: {
       'Content-Type': 'application/json',
@@ -186,11 +255,11 @@ Format your response as exactly 3 variations, numbered 1-3, with each on its own
 
   const content = response.data.choices[0]?.message?.content || '';
 
-  // Parse variations from response
+  // Enhanced parsing for variations
   const variations = content
-    .split(/\n(?=\d+\.)/)
-    .map(v => v.trim())
-    .filter(v => v.length > 0);
+    .split(/\n(?=\d+\.\s)/)
+    .map(v => v.replace(/^\d+\.\s*/, '').trim())  // Remove the number prefix
+    .filter(v => v.length > 10);  // Filter out empty or too short
 
   return variations.length > 0 ? variations : [content];
 }

@@ -343,65 +343,128 @@ export const ComposeContent = () => {
   //   };
   // }, [saveDraft]);
 
-  // Calculate engagement score based on post content
+  // Calculate engagement score based on post content - ENHANCED VERSION
   useEffect(() => {
     const calculateEngagementScore = () => {
       let score = 0;
       const text = post.text || "";
       const textLength = text.length;
+      const selectedPlatforms = Object.keys(networks).filter(key => networks[key]);
 
-      // Text length score (max 30 points)
-      // Optimal: 100-150 characters
-      if (textLength >= 100 && textLength <= 150) {
-        score += 30;
-      } else if (textLength >= 50 && textLength < 100) {
-        score += 20;
-      } else if (textLength > 150 && textLength <= 200) {
-        score += 20;
-      } else if (textLength > 0 && textLength < 50) {
-        score += 10;
-      } else if (textLength > 200) {
-        score += 15;
+      // Platform-specific optimal lengths (based on engagement studies)
+      const platformOptimalLengths = {
+        twitter: { min: 71, max: 100 },      // 71-100 chars get most retweets
+        instagram: { min: 138, max: 150 },   // Short captions perform better
+        facebook: { min: 40, max: 80 },      // Short posts get 23% more engagement
+        linkedin: { min: 50, max: 100 },     // Concise professional content
+        threads: { min: 50, max: 150 },
+        tiktok: { min: 50, max: 150 },
+        pinterest: { min: 100, max: 200 },   // Descriptive works better
+        youtube: { min: 100, max: 200 }
+      };
+
+      // 1. TEXT LENGTH SCORE (max 18 points) - Platform aware
+      let lengthScore = 0;
+      if (selectedPlatforms.length > 0) {
+        const avgOptimal = selectedPlatforms.reduce((acc, p) => {
+          const opt = platformOptimalLengths[p] || { min: 80, max: 150 };
+          return { min: acc.min + opt.min, max: acc.max + opt.max };
+        }, { min: 0, max: 0 });
+        avgOptimal.min /= selectedPlatforms.length;
+        avgOptimal.max /= selectedPlatforms.length;
+
+        if (textLength >= avgOptimal.min && textLength <= avgOptimal.max) {
+          lengthScore = 18;
+        } else if (textLength >= avgOptimal.min * 0.7 && textLength <= avgOptimal.max * 1.3) {
+          lengthScore = 12;
+        } else if (textLength > 0) {
+          lengthScore = 6;
+        }
+      } else if (textLength >= 80 && textLength <= 150) {
+        lengthScore = 18;
+      } else if (textLength > 0) {
+        lengthScore = 8;
       }
+      score += lengthScore;
 
-      // Hashtag count score (max 25 points)
-      const hashtagCount = (text.match(/#\w+/g) || []).length;
-      if (hashtagCount >= 5 && hashtagCount <= 10) {
-        score += 25;
-      } else if (hashtagCount >= 3 && hashtagCount < 5) {
-        score += 20;
-      } else if (hashtagCount > 10 && hashtagCount <= 15) {
-        score += 15;
-      } else if (hashtagCount > 0 && hashtagCount < 3) {
-        score += 10;
+      // 2. HASHTAG SCORE (max 12 points) - Platform specific
+      const hashtags = text.match(/#\w+/g) || [];
+      const hashtagCount = hashtags.length;
+      let hashtagScore = 0;
+      if (selectedPlatforms.includes('instagram') && hashtagCount >= 5 && hashtagCount <= 10) {
+        hashtagScore = 12;
+      } else if (hashtagCount >= 2 && hashtagCount <= 5) {
+        hashtagScore = 10;
+      } else if (hashtagCount >= 1 && hashtagCount <= 8) {
+        hashtagScore = 6;
+      } else if (hashtagCount > 10) {
+        hashtagScore = 3; // Too many hashtags looks spammy
       }
+      score += hashtagScore;
 
-      // Media presence score (max 20 points)
+      // 3. MEDIA SCORE (max 20 points)
       if (mediaPreview) {
-        score += 20;
+        score += 18;
+        // Video bonus - videos get higher engagement
+        if (mediaType === 'video') {
+          score += 2;
+        }
       }
 
-      // Platform selection score (max 15 points)
-      const selectedPlatforms = Object.values(networks).filter(v => v).length;
-      if (selectedPlatforms >= 2 && selectedPlatforms <= 4) {
-        score += 15;
-      } else if (selectedPlatforms === 1) {
-        score += 10;
-      } else if (selectedPlatforms > 4) {
+      // 4. EMOJI USAGE (max 8 points) - Emojis boost engagement 25%+
+      const emojiRegex = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
+      const emojiCount = (text.match(emojiRegex) || []).length;
+      if (emojiCount >= 1 && emojiCount <= 3) {
         score += 8;
+      } else if (emojiCount >= 4 && emojiCount <= 6) {
+        score += 5;
+      } else if (emojiCount > 6) {
+        score += 2;
       }
 
-      // Call-to-action score (max 10 points)
-      const hasCallToAction = /\b(click|link|check|visit|shop|buy|learn|sign up|join|follow|subscribe)\b/i.test(text);
-      if (hasCallToAction) {
+      // 5. ENGAGEMENT HOOKS (max 15 points)
+      let hookScore = 0;
+      // Questions drive 100% more comments
+      if (/\?/.test(text)) hookScore += 5;
+      // Call-to-action increases engagement 285%
+      if (/\b(click|link|check|visit|shop|buy|learn|sign up|join|follow|subscribe|download|try|get|grab|save|share|tag|comment|tell us|let us know|drop a|what do you think|swipe|tap)\b/i.test(text)) hookScore += 5;
+      // Urgency words boost CTR 30%
+      if (/\b(now|today|limited|exclusive|don't miss|last chance|hurry|act fast|ending soon|only)\b/i.test(text)) hookScore += 3;
+      // Numbered lists perform 40% better
+      if (/\b\d+\s*(tips|ways|reasons|steps|things|ideas|hacks|secrets|mistakes|facts)\b/i.test(text)) hookScore += 2;
+      score += Math.min(hookScore, 15);
+
+      // 6. FIRST LINE HOOK (max 12 points) - First 125 chars are crucial
+      const firstLine = text.split('\n')[0] || text.substring(0, 60);
+      let firstLineScore = 0;
+      if (firstLine.length >= 20) firstLineScore += 3;
+      // Strong opener patterns
+      if (/^[🔥⚡💡🚀✨🎯💪🙌]/.test(firstLine)) firstLineScore += 2;
+      if (/\?|!/.test(firstLine)) firstLineScore += 3;
+      if (/\b(how|why|what|secret|truth|mistake|stop|start|never|always|this|here's|introducing|finally|breaking|just|new)\b/i.test(firstLine)) firstLineScore += 4;
+      score += Math.min(firstLineScore, 12);
+
+      // 7. PLATFORM SELECTION (max 10 points)
+      if (selectedPlatforms.length >= 2 && selectedPlatforms.length <= 4) {
         score += 10;
+      } else if (selectedPlatforms.length === 1) {
+        score += 7;
+      } else if (selectedPlatforms.length > 4) {
+        score += 5;
       }
 
+      // 8. URL/LINK PRESENCE (max 5 points) - CTAs with links convert better
+      const hasUrl = /https?:\/\/[^\s]+/i.test(text);
+      if (hasUrl) {
+        score += 5;
+      }
+
+      // Cap at 100
       setEngagementScore(Math.min(score, 100));
     };
 
     calculateEngagementScore();
-  }, [post.text, mediaPreview, networks]);
+  }, [post.text, mediaPreview, networks, mediaType]);
 
   // Map Ayrshare platform names to our internal names
   const platformNameMap = {
