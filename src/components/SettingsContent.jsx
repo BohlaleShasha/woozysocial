@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { useWorkspace } from "../contexts/WorkspaceContext";
 import { TIMEZONES_BY_REGION, getBrowserTimezone } from "../utils/timezones";
 import "./SettingsContent.css";
 
 export const SettingsContent = () => {
   const { user, profile, updateProfile, resetPassword } = useAuth();
+  const { currentWorkspace, updateWorkspace } = useWorkspace();
   const [loading, setLoading] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
   const [passwordResetLoading, setPasswordResetLoading] = useState(false);
@@ -21,13 +23,14 @@ export const SettingsContent = () => {
     teamActivityAlerts: true
   });
 
-  // Load user profile data
+  // Load user profile data and workspace settings
   useEffect(() => {
     if (profile) {
       setSettings({
         fullName: profile.full_name || "",
         email: profile.email || user?.email || "",
-        timezone: profile.timezone || getBrowserTimezone() || "UTC",
+        // IMPORTANT: Use WORKSPACE timezone, not user timezone
+        timezone: currentWorkspace?.timezone || getBrowserTimezone() || "UTC",
         language: "English",
         theme: "Light",
         twoFactorEnabled: false,
@@ -36,29 +39,44 @@ export const SettingsContent = () => {
         teamActivityAlerts: profile.team_activity_alerts ?? true
       });
     }
-  }, [profile, user]);
+  }, [profile, user, currentWorkspace]);
 
   const handleSaveProfile = async () => {
     setLoading(true);
     setSaveMessage("");
 
     try {
-      const { error } = await updateProfile({
+      // Update user profile (personal settings)
+      const { error: profileError } = await updateProfile({
         full_name: settings.fullName,
-        timezone: settings.timezone,
         email_notifications: settings.emailNotifications,
         weekly_summaries: settings.weeklySummaries,
         team_activity_alerts: settings.teamActivityAlerts,
       });
 
-      if (error) {
-        setSaveMessage("Error saving profile: " + error.message);
-      } else {
-        setSaveMessage("Profile saved successfully!");
-        setTimeout(() => setSaveMessage(""), 3000);
+      if (profileError) {
+        setSaveMessage("Error saving profile: " + profileError.message);
+        setLoading(false);
+        return;
       }
+
+      // Update workspace timezone (workspace-level setting)
+      if (currentWorkspace) {
+        const { error: workspaceError } = await updateWorkspace(currentWorkspace.id, {
+          timezone: settings.timezone
+        });
+
+        if (workspaceError) {
+          setSaveMessage("Error saving timezone: " + workspaceError.message);
+          setLoading(false);
+          return;
+        }
+      }
+
+      setSaveMessage("Settings saved successfully!");
+      setTimeout(() => setSaveMessage(""), 3000);
     } catch (error) {
-      setSaveMessage("Error saving profile");
+      setSaveMessage("Error saving settings");
     } finally {
       setLoading(false);
     }
@@ -154,9 +172,9 @@ export const SettingsContent = () => {
           </div>
           <div className="settings-form">
             <div className="form-group">
-              <label className="form-label">Timezone</label>
+              <label className="form-label">Workspace Timezone</label>
               <p className="form-helper-text">
-                Choose your timezone for accurate post scheduling. Currently detected: {getBrowserTimezone()}
+                Set the timezone for this workspace. All scheduled posts will use this timezone. Currently detected: {getBrowserTimezone()}
               </p>
               <select
                 className="form-select"
