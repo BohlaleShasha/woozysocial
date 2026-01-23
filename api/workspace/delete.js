@@ -120,6 +120,18 @@ module.exports = async function handler(req, res) {
       logError('workspace.delete.brandProfiles', brandDeleteError, { workspaceId });
     }
 
+    // Clear ALL user_profiles.last_workspace_id references to this workspace
+    // This MUST happen before workspace deletion to avoid FK constraint violation
+    const { error: clearRefsError } = await supabase
+      .from('user_profiles')
+      .update({ last_workspace_id: null })
+      .eq('last_workspace_id', workspaceId);
+
+    if (clearRefsError) {
+      logError('workspace.delete.clearLastWorkspaceRefs', clearRefsError, { workspaceId });
+      // Continue anyway - we'll handle setting new active workspace for current user later
+    }
+
     // Delete the workspace
     const { error: deleteError } = await supabase
       .from('workspaces')
@@ -131,27 +143,24 @@ module.exports = async function handler(req, res) {
       return sendError(res, "Failed to delete workspace", ErrorCodes.DATABASE_ERROR);
     }
 
-    // Update user's last_workspace_id if it was this workspace
-    const { data: userProfile } = await supabase
+    // Set current user's last_workspace_id to one of their remaining workspaces
+    // (We cleared it to null earlier to avoid FK constraint violation)
+    const { data: remainingWorkspaces } = await supabase
+      .from('workspace_members')
+      .select('workspace_id')
+      .eq('user_id', userId)
+      .limit(1);
+
+    const newActiveId = remainingWorkspaces?.[0]?.workspace_id || null;
+
+    const { error: updateProfileError } = await supabase
       .from('user_profiles')
-      .select('last_workspace_id')
-      .eq('id', userId)
-      .single();
+      .update({ last_workspace_id: newActiveId })
+      .eq('id', userId);
 
-    if (userProfile?.last_workspace_id === workspaceId) {
-      // Find another workspace to set as active
-      const { data: remainingWorkspaces } = await supabase
-        .from('workspace_members')
-        .select('workspace_id')
-        .eq('user_id', userId)
-        .limit(1);
-
-      const newActiveId = remainingWorkspaces?.[0]?.workspace_id || null;
-
-      await supabase
-        .from('user_profiles')
-        .update({ last_workspace_id: newActiveId })
-        .eq('id', userId);
+    if (updateProfileError) {
+      logError('workspace.delete.updateUserProfile', updateProfileError, { userId, newActiveId });
+      // Don't fail the request - workspace is already deleted successfully
     }
 
     return sendSuccess(res, { message: "Workspace deleted successfully" });
