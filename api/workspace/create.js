@@ -98,20 +98,11 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    // If Ayrshare profile creation failed, fall back to owner's profile key or env var
+    // If Ayrshare profile creation failed, fall back to env var
+    // NOTE: ayr_profile_key is on workspaces table, not user_profiles
     if (!ayrProfileKey) {
-      const { data: ownerProfile, error: profileError } = await supabase
-        .from('user_profiles')
-        .select('ayr_profile_key, ayr_ref_id')
-        .eq('id', userId)
-        .single();
-
-      if (profileError && profileError.code !== 'PGRST116') {
-        logError('workspace.create.getOwnerProfile', profileError, { userId });
-      }
-
-      ayrProfileKey = ownerProfile?.ayr_profile_key || process.env.AYRSHARE_PROFILE_KEY || null;
-      ayrRefId = ownerProfile?.ayr_ref_id || null;
+      ayrProfileKey = process.env.AYRSHARE_PROFILE_KEY || null;
+      ayrRefId = null;
     }
 
     // Create workspace in database
@@ -124,7 +115,10 @@ module.exports = async function handler(req, res) {
         slug: slug,
         owner_id: userId,
         ayr_profile_key: ayrProfileKey,
-        ayr_ref_id: ayrRefId
+        ayr_ref_id: ayrRefId,
+        onboarding_status: 'completed',  // Mark as completed since user is already in app
+        subscription_status: 'active',   // Set to active by default
+        subscription_tier: 'free'        // Start with free tier
       })
       .select()
       .single();
