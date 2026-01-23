@@ -9,6 +9,57 @@ const {
   isValidUUID
 } = require("../_utils");
 
+/**
+ * Delete Ayrshare profile for a workspace
+ * @param {string} profileKey - The Ayrshare profile key to delete
+ * @returns {Promise<boolean>} - True if deleted successfully, false otherwise
+ */
+async function deleteAyrshareProfile(profileKey) {
+  if (!profileKey) {
+    console.log('[WORKSPACE DELETE] No Ayrshare profile key to delete');
+    return true; // Not an error - workspace just doesn't have an Ayrshare profile
+  }
+
+  const apiKey = process.env.AYRSHARE_API_KEY;
+  if (!apiKey) {
+    console.error('[WORKSPACE DELETE] AYRSHARE_API_KEY not configured, skipping profile deletion');
+    return false;
+  }
+
+  try {
+    const axios = require('axios');
+
+    console.log(`[WORKSPACE DELETE] Deleting Ayrshare profile: ${profileKey}`);
+
+    const response = await axios.delete('https://api.ayrshare.com/api/profiles', {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'Profile-Key': profileKey
+      },
+      timeout: 30000
+    });
+
+    console.log(`[WORKSPACE DELETE] Ayrshare profile deleted successfully:`, response.data);
+    return true;
+  } catch (error) {
+    const statusCode = error.response?.status;
+    const errorData = error.response?.data;
+
+    console.error('[WORKSPACE DELETE] Failed to delete Ayrshare profile:', {
+      profileKey,
+      statusCode,
+      error: errorData || error.message
+    });
+
+    logError('workspace.delete.ayrshare', error, { profileKey, statusCode });
+
+    // Don't fail workspace deletion if Ayrshare deletion fails
+    // User can manually delete from Ayrshare dashboard
+    return false;
+  }
+}
+
 module.exports = async function handler(req, res) {
   setCors(res);
 
@@ -118,6 +169,31 @@ module.exports = async function handler(req, res) {
 
     if (brandDeleteError) {
       logError('workspace.delete.brandProfiles', brandDeleteError, { workspaceId });
+    }
+
+    // Get workspace data to retrieve Ayrshare profile key before deletion
+    const { data: workspace, error: workspaceError } = await supabase
+      .from('workspaces')
+      .select('ayr_profile_key, name')
+      .eq('id', workspaceId)
+      .single();
+
+    if (workspaceError) {
+      logError('workspace.delete.getWorkspace', workspaceError, { workspaceId });
+      // Continue anyway - deletion should still proceed
+    }
+
+    // Delete Ayrshare profile BEFORE deleting workspace
+    // This frees up your Ayrshare quota
+    if (workspace?.ayr_profile_key) {
+      console.log(`[WORKSPACE DELETE] Attempting to delete Ayrshare profile for workspace: ${workspace.name}`);
+      const ayrDeleted = await deleteAyrshareProfile(workspace.ayr_profile_key);
+      if (ayrDeleted) {
+        console.log(`[WORKSPACE DELETE] ✅ Ayrshare profile deleted successfully`);
+      } else {
+        console.log(`[WORKSPACE DELETE] ⚠️ Ayrshare profile deletion failed - continuing with workspace deletion`);
+        console.log(`[WORKSPACE DELETE] You may need to manually delete profile key: ${workspace.ayr_profile_key} from Ayrshare dashboard`);
+      }
     }
 
     // Clear ALL user_profiles.last_workspace_id references to this workspace
