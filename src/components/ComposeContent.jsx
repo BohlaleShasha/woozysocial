@@ -107,9 +107,13 @@ export const ComposeContent = () => {
       try {
         const selectedPlatform = Object.keys(networks).find(key => networks[key]);
         const platformParam = selectedPlatform ? `&platform=${selectedPlatform}` : '';
+        const workspaceTimezone = activeWorkspace?.timezone || 'UTC';
+        const timezoneParam = `&timezone=${encodeURIComponent(workspaceTimezone)}`;
 
-        // Fetch best time recommendations
-        const bestTimeRes = await fetch(`${baseURL}/api/best-time?workspaceId=${activeWorkspace.id}${platformParam}`);
+        // Fetch best time recommendations (with timezone for accurate local times)
+        const bestTimeRes = await fetch(
+          `${baseURL}/api/best-time?workspaceId=${activeWorkspace.id}${platformParam}${timezoneParam}`
+        );
         if (bestTimeRes.ok) {
           const json = await bestTimeRes.json();
           const data = json.data || json;
@@ -123,8 +127,10 @@ export const ComposeContent = () => {
           }
         }
 
-        // Fetch analytics summary (7 days)
-        const analyticsRes = await fetch(`${baseURL}/api/analytics?workspaceId=${activeWorkspace.id}&period=7`);
+        // Fetch analytics summary (7 days) with timezone
+        const analyticsRes = await fetch(
+          `${baseURL}/api/analytics?workspaceId=${activeWorkspace.id}&period=7${timezoneParam}`
+        );
         if (analyticsRes.ok) {
           const json = await analyticsRes.json();
           const data = json.data || json;
@@ -2196,20 +2202,47 @@ export const ComposeContent = () => {
                 <p className="score-label">Engagement Score</p>
               </div>
 
+              {/* Data Source Indicator */}
+              <div style={{
+                padding: '8px 12px',
+                backgroundColor: hasRealData ? '#d1fae5' : '#fef3c7',
+                borderRadius: '6px',
+                marginBottom: '12px',
+                fontSize: '11px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <span>{hasRealData ? '✓' : 'ℹ'}</span>
+                <span style={{ color: hasRealData ? '#065f46' : '#92400e' }}>
+                  {hasRealData
+                    ? `Personalized data from your ${analyticsData?.summary?.totalPosts || 0} posts`
+                    : 'Industry averages (post 10+ times for personalized insights)'}
+                </span>
+              </div>
+
+              {/* Timezone Indicator */}
+              {activeWorkspace?.timezone && (
+                <div style={{
+                  fontSize: '10px',
+                  color: '#6b7280',
+                  marginBottom: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                  <span>🌍</span>
+                  <span>Times shown in: {activeWorkspace.timezone}</span>
+                </div>
+              )}
+
               {/* Prediction Details */}
               <div className="prediction-details">
                 <div className="prediction-item">
                   <span className="prediction-icon">🕐</span>
                   <div className="prediction-info">
-                    <span className="prediction-label">
-                      Best time: {hasRealData ? "📊" : "📈"}
-                    </span>
+                    <span className="prediction-label">Best time to post:</span>
                     <span className="prediction-value">{getBestPostingTime()}</span>
-                    {hasRealData && (
-                      <span style={{ fontSize: '10px', color: '#10b981' }}>
-                        Based on your analytics
-                      </span>
-                    )}
                   </div>
                 </div>
 
@@ -2282,23 +2315,61 @@ export const ComposeContent = () => {
                   {/* Best Times List */}
                   {bestTimes.length > 0 && (
                     <div style={{ marginTop: '12px' }}>
-                      <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '6px' }}>
-                        Top posting times:
+                      <div style={{
+                        fontSize: '12px',
+                        color: '#6b7280',
+                        marginBottom: '6px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <span>Top posting times{hasRealData ? ' (your data)' : ' (industry avg)'}:</span>
                       </div>
                       {bestTimes.map((time, idx) => (
                         <div key={idx} style={{
                           display: 'flex',
                           alignItems: 'center',
                           gap: '8px',
-                          padding: '6px 8px',
+                          padding: '8px 10px',
                           backgroundColor: idx === 0 ? '#ddd6fe' : '#f3f4f6',
                           borderRadius: '6px',
                           marginBottom: '4px',
                           fontSize: '12px'
                         }}>
-                          <span style={{ fontWeight: '600', color: '#7c3aed' }}>#{idx + 1}</span>
-                          <span>{time.day} {time.time}</span>
-                          <span style={{ marginLeft: 'auto', color: '#9ca3af' }}>{time.score}%</span>
+                          <span style={{
+                            fontWeight: '600',
+                            color: idx === 0 ? '#7c3aed' : '#6b7280',
+                            minWidth: '20px'
+                          }}>#{idx + 1}</span>
+                          <span style={{ flex: 1 }}>{time.day} at {time.time}</span>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}>
+                            <div style={{
+                              width: '40px',
+                              height: '4px',
+                              backgroundColor: '#e5e7eb',
+                              borderRadius: '2px',
+                              overflow: 'hidden'
+                            }}>
+                              <div style={{
+                                width: `${time.score}%`,
+                                height: '100%',
+                                backgroundColor: '#7c3aed',
+                                borderRadius: '2px'
+                              }} />
+                            </div>
+                            <span style={{ color: '#6b7280', fontSize: '10px', minWidth: '28px' }}>
+                              {time.score}%
+                            </span>
+                          </div>
+                          {time.avgEngagement && (
+                            <span style={{ fontSize: '10px', color: '#10b981' }}>
+                              ~{time.avgEngagement} eng
+                            </span>
+                          )}
                         </div>
                       ))}
                     </div>

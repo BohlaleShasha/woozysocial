@@ -12,7 +12,7 @@ const AYRSHARE_API = "https://api.ayrshare.com/api";
 
 /**
  * Analytics API - Fetches engagement metrics and analytics data
- * GET /api/analytics?workspaceId={id}&period={7|30|90}
+ * GET /api/analytics?workspaceId={id}&period={7|30|90}&timezone={timezone}
  */
 module.exports = async (req, res) => {
   setCors(res);
@@ -26,7 +26,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { workspaceId, period = "30" } = req.query;
+    const { workspaceId, period = "30", timezone = "UTC" } = req.query;
 
     if (!workspaceId) {
       return sendError(res, "workspaceId is required", ErrorCodes.VALIDATION_ERROR);
@@ -81,9 +81,13 @@ module.exports = async (req, res) => {
     }
 
     // Process posts into analytics data
-    const analytics = processAnalytics(posts, parseInt(period));
+    const analytics = processAnalytics(posts, parseInt(period), timezone);
 
-    return sendSuccess(res, analytics);
+    return sendSuccess(res, {
+      ...analytics,
+      timezone,
+      dataSource: posts.length > 0 ? 'live' : 'no_data'
+    });
 
   } catch (error) {
     console.error("Analytics API error:", error);
@@ -93,8 +97,11 @@ module.exports = async (req, res) => {
 
 /**
  * Process raw posts into analytics metrics
+ * @param {Array} posts - Raw posts from Ayrshare
+ * @param {number} periodDays - Number of days to analyze
+ * @param {string} timezone - User's timezone
  */
-function processAnalytics(posts, periodDays) {
+function processAnalytics(posts, periodDays, timezone = 'UTC') {
   // Filter posts within the period
   const now = new Date();
   const periodStart = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000);

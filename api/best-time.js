@@ -12,7 +12,7 @@ const AYRSHARE_API = "https://api.ayrshare.com/api";
 
 /**
  * Best Time to Post API - AI-powered recommendations based on historical performance
- * GET /api/best-time?workspaceId={id}&platform={platform}
+ * GET /api/best-time?workspaceId={id}&platform={platform}&timezone={timezone}
  */
 module.exports = async (req, res) => {
   setCors(res);
@@ -26,7 +26,8 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { workspaceId, platform } = req.query;
+    const { workspaceId, platform, timezone } = req.query;
+    const userTimezone = timezone || 'UTC';
 
     if (!workspaceId) {
       return sendError(res, "workspaceId is required", ErrorCodes.VALIDATION_ERROR);
@@ -35,13 +36,14 @@ module.exports = async (req, res) => {
     // Get workspace profile key for Ayrshare API
     const profileKey = await getWorkspaceProfileKey(workspaceId);
 
-    // Default best times based on industry research
+    // Default best times based on industry research (in user's timezone)
     const defaultBestTimes = getDefaultBestTimes(platform);
 
     if (!profileKey) {
       return sendSuccess(res, {
         recommendations: defaultBestTimes,
         source: "industry_default",
+        timezone: userTimezone,
         message: "Based on industry averages. Connect social accounts for personalized insights."
       });
     }
@@ -88,12 +90,13 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Analyze posting patterns and engagement
-    const analysis = analyzePostingPatterns(posts, platform);
+    // Analyze posting patterns and engagement (with timezone awareness)
+    const analysis = analyzePostingPatterns(posts, platform, userTimezone);
 
     return sendSuccess(res, {
       recommendations: analysis.bestTimes,
       source: "personalized",
+      timezone: userTimezone,
       stats: {
         postsAnalyzed: posts.length,
         avgEngagement: analysis.avgEngagement,
@@ -175,8 +178,11 @@ function getDefaultBestTimes(platform) {
 
 /**
  * Analyze posting patterns from historical data
+ * @param {Array} posts - Post history
+ * @param {string} targetPlatform - Platform to filter by
+ * @param {string} timezone - User's timezone for converting times
  */
-function analyzePostingPatterns(posts, targetPlatform) {
+function analyzePostingPatterns(posts, targetPlatform, timezone = 'UTC') {
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   // Track engagement by day/hour
@@ -186,8 +192,24 @@ function analyzePostingPatterns(posts, targetPlatform) {
 
   posts.forEach(post => {
     const postDate = new Date(post.created || post.publishDate);
-    const day = dayNames[postDate.getDay()];
-    const hour = postDate.getHours();
+
+    // Convert to user's timezone for accurate day/hour analysis
+    let day, hour;
+    try {
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        weekday: 'long',
+        hour: 'numeric',
+        hour12: false,
+        timeZone: timezone
+      });
+      const parts = formatter.formatToParts(postDate);
+      day = parts.find(p => p.type === 'weekday')?.value || dayNames[postDate.getUTCDay()];
+      hour = parseInt(parts.find(p => p.type === 'hour')?.value || postDate.getUTCHours());
+    } catch (e) {
+      // Fallback to UTC if timezone is invalid
+      day = dayNames[postDate.getUTCDay()];
+      hour = postDate.getUTCHours();
+    }
 
     // Filter by platform if specified
     const platforms = post.platforms || [];
