@@ -620,7 +620,7 @@ module.exports = async function handler(req, res) {
         created_by: userId,
         ayr_post_id: ayrPostId,
         caption: text,
-        media_urls: mediaUrl ? [mediaUrl] : [],
+        media_urls: mediaUrls || [],
         status: isScheduled ? 'scheduled' : 'posted',
         scheduled_at: isScheduled ? new Date(scheduledDate).toISOString() : null,
         posted_at: isScheduled ? null : new Date().toISOString(),
