@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useWorkspace } from "../../contexts/WorkspaceContext";
 import { baseURL, SUBSCRIPTION_TIERS, hasTabAccess } from "../../utils/constants";
-import { NotificationBell } from "../NotificationBell";
+import { NotificationDropdown } from "../NotificationDropdown";
 import "./TopHeader.css";
 
 export const TopHeader = () => {
@@ -137,7 +137,7 @@ export const TopHeader = () => {
         <div style={{ flex: 1 }}></div>
 
         <div className="header-right">
-          <NotificationBell />
+          <NotificationDropdown />
           <div className="profile-section" ref={profileRef}>
             <div
               className="profile-avatar"

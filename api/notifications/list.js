@@ -65,7 +65,15 @@ module.exports = async function handler(req, res) {
         return sendSuccess(res, { notifications: [], unreadCount: 0 });
       }
 
-      const unreadCount = notifications?.filter(n => !n.read).length || 0;
+      // Get unread count using the database function for accuracy
+      const { data: unreadCountResult, error: unreadCountError } = await supabase
+        .rpc('get_unread_notification_count', { p_user_id: userId });
+
+      if (unreadCountError) {
+        logError('notifications.list.unreadCount', unreadCountError, { userId });
+      }
+
+      const unreadCount = unreadCountResult || 0;
 
       return sendSuccess(res, {
         notifications: notifications || [],
@@ -95,7 +103,10 @@ module.exports = async function handler(req, res) {
         // Mark all notifications as read for this user
         const { error } = await supabase
           .from('notifications')
-          .update({ read: true })
+          .update({
+            read: true,
+            read_at: new Date().toISOString()
+          })
           .eq('user_id', userId)
           .eq('read', false);
 
@@ -118,7 +129,10 @@ module.exports = async function handler(req, res) {
         // Mark specific notifications as read
         const { error } = await supabase
           .from('notifications')
-          .update({ read: true })
+          .update({
+            read: true,
+            read_at: new Date().toISOString()
+          })
           .in('id', notificationIds)
           .eq('user_id', userId);
 
