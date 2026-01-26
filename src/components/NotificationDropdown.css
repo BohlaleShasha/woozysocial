@@ -2,7 +2,8 @@
 
 .notification-dropdown {
   position: relative;
-  display: inline-block;
+  height: 39px;
+  width: 39px;
 }
 
 .notification-bell {
@@ -10,20 +11,18 @@
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: 8px;
-  border-radius: 50%;
+  padding: 0;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  color: #6b7280;
+  width: 39px;
+  height: 39px;
+  opacity: 0.5;
 }
 
 .notification-bell:hover {
-  background-color: rgba(175, 171, 249, 0.1);
-  color: #114C5A;
+  opacity: 1;
 }
 
 .notification-bell:active {
@@ -34,12 +33,13 @@
   width: 20px;
   height: 20px;
   stroke-width: 2;
+  color: #000000;
 }
 
 .notification-badge {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 0px;
+  right: 0px;
   background: #ef4444;
   color: white;
   font-size: 10px;
@@ -52,30 +52,20 @@
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.8;
-  }
 }
 
 .notification-dropdown-menu {
   position: absolute;
-  top: calc(100% + 8px);
+  top: 50px;
   right: 0;
   width: 380px;
   max-width: 90vw;
   background: white;
   border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   z-index: 1000;
   animation: slideDown 0.2s ease-out;
-  border: 1px solid #e5e7eb;
+  border: 1px solid rgba(0, 0, 0, 0.15);
   overflow: hidden;
 }
 
@@ -95,21 +85,21 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid #e5e7eb;
-  background: linear-gradient(135deg, #114C5A 0%, #0d3a45 100%);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  background: white;
 }
 
 .notification-header h3 {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: white;
+  color: #000000;
 }
 
 .mark-all-read-btn {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: white;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  color: #114C5A;
   font-size: 12px;
   padding: 6px 12px;
   border-radius: 6px;
@@ -119,8 +109,8 @@
 }
 
 .mark-all-read-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.5);
+  background: #f3f4f6;
+  border-color: #114C5A;
 }
 
 .mark-all-read-btn:disabled {
@@ -261,15 +251,15 @@
 }
 
 .notification-footer {
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
   padding: 12px 20px;
-  background: #f9fafb;
+  background: white;
 }
 
 .view-all-btn {
   width: 100%;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.2);
   color: #114C5A;
   font-size: 14px;
   font-weight: 500;
@@ -281,7 +271,7 @@
 
 .view-all-btn:hover {
   background: #f3f4f6;
-  border-color: #d1d5db;
+  border-color: #114C5A;
 }
 
 .view-all-btn:active {
