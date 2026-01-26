@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { baseURL } from "../utils/constants";
 import "./SettingsContent.css"; // Reuse existing styles
 
 export const ProfileSettings = () => {
@@ -7,14 +8,22 @@ export const ProfileSettings = () => {
   const [loading, setLoading] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
   const [passwordResetLoading, setPasswordResetLoading] = useState(false);
+  const [notificationPrefsLoading, setNotificationPrefsLoading] = useState(false);
+  const [notificationSaveMessage, setNotificationSaveMessage] = useState("");
 
   const [settings, setSettings] = useState({
     fullName: "",
     email: "",
-    twoFactorEnabled: false,
-    emailNotifications: true,
-    weeklySummaries: true,
-    teamActivityAlerts: true
+    twoFactorEnabled: false
+  });
+
+  const [notificationPreferences, setNotificationPreferences] = useState({
+    email_approval_requests: true,
+    email_post_approved: true,
+    email_post_rejected: true,
+    email_workspace_invites: true,
+    email_new_comments: true,
+    email_inbox_messages: true
   });
 
   // Load user profile data
@@ -23,13 +32,41 @@ export const ProfileSettings = () => {
       setSettings({
         fullName: profile.full_name || "",
         email: profile.email || user?.email || "",
-        twoFactorEnabled: false,
-        emailNotifications: profile.email_notifications ?? true,
-        weeklySummaries: profile.weekly_summaries ?? true,
-        teamActivityAlerts: profile.team_activity_alerts ?? true
+        twoFactorEnabled: false
       });
     }
   }, [profile, user]);
+
+  // Load notification preferences
+  useEffect(() => {
+    if (user) {
+      fetchNotificationPreferences();
+    }
+  }, [user]);
+
+  const fetchNotificationPreferences = async () => {
+    try {
+      const response = await fetch(
+        `${baseURL}/api/notifications/preferences?userId=${user.id}`,
+        { method: 'GET' }
+      );
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setNotificationPreferences({
+          email_approval_requests: data.data.preferences.email_approval_requests ?? true,
+          email_post_approved: data.data.preferences.email_post_approved ?? true,
+          email_post_rejected: data.data.preferences.email_post_rejected ?? true,
+          email_workspace_invites: data.data.preferences.email_workspace_invites ?? true,
+          email_new_comments: data.data.preferences.email_new_comments ?? true,
+          email_inbox_messages: data.data.preferences.email_inbox_messages ?? true
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch notification preferences:', error);
+    }
+  };
 
   const handleSaveProfile = async () => {
     setLoading(true);
@@ -38,10 +75,7 @@ export const ProfileSettings = () => {
     try {
       // Update user profile (personal settings only)
       const { error: profileError } = await updateProfile({
-        full_name: settings.fullName,
-        email_notifications: settings.emailNotifications,
-        weekly_summaries: settings.weeklySummaries,
-        team_activity_alerts: settings.teamActivityAlerts,
+        full_name: settings.fullName
       });
 
       if (profileError) {
@@ -56,6 +90,35 @@ export const ProfileSettings = () => {
       setSaveMessage("Error saving profile");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveNotificationPreferences = async () => {
+    setNotificationPrefsLoading(true);
+    setNotificationSaveMessage("");
+
+    try {
+      const response = await fetch(`${baseURL}/api/notifications/preferences`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          preferences: notificationPreferences
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setNotificationSaveMessage("Notification preferences saved successfully!");
+        setTimeout(() => setNotificationSaveMessage(""), 3000);
+      } else {
+        setNotificationSaveMessage("Error saving preferences: " + (data.error || 'Unknown error'));
+      }
+    } catch (error) {
+      setNotificationSaveMessage("Error saving preferences");
+    } finally {
+      setNotificationPrefsLoading(false);
     }
   };
 
@@ -86,6 +149,13 @@ export const ProfileSettings = () => {
 
   const handleToggle2FA = () => {
     setSettings({ ...settings, twoFactorEnabled: !settings.twoFactorEnabled });
+  };
+
+  const handleToggleNotificationPref = (key) => {
+    setNotificationPreferences({
+      ...notificationPreferences,
+      [key]: !notificationPreferences[key]
+    });
   };
 
   return (
@@ -141,61 +211,131 @@ export const ProfileSettings = () => {
           </div>
         </div>
 
-        {/* Notifications Section */}
+        {/* Email Notification Preferences Section */}
         <div className="settings-section">
           <div className="section-header">
-            <h2 className="section-title">Notifications</h2>
-            <p className="section-subtitle">Manage how you receive updates</p>
+            <h2 className="section-title">Email Notifications</h2>
+            <p className="section-subtitle">Choose which notifications you want to receive via email</p>
           </div>
           <div className="settings-form">
             <div className="notification-item">
               <div className="notification-info">
-                <h3 className="notification-title">Email Notifications</h3>
+                <h3 className="notification-title">Approval Requests</h3>
                 <p className="notification-description">
-                  Receive email alerts for important updates and activities
+                  Get notified when a post is submitted for your approval
                 </p>
               </div>
               <label className="toggle-switch">
                 <input
                   type="checkbox"
-                  checked={settings.emailNotifications}
-                  onChange={(e) => setSettings({ ...settings, emailNotifications: e.target.checked })}
+                  checked={notificationPreferences.email_approval_requests}
+                  onChange={() => handleToggleNotificationPref('email_approval_requests')}
                 />
                 <span className="toggle-slider"></span>
               </label>
             </div>
+
             <div className="notification-item">
               <div className="notification-info">
-                <h3 className="notification-title">Weekly Summaries</h3>
+                <h3 className="notification-title">Post Approved</h3>
                 <p className="notification-description">
-                  Get a weekly summary of your social media performance and scheduled posts
+                  Get notified when your post is approved by a client
                 </p>
               </div>
               <label className="toggle-switch">
                 <input
                   type="checkbox"
-                  checked={settings.weeklySummaries}
-                  onChange={(e) => setSettings({ ...settings, weeklySummaries: e.target.checked })}
+                  checked={notificationPreferences.email_post_approved}
+                  onChange={() => handleToggleNotificationPref('email_post_approved')}
                 />
                 <span className="toggle-slider"></span>
               </label>
             </div>
+
             <div className="notification-item">
               <div className="notification-info">
-                <h3 className="notification-title">Team Activity Alerts</h3>
+                <h3 className="notification-title">Post Rejected</h3>
                 <p className="notification-description">
-                  Stay informed when team members create, edit, or publish posts
+                  Get notified when your post is rejected and needs changes
                 </p>
               </div>
               <label className="toggle-switch">
                 <input
                   type="checkbox"
-                  checked={settings.teamActivityAlerts}
-                  onChange={(e) => setSettings({ ...settings, teamActivityAlerts: e.target.checked })}
+                  checked={notificationPreferences.email_post_rejected}
+                  onChange={() => handleToggleNotificationPref('email_post_rejected')}
                 />
                 <span className="toggle-slider"></span>
               </label>
             </div>
+
+            <div className="notification-item">
+              <div className="notification-info">
+                <h3 className="notification-title">Workspace Invites</h3>
+                <p className="notification-description">
+                  Get notified when you're invited to join a workspace
+                </p>
+              </div>
+              <label className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={notificationPreferences.email_workspace_invites}
+                  onChange={() => handleToggleNotificationPref('email_workspace_invites')}
+                />
+                <span className="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div className="notification-item">
+              <div className="notification-info">
+                <h3 className="notification-title">Comments & Mentions</h3>
+                <p className="notification-description">
+                  Get notified when someone comments on your post or mentions you
+                </p>
+              </div>
+              <label className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={notificationPreferences.email_new_comments}
+                  onChange={() => handleToggleNotificationPref('email_new_comments')}
+                />
+                <span className="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div className="notification-item">
+              <div className="notification-info">
+                <h3 className="notification-title">Social Inbox Messages</h3>
+                <p className="notification-description">
+                  Get notified about new messages and mentions in your social inbox
+                </p>
+              </div>
+              <label className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={notificationPreferences.email_inbox_messages}
+                  onChange={() => handleToggleNotificationPref('email_inbox_messages')}
+                />
+                <span className="toggle-slider"></span>
+              </label>
+            </div>
+
+            <p className="form-helper-text" style={{ marginTop: '16px', marginBottom: '12px' }}>
+              Note: You'll always receive in-app notifications regardless of these email settings.
+            </p>
+
+            {notificationSaveMessage && (
+              <div className={`save-message ${notificationSaveMessage.includes('Error') ? 'error' : 'success'}`}>
+                {notificationSaveMessage}
+              </div>
+            )}
+            <button
+              className="save-button"
+              onClick={handleSaveNotificationPreferences}
+              disabled={notificationPrefsLoading}
+            >
+              {notificationPrefsLoading ? 'Saving...' : 'Save Notification Preferences'}
+            </button>
           </div>
         </div>
 
