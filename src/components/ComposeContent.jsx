@@ -1,9 +1,9 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import "./ComposeContent.css";
-import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaReddit, FaTelegram, FaPinterest } from "react-icons/fa";
+import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaReddit, FaTelegram, FaPinterest, FaGoogle } from "react-icons/fa";
 import { FaTiktok, FaThreads, FaBluesky, FaSnapchat } from "react-icons/fa6";
-import { SiX, SiGooglemybusiness } from "react-icons/si";
+import { SiX } from "react-icons/si";
 import { useToast, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, Button, useDisclosure } from "@chakra-ui/react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -532,7 +532,7 @@ export const ComposeContent = () => {
     { name: "threads", displayName: "Threads", icon: FaThreads, color: "#000000" },
     { name: "telegram", displayName: "Telegram", icon: FaTelegram, color: "#0088cc" },
     { name: "twitter", displayName: "Twitter", icon: SiX, color: "#000000" },
-    { name: "googleBusiness", displayName: "Google Business", icon: SiGooglemybusiness, color: "#4285F4" },
+    { name: "googleBusiness", displayName: "Google Business", icon: FaGoogle, color: "#4285F4" },
     { name: "pinterest", displayName: "Pinterest", icon: FaPinterest, color: "#BD081C" },
     { name: "tiktok", displayName: "TikTok", icon: FaTiktok, color: "#000000" },
     { name: "snapchat", displayName: "Snapchat", icon: FaSnapchat, color: "#FFFC00" },
