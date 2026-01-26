@@ -38,12 +38,22 @@ function parseFormData(req) {
       });
 
       file.on('end', () => {
-        files[fieldname] = {
+        const fileObj = {
           buffer: Buffer.concat(chunks),
           filename,
           encoding,
           mimeType
         };
+
+        // Support multiple files for 'media' field
+        if (fieldname === 'media') {
+          if (!files.media) {
+            files.media = [];
+          }
+          files.media.push(fileObj);
+        } else {
+          files[fieldname] = fileObj;
+        }
       });
     });
 
@@ -208,6 +218,7 @@ module.exports = async function handler(req, res) {
 
     const { text, networks, scheduledDate, userId, workspaceId, postId } = body;
     let { mediaUrl } = body;
+    let mediaUrls = [];
 
     console.log('[POST] Extracted params:', {
       hasText: !!text,
@@ -216,24 +227,41 @@ module.exports = async function handler(req, res) {
       userId,
       workspaceId,
       postId,
-      hasMediaUrl: !!mediaUrl
+      hasMediaUrl: !!mediaUrl,
+      hasUploadedFiles: !!uploadedFiles.media
     });
 
-    // If file was uploaded, upload to Supabase Storage first
+    // If files were uploaded, upload to Supabase Storage first
     if (uploadedFiles.media) {
-      console.log('[post] File upload detected, uploading to Supabase Storage...');
-      const uploadResult = await uploadMediaToStorage(supabase, uploadedFiles.media, userId, workspaceId);
+      const filesToUpload = Array.isArray(uploadedFiles.media)
+        ? uploadedFiles.media
+        : [uploadedFiles.media];
 
-      if (!uploadResult.success) {
-        return sendError(
-          res,
-          `Failed to upload media: ${uploadResult.error}`,
-          ErrorCodes.EXTERNAL_API_ERROR
-        );
+      console.log('[post] File upload detected:', filesToUpload.length, 'file(s)');
+
+      for (const file of filesToUpload) {
+        console.log('[post] Uploading file:', file.filename);
+        const uploadResult = await uploadMediaToStorage(supabase, file, userId, workspaceId);
+
+        if (!uploadResult.success) {
+          return sendError(
+            res,
+            `Failed to upload ${file.filename}: ${uploadResult.error}`,
+            ErrorCodes.EXTERNAL_API_ERROR
+          );
+        }
+
+        mediaUrls.push(uploadResult.publicUrl);
+        console.log('[post] File uploaded successfully:', uploadResult.publicUrl);
       }
 
-      mediaUrl = uploadResult.publicUrl;
-      console.log('[post] Media uploaded successfully:', mediaUrl);
+      console.log('[post] All media uploaded:', mediaUrls.length, 'file(s)');
+    }
+
+    // Parse mediaUrl from body (for non-file uploads or existing URLs)
+    if (mediaUrl) {
+      const existingUrls = Array.isArray(mediaUrl) ? mediaUrl : [mediaUrl];
+      mediaUrls = [...mediaUrls, ...existingUrls];
     }
 
     // Validate required fields
@@ -332,7 +360,7 @@ module.exports = async function handler(req, res) {
           .from("posts")
           .update({
             caption: text,
-            media_urls: mediaUrl ? [mediaUrl] : [],
+            media_urls: mediaUrls || [],
             scheduled_at: new Date(scheduledDate).toISOString(),
             platforms: platforms,
             approval_status: 'pending', // Reset for re-approval
@@ -390,7 +418,7 @@ module.exports = async function handler(req, res) {
           workspace_id: workspaceId,
           created_by: userId,
           caption: text,
-          media_urls: mediaUrl ? [mediaUrl] : [],
+          media_urls: mediaUrls || [],
           status: 'pending_approval',
           scheduled_at: new Date(scheduledDate).toISOString(),
           platforms: platforms,
@@ -485,8 +513,8 @@ module.exports = async function handler(req, res) {
       postData.scheduleDate = dateObj.toISOString();
     }
 
-    if (mediaUrl) {
-      postData.mediaUrls = [mediaUrl];
+    if (mediaUrls && mediaUrls.length > 0) {
+      postData.mediaUrls = mediaUrls;
     }
 
     // Send to Ayrshare
@@ -527,7 +555,7 @@ module.exports = async function handler(req, res) {
           workspace_id: workspaceId,
           created_by: userId,
           caption: text,
-          media_urls: mediaUrl ? [mediaUrl] : [],
+          media_urls: mediaUrls || [],
           status: 'failed',
           scheduled_at: scheduledDate ? new Date(scheduledDate).toISOString() : null,
           platforms: platforms,
@@ -564,7 +592,7 @@ module.exports = async function handler(req, res) {
           workspace_id: workspaceId,
           created_by: userId,
           caption: text,
-          media_urls: mediaUrl ? [mediaUrl] : [],
+          media_urls: mediaUrls || [],
           status: 'failed',
           scheduled_at: scheduledDate ? new Date(scheduledDate).toISOString() : null,
           platforms: platforms,

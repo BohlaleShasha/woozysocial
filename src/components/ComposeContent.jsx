@@ -16,6 +16,7 @@ import { SubscriptionGuard } from "./subscription/SubscriptionGuard";
 import FeatureGate from "./subscription/FeatureGate";
 import { CommentThread } from "./comments/CommentThread";
 import { CommentInput } from "./comments/CommentInput";
+import { MediaUploadModal } from "./compose/MediaUploadModal";
 
 export const ComposeContent = () => {
   const { user, profile, hasActiveProfile, subscriptionStatus, isWhitelisted } = useAuth();
@@ -30,7 +31,7 @@ export const ComposeContent = () => {
     subscriptionStatus === 'active' ||
     workspaceHasProfile;
 
-  const [post, setPost] = useState({ text: "", media: null });
+  const [post, setPost] = useState({ text: "", media: [] });
   const [networks, setNetworks] = useState({
     threads: false,
     telegram: false,
@@ -46,8 +47,8 @@ export const ComposeContent = () => {
     facebook: false,
     reddit: false
   });
-  const [mediaPreview, setMediaPreview] = useState(null);
-  const [mediaType, setMediaType] = useState(null);
+  const [mediaPreviews, setMediaPreviews] = useState([]);
+  const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
   const [scheduledDate, setScheduledDate] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedPreviewPlatform, setSelectedPreviewPlatform] = useState("instagram");
@@ -152,26 +153,33 @@ export const ComposeContent = () => {
       setPost(prev => ({ ...prev, text: draft.caption }));
     }
 
-    // Load media preview
+    // Load media previews
     if (draft.media_urls && draft.media_urls.length > 0) {
-      const mediaUrl = draft.media_urls[0];
-      setMediaPreview(mediaUrl);
+      const previews = draft.media_urls.map((mediaUrl, index) => {
+        // Determine media type
+        const url = mediaUrl.toLowerCase();
+        const type = (url.includes('video') || url.endsWith('.mp4') || url.endsWith('.mov')) ? 'video' : 'image';
 
-      // Determine media type
-      const url = mediaUrl.toLowerCase();
-      if (url.includes('video') || url.endsWith('.mp4') || url.endsWith('.mov')) {
-        setMediaType('video');
-      } else {
-        setMediaType('image');
-      }
+        return {
+          id: `draft-${index}-${Date.now()}`,
+          dataUrl: mediaUrl,
+          type,
+          order: index
+        };
+      });
 
-      // If it's a data URL, we need to convert it back to a File object for upload
-      if (mediaUrl.startsWith('data:')) {
-        convertDataUrlToFile(mediaUrl).then(file => {
-          if (file) {
-            setPost(prev => ({ ...prev, media: file }));
-          }
-        });
+      setMediaPreviews(previews);
+
+      // If data URLs, convert to File objects for upload
+      const dataUrlFiles = draft.media_urls.filter(url => url.startsWith('data:'));
+      if (dataUrlFiles.length > 0) {
+        Promise.all(dataUrlFiles.map(url => convertDataUrlToFile(url)))
+          .then(files => {
+            const validFiles = files.filter(f => f !== null);
+            if (validFiles.length > 0) {
+              setPost(prev => ({ ...prev, media: validFiles }));
+            }
+          });
       }
     }
 
@@ -258,7 +266,7 @@ export const ComposeContent = () => {
 
     // Don't save if there's no content
     const selectedPlatforms = Object.keys(networks).filter(key => networks[key]);
-    if (!post.text && !mediaPreview && selectedPlatforms.length === 0) {
+    if (!post.text && mediaPreviews.length === 0 && selectedPlatforms.length === 0) {
       return;
     }
 
@@ -269,7 +277,7 @@ export const ComposeContent = () => {
         workspace_id: activeWorkspace.id,
         user_id: user.id, // Keep for created_by tracking
         caption: post.text,
-        media_urls: mediaPreview ? [mediaPreview] : [],
+        media_urls: mediaPreviews.map(p => p.dataUrl),
         platforms: selectedPlatforms,
         scheduled_date: scheduledDate ? scheduledDate.toISOString() : null,
         updated_at: new Date().toISOString()
@@ -311,7 +319,7 @@ export const ComposeContent = () => {
     } finally {
       isSavingRef.current = false;
     }
-  }, [user, activeWorkspace?.id, post.text, mediaPreview, networks, scheduledDate, currentDraftId, toast]);
+  }, [user, activeWorkspace?.id, post.text, mediaPreviews, networks, scheduledDate, currentDraftId, toast]);
 
   // DISABLED: Auto-save draft functionality (RLS issues)
   // TODO: Re-enable when RLS policies are fixed
@@ -403,10 +411,11 @@ export const ComposeContent = () => {
       score += hashtagScore;
 
       // 3. MEDIA SCORE (max 20 points)
-      if (mediaPreview) {
+      if (mediaPreviews.length > 0) {
         score += 18;
         // Video bonus - videos get higher engagement
-        if (mediaType === 'video') {
+        const hasVideo = mediaPreviews.some(p => p.type === 'video');
+        if (hasVideo) {
           score += 2;
         }
       }
@@ -464,7 +473,7 @@ export const ComposeContent = () => {
     };
 
     calculateEngagementScore();
-  }, [post.text, mediaPreview, networks, mediaType]);
+  }, [post.text, mediaPreviews, networks]);
 
   // Map Ayrshare platform names to our internal names
   const platformNameMap = {
@@ -526,18 +535,86 @@ export const ComposeContent = () => {
     setPost({ ...post, text: e.target.value });
   };
 
-  const handleMediaChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setPost({ ...post, media: file });
-      setMediaType(file.type.split("/")[0]);
+  // Open media upload modal
+  const handleOpenMediaModal = () => {
+    setIsMediaModalOpen(true);
+  };
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setMediaPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
+  // Handle media confirmation from modal
+  const handleMediaConfirm = async (files) => {
+    if (!files || files.length === 0) return;
+
+    setIsLoading(true);
+
+    try {
+      // Get current files and previews
+      const currentFiles = Array.isArray(post.media) ? post.media : [];
+      const currentPreviews = mediaPreviews || [];
+
+      // Generate previews for new files only
+      const baseIndex = currentPreviews.length;
+      const previewPromises = files.map((file, index) => {
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            resolve({
+              id: `${Date.now()}-${index}`,
+              file,
+              dataUrl: reader.result,
+              type: file.type.split('/')[0], // 'image' or 'video'
+              order: baseIndex + index
+            });
+          };
+          reader.readAsDataURL(file);
+        });
+      });
+
+      const newPreviews = await Promise.all(previewPromises);
+
+      // Merge new files with existing ones
+      const allFiles = [...currentFiles, ...files];
+      const allPreviews = [...currentPreviews, ...newPreviews];
+
+      setPost({ ...post, media: allFiles });
+      setMediaPreviews(allPreviews);
+      setIsMediaModalOpen(false);
+
+      toast({
+        title: "Media added",
+        description: `${allFiles.length} file(s) ready to upload`,
+        status: "success",
+        duration: 2000,
+        isClosable: true
+      });
+    } catch (error) {
+      toast({
+        title: "Error processing files",
+        description: error.message,
+        status: "error",
+        duration: 3000,
+        isClosable: true
+      });
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  // Remove single media item
+  const handleRemoveMedia = (mediaId) => {
+    const mediaIndex = mediaPreviews.findIndex(p => p.id === mediaId);
+    if (mediaIndex === -1) return;
+
+    setMediaPreviews(prev => prev.filter(p => p.id !== mediaId));
+    setPost(prev => ({
+      ...prev,
+      media: prev.media.filter((_, idx) => idx !== mediaIndex)
+    }));
+  };
+
+  // Clear all media
+  const handleClearAllMedia = () => {
+    setPost({ ...post, media: [] });
+    setMediaPreviews([]);
   };
 
   const handleNetworkToggle = useCallback((networkName, isLinked) => {
@@ -561,7 +638,7 @@ export const ComposeContent = () => {
     onClose();
 
     // Use JSON for requests without file uploads (better Vercel compatibility)
-    const hasFileUpload = post.media instanceof File;
+    const hasFileUpload = Array.isArray(post.media) && post.media.length > 0 && post.media[0] instanceof File;
 
     try {
       let response;
@@ -572,7 +649,12 @@ export const ComposeContent = () => {
         formData.append("text", post.text);
         formData.append("userId", user.id);
         formData.append("workspaceId", activeWorkspace.id);
-        formData.append("media", post.media);
+
+        // Append each file with 'media' field name (busboy will collect into array)
+        post.media.forEach((file) => {
+          formData.append("media", file);
+        });
+
         formData.append("networks", JSON.stringify(networks));
         formData.append("scheduledDate", tempScheduledDate.toISOString());
 
@@ -594,7 +676,7 @@ export const ComposeContent = () => {
             text: post.text,
             userId: user.id,
             workspaceId: activeWorkspace.id,
-            mediaUrl: mediaPreview && typeof mediaPreview === 'string' && mediaPreview.startsWith('http') ? mediaPreview : null,
+            mediaUrl: mediaPreviews.length > 0 ? mediaPreviews.map(p => p.dataUrl).filter(url => url.startsWith('http')) : null,
             networks: JSON.stringify(networks),
             scheduledDate: tempScheduledDate.toISOString(),
             // If editing a scheduled post, include the postId
@@ -628,7 +710,7 @@ export const ComposeContent = () => {
         });
 
         // Reset form completely
-        setPost({ text: "", media: null });
+        setPost({ text: "", media: [] });
         setNetworks({
           threads: false,
           telegram: false,
@@ -644,8 +726,7 @@ export const ComposeContent = () => {
           facebook: false,
           reddit: false
         });
-        setMediaPreview(null);
-        setMediaType(null);
+        setMediaPreviews([]);
         setScheduledDate(null);
         setTempScheduledDate(null);
         setCurrentDraftId(null);
@@ -703,7 +784,7 @@ export const ComposeContent = () => {
   ];
 
   const renderPlatformPreview = () => {
-    const hasContent = post.text || mediaPreview;
+    const hasContent = post.text || mediaPreviews.length > 0;
 
     if (!hasContent) {
       return (
@@ -772,12 +853,27 @@ export const ComposeContent = () => {
                 <div className="preview-menu">⋯</div>
               </div>
 
-              {mediaPreview && (
+              {mediaPreviews.length > 0 && mediaPreviews[0] && (
                 <div className="post-media">
-                  {mediaType === "image" ? (
-                    <img src={mediaPreview} alt="Preview" />
+                  {mediaPreviews[0].type === "image" ? (
+                    <img src={mediaPreviews[0].dataUrl} alt="Preview" />
                   ) : (
-                    <video src={mediaPreview} controls style={{ width: '100%', height: 'auto' }} />
+                    <video src={mediaPreviews[0].dataUrl} controls style={{ width: '100%', height: 'auto' }} />
+                  )}
+                  {mediaPreviews.length > 1 && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '10px',
+                      right: '10px',
+                      background: 'rgba(0, 0, 0, 0.6)',
+                      color: 'white',
+                      padding: '4px 8px',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                      fontWeight: '600'
+                    }}>
+                      +{mediaPreviews.length - 1}
+                    </div>
                   )}
                 </div>
               )}
@@ -1384,7 +1480,7 @@ export const ComposeContent = () => {
     setIsLoading(true);
 
     // Use JSON for requests without file uploads (better Vercel compatibility)
-    const hasFileUpload = post.media instanceof File;
+    const hasFileUpload = Array.isArray(post.media) && post.media.length > 0 && post.media[0] instanceof File;
     let scheduledTime = null;
 
     if (scheduledDate) {
@@ -1414,7 +1510,12 @@ export const ComposeContent = () => {
         formData.append("text", post.text);
         formData.append("userId", user.id);
         formData.append("workspaceId", activeWorkspace.id);
-        formData.append("media", post.media);
+
+        // Append each file with 'media' field name (busboy will collect into array)
+        post.media.forEach((file) => {
+          formData.append("media", file);
+        });
+
         formData.append("networks", JSON.stringify(networks));
         if (scheduledTime) {
           formData.append("scheduledDate", scheduledTime.toISOString());
@@ -1431,7 +1532,7 @@ export const ComposeContent = () => {
         });
       } else {
         // Use JSON for text-only or URL media posts
-        const mediaUrl = mediaPreview && typeof mediaPreview === 'string' && mediaPreview.startsWith('http') ? mediaPreview : null;
+        const mediaUrl = mediaPreviews.length > 0 ? mediaPreviews.map(p => p.dataUrl).filter(url => url.startsWith('http')) : null;
 
         response = await fetch(`${baseURL}/api/post`, {
           method: "POST",
@@ -1491,7 +1592,7 @@ export const ComposeContent = () => {
           });
         }
         // Reset form
-        setPost({ text: "", media: null });
+        setPost({ text: "", media: [] });
         setNetworks({
           threads: false,
           telegram: false,
@@ -1507,8 +1608,7 @@ export const ComposeContent = () => {
           facebook: false,
           reddit: false
         });
-        setMediaPreview(null);
-        setMediaType(null);
+        setMediaPreviews([]);
         setScheduledDate(null);
         setCurrentDraftId(null);
         setLastSaved(null);
@@ -1726,20 +1826,71 @@ export const ComposeContent = () => {
               />
             </div>
 
+            {/* Media preview thumbnails */}
+            {mediaPreviews.length > 0 && (
+              <div className="compose-media-preview-section">
+                <div className="preview-header">
+                  <span className="preview-label">
+                    {mediaPreviews.length} {mediaPreviews.length === 1 ? 'file' : 'files'} attached
+                  </span>
+                  <button
+                    className="btn-clear-all"
+                    onClick={handleClearAllMedia}
+                    type="button"
+                  >
+                    Clear all
+                  </button>
+                </div>
+
+                <div className="media-thumbnails">
+                  {mediaPreviews.map((media, index) => (
+                    <div key={media.id} className="media-thumbnail-item">
+                      <div className="thumbnail-preview">
+                        {media.type === 'image' ? (
+                          <img src={media.dataUrl} alt={`Media ${index + 1}`} />
+                        ) : (
+                          <video src={media.dataUrl} />
+                        )}
+                      </div>
+                      <button
+                        className="thumbnail-remove"
+                        onClick={() => handleRemoveMedia(media.id)}
+                        type="button"
+                        aria-label={`Remove media ${index + 1}`}
+                      >
+                        ✕
+                      </button>
+                      <span className="thumbnail-order">{index + 1}</span>
+                    </div>
+                  ))}
+                  <button
+                    className="add-more-btn"
+                    onClick={handleOpenMediaModal}
+                    type="button"
+                  >
+                    <span style={{ fontSize: '24px' }}>+</span>
+                    <span style={{ fontSize: '12px', fontWeight: 600 }}>Add more</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="form-footer">
               <div className="form-actions">
-                <label htmlFor="media-upload" className="media-upload-btn">
+                <button
+                  className="media-upload-btn"
+                  onClick={handleOpenMediaModal}
+                  title="Add images/videos"
+                  type="button"
+                  style={{ position: 'relative' }}
+                >
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                     <path d="M21 19V5C21 3.9 20.1 3 19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19ZM8.5 13.5L11 16.51L14.5 12L19 18H5L8.5 13.5Z" fill="currentColor"/>
                   </svg>
-                </label>
-                <input
-                  id="media-upload"
-                  type="file"
-                  onChange={handleMediaChange}
-                  accept="image/*,video/*"
-                  style={{ display: "none" }}
-                />
+                  {mediaPreviews.length > 0 && (
+                    <span className="media-count-badge">{mediaPreviews.length}</span>
+                  )}
+                </button>
                 <FeatureGate
                   feature="aiFeatures"
                   fallbackType="hide"
@@ -2251,6 +2402,17 @@ export const ComposeContent = () => {
           </ModalFooter>
         </ModalContent>
       </Modal>
+
+      {/* Media Upload Modal */}
+      <MediaUploadModal
+        isOpen={isMediaModalOpen}
+        onClose={() => setIsMediaModalOpen(false)}
+        onConfirm={handleMediaConfirm}
+        existingFiles={[]}
+        maxFiles={10}
+        maxFileSize={50 * 1024 * 1024}
+        maxTotalSize={200 * 1024 * 1024}
+      />
 
       {/* Scheduled Date Display */}
       {scheduledDate && (
