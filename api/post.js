@@ -387,22 +387,22 @@ module.exports = async function handler(req, res) {
 
         const updatedByName = userProfile?.full_name || userProfile?.email || 'Someone';
 
-        // Send approval request notification to clients (since it needs re-approval)
+        // Send notifications in parallel to avoid timeout
         if (workspaceId) {
-          await sendApprovalRequestNotification(supabase, {
-            workspaceId,
-            postId: updatedPost.id,
-            platforms,
-            createdByUserId: userId
-          }).catch(err => logError('post.notification.approvalRequest', err, { postId: updatedPost.id }));
-
-          // Send "post updated" notification to approvers (especially those who requested changes)
-          await sendPostUpdatedNotification(supabase, {
-            postId: updatedPost.id,
-            workspaceId,
-            updatedByUserId: userId,
-            updatedByName
-          }).catch(err => logError('post.notification.postUpdated', err, { postId: updatedPost.id }));
+          await Promise.all([
+            sendApprovalRequestNotification(supabase, {
+              workspaceId,
+              postId: updatedPost.id,
+              platforms,
+              createdByUserId: userId
+            }).catch(err => logError('post.notification.approvalRequest', err, { postId: updatedPost.id })),
+            sendPostUpdatedNotification(supabase, {
+              postId: updatedPost.id,
+              workspaceId,
+              updatedByUserId: userId,
+              updatedByName
+            }).catch(err => logError('post.notification.postUpdated', err, { postId: updatedPost.id }))
+          ]);
         }
 
         return sendSuccess(res, {
@@ -431,27 +431,23 @@ module.exports = async function handler(req, res) {
           return sendError(res, "Failed to save post for approval", ErrorCodes.DATABASE_ERROR);
         }
 
-        // Send approval request notification to clients
-        // IMPORTANT: Must await to ensure notifications are created before function terminates
+        // Send notifications in parallel to avoid timeout
         if (workspaceId) {
-          await sendApprovalRequestNotification(supabase, {
-            workspaceId,
-            postId: savedPost?.id,
-            platforms,
-            createdByUserId: userId
-          }).catch(err => logError('post.notification.approvalRequest', err, { postId: savedPost?.id }));
-        }
-
-        // Send post scheduled notification to admins/owners
-        // IMPORTANT: Must await to ensure notifications are created before function terminates
-        if (workspaceId) {
-          await sendPostScheduledNotification(supabase, {
-            postId: savedPost?.id,
-            workspaceId,
-            scheduledAt: scheduledDate,
-            platforms,
-            createdByUserId: userId
-          }).catch(err => logError('post.notification.scheduled', err, { postId: savedPost?.id }));
+          await Promise.all([
+            sendApprovalRequestNotification(supabase, {
+              workspaceId,
+              postId: savedPost?.id,
+              platforms,
+              createdByUserId: userId
+            }).catch(err => logError('post.notification.approvalRequest', err, { postId: savedPost?.id })),
+            sendPostScheduledNotification(supabase, {
+              postId: savedPost?.id,
+              workspaceId,
+              scheduledAt: scheduledDate,
+              platforms,
+              createdByUserId: userId
+            }).catch(err => logError('post.notification.scheduled', err, { postId: savedPost?.id }))
+          ]);
         }
 
       return sendSuccess(res, {
