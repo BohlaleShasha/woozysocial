@@ -64,6 +64,10 @@ export const ComposeContent = () => {
   const [bestPostingTime, setBestPostingTime] = useState("2:00 PM");
   const [hasRealData, setHasRealData] = useState(false);
 
+  // Analytics data for insights
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [bestTimes, setBestTimes] = useState([]);
+
   // AI Generation state
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiWebsiteUrl, setAiWebsiteUrl] = useState("");
@@ -95,32 +99,43 @@ export const ComposeContent = () => {
     };
   };
 
-  // Fetch real analytics data for best posting time
+  // Fetch real analytics data for best posting time and insights
   useEffect(() => {
-    const fetchBestTime = async () => {
+    const fetchAnalyticsData = async () => {
       if (!user || !activeWorkspace) return;
 
       try {
         const selectedPlatform = Object.keys(networks).find(key => networks[key]);
         const platformParam = selectedPlatform ? `&platform=${selectedPlatform}` : '';
-        const res = await fetch(`${baseURL}/api/best-time?workspaceId=${activeWorkspace.id}${platformParam}`);
-        if (res.ok) {
-          const json = await res.json();
+
+        // Fetch best time recommendations
+        const bestTimeRes = await fetch(`${baseURL}/api/best-time?workspaceId=${activeWorkspace.id}${platformParam}`);
+        if (bestTimeRes.ok) {
+          const json = await bestTimeRes.json();
           const data = json.data || json;
           if (data.recommendations && data.recommendations.length > 0) {
             const best = data.recommendations[0];
             setBestPostingTime(`${best.day} ${best.time}`);
+            setBestTimes(data.recommendations.slice(0, 3));
             setHasRealData(data.source === 'personalized');
           } else {
             setHasRealData(false);
           }
         }
+
+        // Fetch analytics summary (7 days)
+        const analyticsRes = await fetch(`${baseURL}/api/analytics?workspaceId=${activeWorkspace.id}&period=7`);
+        if (analyticsRes.ok) {
+          const json = await analyticsRes.json();
+          const data = json.data || json;
+          setAnalyticsData(data);
+        }
       } catch (err) {
-        console.error("Error fetching best time:", err);
+        console.error("Error fetching analytics:", err);
         setHasRealData(false);
       }
     };
-    fetchBestTime();
+    fetchAnalyticsData();
   }, [user, activeWorkspace, networks]);
 
   // Helper function to convert data URL back to File object
@@ -232,18 +247,17 @@ export const ComposeContent = () => {
       if (!user || !activeWorkspace?.id) return;
 
       try {
-        // Fetch the most recent draft for this workspace
-        const { data: drafts, error } = await supabase
-          .from("post_drafts")
-          .select("*")
-          .eq("workspace_id", activeWorkspace.id)
-          .eq("user_id", user.id)
-          .order("updated_at", { ascending: false })
-          .limit(1);
+        // Fetch the most recent draft using API endpoint
+        const res = await fetch(
+          `${baseURL}/api/drafts/list?workspaceId=${activeWorkspace.id}&userId=${user.id}&limit=1`
+        );
 
-        if (error) throw error;
+        if (!res.ok) throw new Error("Failed to fetch drafts");
 
-        if (drafts && drafts.length > 0) {
+        const json = await res.json();
+        const drafts = json.data || [];
+
+        if (drafts.length > 0) {
           const recentDraft = drafts[0];
           // Only load if draft has content
           if (recentDraft.caption || (recentDraft.media_urls && recentDraft.media_urls.length > 0)) {
@@ -274,39 +288,32 @@ export const ComposeContent = () => {
     isSavingRef.current = true;
 
     try {
-      const draftData = {
-        workspace_id: activeWorkspace.id,
-        user_id: user.id, // Keep for created_by tracking
-        caption: post.text,
-        media_urls: mediaPreviews.map(p => p.dataUrl),
-        platforms: selectedPlatforms,
-        scheduled_date: scheduledDate ? scheduledDate.toISOString() : null,
-        updated_at: new Date().toISOString()
-      };
+      const res = await fetch(`${baseURL}/api/drafts/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: activeWorkspace.id,
+          userId: user.id,
+          draftId: currentDraftId || null,
+          caption: post.text,
+          mediaUrls: mediaPreviews.map(p => p.dataUrl),
+          platforms: selectedPlatforms,
+          scheduledDate: scheduledDate ? scheduledDate.toISOString() : null
+        })
+      });
 
-      if (currentDraftId) {
-        // UPDATE existing draft using the ID
-        const { error } = await supabase
-          .from("post_drafts")
-          .update(draftData)
-          .eq("id", currentDraftId)
-          .eq("workspace_id", activeWorkspace.id);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to save draft");
+      }
 
-        if (error) throw error;
-      } else {
-        // CREATE new draft only if we don't have an ID
-        const { data, error } = await supabase
-          .from("post_drafts")
-          .insert([draftData])
-          .select()
-          .single();
-
-        if (error) throw error;
-        if (data) setCurrentDraftId(data.id); // Store the ID for future updates
+      const json = await res.json();
+      if (json.data && !currentDraftId) {
+        setCurrentDraftId(json.data.id);
       }
 
       setLastSaved(new Date());
-      console.log("[Draft] Saved successfully, id:", currentDraftId || "new");
+      console.log("[Draft] Saved successfully, id:", json.data?.id || currentDraftId);
     } catch (error) {
       console.error("Error saving draft:", error);
       // Show error toast so user knows draft didn't save
@@ -322,35 +329,34 @@ export const ComposeContent = () => {
     }
   }, [user, activeWorkspace?.id, post.text, mediaPreviews, networks, scheduledDate, currentDraftId, toast]);
 
-  // DISABLED: Auto-save draft functionality (RLS issues)
-  // TODO: Re-enable when RLS policies are fixed
-  // useEffect(() => {
-  //   if (autoSaveTimerRef.current) {
-  //     clearTimeout(autoSaveTimerRef.current);
-  //   }
-  //   if (post.text || mediaPreview || Object.values(networks).some(v => v)) {
-  //     autoSaveTimerRef.current = setTimeout(() => {
-  //       saveDraft();
-  //     }, 30000);
-  //   }
-  //   return () => {
-  //     if (autoSaveTimerRef.current) {
-  //       clearTimeout(autoSaveTimerRef.current);
-  //     }
-  //   };
-  // }, [post.text, mediaPreview, networks, saveDraft]);
+  // Auto-save draft every 30 seconds when there's content
+  useEffect(() => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+    if (post.text || mediaPreviews.length > 0 || Object.values(networks).some(v => v)) {
+      autoSaveTimerRef.current = setTimeout(() => {
+        saveDraft();
+      }, 30000);
+    }
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [post.text, mediaPreviews, networks, saveDraft]);
 
-  // DISABLED: Save when navigating away (RLS issues)
-  // useEffect(() => {
-  //   const handleBeforeUnload = () => {
-  //     saveDraft();
-  //   };
-  //   window.addEventListener("beforeunload", handleBeforeUnload);
-  //   return () => {
-  //     window.removeEventListener("beforeunload", handleBeforeUnload);
-  //     saveDraft();
-  //   };
-  // }, [saveDraft]);
+  // Save draft when navigating away
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      saveDraft();
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      saveDraft();
+    };
+  }, [saveDraft]);
 
   // Calculate engagement score based on post content - ENHANCED VERSION
   useEffect(() => {
@@ -1563,11 +1569,15 @@ export const ComposeContent = () => {
         // Delete draft after successful posting (but not if editing a scheduled post)
         if (currentDraftId && !isEditingScheduledPost) {
           try {
-            await supabase
-              .from("post_drafts")
-              .delete()
-              .eq("id", currentDraftId)
-              .eq("workspace_id", activeWorkspace.id);
+            await fetch(`${baseURL}/api/drafts/delete`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                workspaceId: activeWorkspace.id,
+                userId: user.id,
+                draftId: currentDraftId
+              })
+            });
           } catch (error) {
             console.error("Error deleting draft:", error);
           }
@@ -2211,6 +2221,90 @@ export const ComposeContent = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Analytics Insights */}
+              {analyticsData?.summary && (
+                <div className="analytics-insights">
+                  <h4 style={{ margin: '16px 0 12px', fontSize: '14px', fontWeight: '600', color: '#374151' }}>
+                    📊 Last 7 Days
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div style={{
+                      padding: '10px',
+                      backgroundColor: '#f3f4f6',
+                      borderRadius: '8px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: '20px', fontWeight: '700', color: '#111827' }}>
+                        {analyticsData.summary.totalPosts || 0}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#6b7280' }}>Posts</div>
+                    </div>
+                    <div style={{
+                      padding: '10px',
+                      backgroundColor: '#f3f4f6',
+                      borderRadius: '8px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: '20px', fontWeight: '700', color: '#111827' }}>
+                        {analyticsData.summary.totalEngagements?.toLocaleString() || 0}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#6b7280' }}>Engagements</div>
+                    </div>
+                    <div style={{
+                      padding: '10px',
+                      backgroundColor: '#f3f4f6',
+                      borderRadius: '8px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: '20px', fontWeight: '700', color: '#111827' }}>
+                        {analyticsData.summary.avgEngagement || 0}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#6b7280' }}>Avg/Post</div>
+                    </div>
+                    <div style={{
+                      padding: '10px',
+                      backgroundColor: analyticsData.summary.trendPercent >= 0 ? '#d1fae5' : '#fee2e2',
+                      borderRadius: '8px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{
+                        fontSize: '20px',
+                        fontWeight: '700',
+                        color: analyticsData.summary.trendPercent >= 0 ? '#059669' : '#dc2626'
+                      }}>
+                        {analyticsData.summary.trendPercent >= 0 ? '+' : ''}{analyticsData.summary.trendPercent || 0}%
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#6b7280' }}>Trend</div>
+                    </div>
+                  </div>
+
+                  {/* Best Times List */}
+                  {bestTimes.length > 0 && (
+                    <div style={{ marginTop: '12px' }}>
+                      <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '6px' }}>
+                        Top posting times:
+                      </div>
+                      {bestTimes.map((time, idx) => (
+                        <div key={idx} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '6px 8px',
+                          backgroundColor: idx === 0 ? '#ddd6fe' : '#f3f4f6',
+                          borderRadius: '6px',
+                          marginBottom: '4px',
+                          fontSize: '12px'
+                        }}>
+                          <span style={{ fontWeight: '600', color: '#7c3aed' }}>#{idx + 1}</span>
+                          <span>{time.day} {time.time}</span>
+                          <span style={{ marginLeft: 'auto', color: '#9ca3af' }}>{time.score}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Quick Actions */}
               <div className="quick-actions">
