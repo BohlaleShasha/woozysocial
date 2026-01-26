@@ -306,11 +306,12 @@ module.exports = async function handler(req, res) {
     }
 
     const isScheduled = !!scheduledDate;
-    console.log('[POST] Is scheduled:', isScheduled);
+    console.log('[POST] Is scheduled:', isScheduled, '| Has supabase:', !!supabase, '| scheduledDate:', scheduledDate);
 
     // For ALL scheduled posts, save to DB and let the scheduler handle Ayrshare
     // This avoids timeout issues when Ayrshare takes too long to process media
     if (isScheduled && supabase) {
+      console.log('[POST] Entering scheduled post flow - will save to DB and return immediately');
       // Check if approval is required - either by tier feature OR if workspace has clients
       let requiresApproval = false;
       let tier = 'free';
@@ -501,6 +502,8 @@ module.exports = async function handler(req, res) {
       }
 
       // Otherwise, CREATE a new scheduled post
+      console.log('[post] Creating new scheduled post - NOT calling Ayrshare, scheduler will handle it');
+      console.log('[post] Media URLs to save:', mediaUrls);
       const { data: savedPost, error: saveError } = await supabase.from("posts").insert([{
           user_id: userId,
           workspace_id: workspaceId,
@@ -515,8 +518,9 @@ module.exports = async function handler(req, res) {
         }]).select().single();
 
         if (saveError) {
+          console.error('[post] Database save error:', saveError);
           logError('post.save_scheduled', saveError, { userId, workspaceId });
-          return sendError(res, "Failed to save scheduled post", ErrorCodes.DATABASE_ERROR);
+          return sendError(res, `Failed to save scheduled post: ${saveError.message}`, ErrorCodes.DATABASE_ERROR);
         }
 
         console.log('[post] Scheduled post saved successfully:', savedPost?.id);
