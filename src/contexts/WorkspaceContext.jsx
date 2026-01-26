@@ -383,7 +383,9 @@ export const WorkspaceProvider = ({ children }) => {
   }, [userRole, workspaceMembership]);
 
   // Check if user is a client (view_only/client role) - used for routing to client portal
-  const isClient = checkIsClientRole(userRole);
+  // IMPORTANT: Only treat as client if we actually have workspace membership data
+  // This prevents false positives when data hasn't loaded yet (default role is VIEW_ONLY)
+  const isClient = workspaceMembership ? checkIsClientRole(userRole) : false;
   const isAdmin = checkIsAdminRole(userRole);
   const isOwner = userRole === TEAM_ROLES.OWNER;
 

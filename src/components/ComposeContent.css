@@ -1618,9 +1618,15 @@
   text-align: left;
 }
 
-.quick-action-btn:hover {
+.quick-action-btn:hover:not(:disabled) {
   background: #f9fafb;
   border-color: #afabf9;
+}
+
+.quick-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f3f4f6;
 }
 
 /* Responsive */

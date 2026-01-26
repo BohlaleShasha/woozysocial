@@ -32,6 +32,18 @@ class ErrorBoundary extends React.Component {
     window.location.href = '/dashboard';
   };
 
+  handleClearAndReload = () => {
+    // Clear all cached data that might be causing issues
+    try {
+      sessionStorage.removeItem('woozy_profile_cache');
+      sessionStorage.removeItem('woozy_workspace_cache');
+      localStorage.clear();
+    } catch (e) {
+      console.error('Error clearing storage:', e);
+    }
+    window.location.reload();
+  };
+
   render() {
     if (this.state.hasError) {
       return (
@@ -48,9 +60,12 @@ class ErrorBoundary extends React.Component {
             <p style={styles.message}>
               We're sorry, but something unexpected happened. Please try refreshing the page or returning to the dashboard.
             </p>
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            <p style={{...styles.message, fontSize: '14px', color: '#888'}}>
+              If this keeps happening, try clearing your browser data: Open DevTools (F12) → Application → Storage → Clear site data
+            </p>
+            {this.state.error && (
               <details style={styles.details}>
-                <summary style={styles.summary}>Error Details (Development Only)</summary>
+                <summary style={styles.summary}>Error Details</summary>
                 <pre style={styles.errorText}>
                   {this.state.error.toString()}
                   {this.state.errorInfo?.componentStack}
@@ -58,7 +73,10 @@ class ErrorBoundary extends React.Component {
               </details>
             )}
             <div style={styles.actions}>
-              <button style={styles.primaryButton} onClick={this.handleReload}>
+              <button style={styles.primaryButton} onClick={this.handleClearAndReload}>
+                Clear Cache & Reload
+              </button>
+              <button style={styles.secondaryButton} onClick={this.handleReload}>
                 Refresh Page
               </button>
               <button style={styles.secondaryButton} onClick={this.handleGoHome}>

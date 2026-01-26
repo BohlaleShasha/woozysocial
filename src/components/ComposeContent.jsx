@@ -1926,9 +1926,14 @@ export const ComposeContent = () => {
                 <button
                   className="quick-action-btn"
                   onClick={handleGenerateHashtags}
-                  disabled={isGeneratingHashtags || !post.text}
+                  disabled={isGeneratingHashtags}
+                  title={!post.text ? "Write some text first to generate hashtags" : "Generate AI-powered hashtags for your post"}
                 >
-                  {isGeneratingHashtags ? '⏳ Generating...' : '🔥 Add Hashtags'}
+                  {isGeneratingHashtags
+                    ? '⏳ Generating...'
+                    : !post.text
+                      ? '🔥 Add Hashtags (write text first)'
+                      : '🔥 Add Hashtags'}
                 </button>
                 <button className="quick-action-btn" onClick={() => navigate('/schedule')}>
                   📅 View Schedule
