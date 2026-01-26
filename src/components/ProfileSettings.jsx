@@ -8,8 +8,6 @@ export const ProfileSettings = () => {
   const [loading, setLoading] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
   const [passwordResetLoading, setPasswordResetLoading] = useState(false);
-  const [notificationPrefsLoading, setNotificationPrefsLoading] = useState(false);
-  const [notificationSaveMessage, setNotificationSaveMessage] = useState("");
 
   const [settings, setSettings] = useState({
     fullName: "",
@@ -68,12 +66,13 @@ export const ProfileSettings = () => {
     }
   };
 
-  const handleSaveProfile = async () => {
+  // Combined save function for profile AND notification preferences
+  const handleSaveAll = async () => {
     setLoading(true);
     setSaveMessage("");
 
     try {
-      // Update user profile (personal settings only)
+      // 1. Update user profile
       const { error: profileError } = await updateProfile({
         full_name: settings.fullName
       });
@@ -84,20 +83,7 @@ export const ProfileSettings = () => {
         return;
       }
 
-      setSaveMessage("Profile saved successfully!");
-      setTimeout(() => setSaveMessage(""), 3000);
-    } catch (error) {
-      setSaveMessage("Error saving profile");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSaveNotificationPreferences = async () => {
-    setNotificationPrefsLoading(true);
-    setNotificationSaveMessage("");
-
-    try {
+      // 2. Update notification preferences
       const response = await fetch(`${baseURL}/api/notifications/preferences`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -109,16 +95,18 @@ export const ProfileSettings = () => {
 
       const data = await response.json();
 
-      if (response.ok && data.success) {
-        setNotificationSaveMessage("Notification preferences saved successfully!");
-        setTimeout(() => setNotificationSaveMessage(""), 3000);
-      } else {
-        setNotificationSaveMessage("Error saving preferences: " + (data.error || 'Unknown error'));
+      if (!response.ok || !data.success) {
+        setSaveMessage("Profile saved, but error saving notification preferences");
+        setLoading(false);
+        return;
       }
+
+      setSaveMessage("Profile settings saved successfully!");
+      setTimeout(() => setSaveMessage(""), 3000);
     } catch (error) {
-      setNotificationSaveMessage("Error saving preferences");
+      setSaveMessage("Error saving settings");
     } finally {
-      setNotificationPrefsLoading(false);
+      setLoading(false);
     }
   };
 
@@ -196,18 +184,6 @@ export const ProfileSettings = () => {
                 Email cannot be changed. Contact support if needed.
               </p>
             </div>
-            {saveMessage && (
-              <div className={`save-message ${saveMessage.includes('Error') ? 'error' : 'success'}`}>
-                {saveMessage}
-              </div>
-            )}
-            <button
-              className="save-button"
-              onClick={handleSaveProfile}
-              disabled={loading}
-            >
-              {loading ? 'Saving...' : 'Save Profile'}
-            </button>
           </div>
         </div>
 
@@ -320,22 +296,9 @@ export const ProfileSettings = () => {
               </label>
             </div>
 
-            <p className="form-helper-text" style={{ marginTop: '16px', marginBottom: '12px' }}>
+            <p className="form-helper-text" style={{ marginTop: '12px', marginBottom: '0' }}>
               Note: You'll always receive in-app notifications regardless of these email settings.
             </p>
-
-            {notificationSaveMessage && (
-              <div className={`save-message ${notificationSaveMessage.includes('Error') ? 'error' : 'success'}`}>
-                {notificationSaveMessage}
-              </div>
-            )}
-            <button
-              className="save-button"
-              onClick={handleSaveNotificationPreferences}
-              disabled={notificationPrefsLoading}
-            >
-              {notificationPrefsLoading ? 'Saving...' : 'Save Notification Preferences'}
-            </button>
           </div>
         </div>
 
@@ -374,6 +337,22 @@ export const ProfileSettings = () => {
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Save Button at Bottom */}
+        <div className="settings-footer">
+          {saveMessage && (
+            <div className={`save-message ${saveMessage.includes('Error') ? 'error' : 'success'}`}>
+              {saveMessage}
+            </div>
+          )}
+          <button
+            className="save-button"
+            onClick={handleSaveAll}
+            disabled={loading}
+          >
+            {loading ? 'Saving...' : 'Save Profile'}
+          </button>
         </div>
       </div>
     </div>

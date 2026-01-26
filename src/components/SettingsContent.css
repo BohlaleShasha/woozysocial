@@ -448,6 +448,31 @@ input:checked + .toggle-slider:before {
   }
 }
 
+/* Settings Footer - Fixed at bottom */
+.settings-footer {
+  grid-column: 1 / -1;
+  background-color: #ffffff;
+  border: 2px solid rgba(0, 0, 0, 0.4);
+  border-radius: 16px;
+  padding: 24px 32px;
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  box-shadow: 0 4px 12px rgba(17, 76, 90, 0.08);
+}
+
+.settings-footer .save-message {
+  flex: 1;
+  margin: 0;
+}
+
+.settings-footer .save-button {
+  flex-shrink: 0;
+  min-width: 180px;
+}
+
 @media (max-width: 768px) {
   .settings-container {
     padding: 20px;
@@ -465,5 +490,14 @@ input:checked + .toggle-slider:before {
   .logo-preview {
     width: 120px;
     height: 120px;
+  }
+
+  .settings-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .settings-footer .save-button {
+    width: 100%;
   }
 }
