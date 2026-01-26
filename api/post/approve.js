@@ -270,8 +270,8 @@ module.exports = async function handler(req, res) {
 
             if (ayrshareResponse.status !== 'error') {
               // Update post with Ayrshare ID and new status
-              // Ayrshare returns 'id' for immediate posts and 'id' for scheduled posts
-              const ayrPostId = ayrshareResponse.id || ayrshareResponse.postId || ayrshareResponse.scheduleId;
+              // Ayrshare returns ID in posts array
+              const ayrPostId = ayrshareResponse.posts?.[0]?.id || ayrshareResponse.id || ayrshareResponse.postId;
               const scheduledTime = new Date(post.scheduled_at);
               const now = new Date();
               const isStillFuture = scheduledTime > now;
