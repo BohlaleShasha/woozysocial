@@ -14,7 +14,7 @@ import { Helmet } from 'react-helmet-async';
  * @param {string} props.keywords - Meta keywords (optional)
  */
 export default function SEO({
-  title = 'AI-Powered Social Media Management',
+  title = 'Woozy Social',
   description = 'Create, schedule, and manage your social media content at scale with Woozy Social. AI-powered platform for brands, agencies, and creators.',
   canonical = '',
   ogImage = '/assets/woozysocial-og.png',

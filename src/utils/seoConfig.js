@@ -7,7 +7,7 @@ export const seoConfig = {
   // Base site information
   siteName: 'Woozy Social',
   siteUrl: 'https://www.woozysocial.com',
-  defaultTitle: 'Woozy Social - AI-Powered Social Media Management',
+  defaultTitle: 'Woozy Social',
   defaultDescription: 'Create, schedule, publish, and easily manage your social media content at scale with Woozy Social\'s AI-powered platform. Perfect for brands, agencies, and creators.',
 
   // Social media handles
@@ -161,7 +161,7 @@ export const getFAQSchema = (faqs) => ({
  */
 export const pageMetadata = {
   home: {
-    title: 'Woozy Social - AI-Powered Social Media Management',
+    title: 'Woozy Social',
     description: 'Create, schedule, publish, and easily manage your social media content at scale with Woozy Social\'s AI-powered platform. Perfect for brands, agencies, and creators.',
     keywords: 'social media management, social media scheduler, AI content creation, social media marketing, content calendar, social media analytics',
   },

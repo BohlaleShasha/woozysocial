@@ -101,26 +101,27 @@ export const ComposeContent = () => {
       if (!user || !activeWorkspace) return;
 
       try {
-        const res = await fetch(`${baseURL}/api/analytics/best-time?workspaceId=${activeWorkspace.id}`);
+        const selectedPlatform = Object.keys(networks).find(key => networks[key]);
+        const platformParam = selectedPlatform ? `&platform=${selectedPlatform}` : '';
+        const res = await fetch(`${baseURL}/api/best-time?workspaceId=${activeWorkspace.id}${platformParam}`);
         if (res.ok) {
-          const data = await res.json();
-          if (data.hasData && data.bestHours && data.bestHours.length > 0) {
-            const bestHour = data.bestHours[0].hour;
-            const period = bestHour >= 12 ? 'PM' : 'AM';
-            const displayHour = bestHour > 12 ? bestHour - 12 : (bestHour === 0 ? 12 : bestHour);
-            setBestPostingTime(`${displayHour}:00 ${period}`);
-            setHasRealData(true);
+          const json = await res.json();
+          const data = json.data || json;
+          if (data.recommendations && data.recommendations.length > 0) {
+            const best = data.recommendations[0];
+            setBestPostingTime(`${best.day} ${best.time}`);
+            setHasRealData(data.source === 'personalized');
           } else {
             setHasRealData(false);
           }
         }
       } catch (err) {
-        console.error("Error fetching analytics:", err);
+        console.error("Error fetching best time:", err);
         setHasRealData(false);
       }
     };
     fetchBestTime();
-  }, [user, activeWorkspace]);
+  }, [user, activeWorkspace, networks]);
 
   // Helper function to convert data URL back to File object
   const convertDataUrlToFile = async (dataUrl) => {
@@ -1339,14 +1340,18 @@ export const ComposeContent = () => {
     setIsGeneratingHashtags(true);
 
     try {
-      const response = await fetch(`${baseURL}/api/hashtag/generate`, {
+      // Get selected platform for platform-specific hashtags
+      const selectedPlatform = Object.keys(networks).find(key => networks[key]);
+
+      const response = await fetch(`${baseURL}/api/hashtag-research`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          text: post.text,
-          numHashtags: 5
+          topic: post.text.substring(0, 200), // Use first 200 chars as topic
+          platform: selectedPlatform || null,
+          count: 8
         })
       });
 
@@ -1354,16 +1359,17 @@ export const ComposeContent = () => {
         throw new Error("Failed to generate hashtags");
       }
 
-      const data = await response.json();
+      const json = await response.json();
+      const data = json.data || json;
 
-      if (data.success && data.hashtags && data.hashtags.length > 0) {
+      if (data.hashtags && data.hashtags.length > 0) {
         // Append hashtags to the end of the post text
-        const hashtagsText = '\n\n' + data.hashtags.join(' ');
+        const hashtagsText = '\n\n' + data.hashtags.map(h => h.display || `#${h.tag}`).join(' ');
         setPost({ ...post, text: post.text + hashtagsText });
 
         toast({
           title: "Hashtags generated",
-          description: `Added ${data.hashtags.length} hashtags to your post.`,
+          description: `Added ${data.hashtags.length} ${selectedPlatform ? selectedPlatform + ' ' : ''}hashtags to your post.`,
           status: "success",
           duration: 3000,
           isClosable: true
@@ -2209,8 +2215,16 @@ export const ComposeContent = () => {
               {/* Quick Actions */}
               <div className="quick-actions">
                 <h4 className="quick-actions-title">⚡ Quick Actions</h4>
-                <button className="quick-action-btn">🔥 Trending Hashtags</button>
-                <button className="quick-action-btn">♻️ Recycle Top Post</button>
+                <button
+                  className="quick-action-btn"
+                  onClick={handleGenerateHashtags}
+                  disabled={isGeneratingHashtags || !post.text}
+                >
+                  {isGeneratingHashtags ? '⏳ Generating...' : '🔥 Add Hashtags'}
+                </button>
+                <button className="quick-action-btn" onClick={() => navigate('/schedule')}>
+                  📅 View Schedule
+                </button>
               </div>
             </div>
           </div>

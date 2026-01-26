@@ -75,7 +75,7 @@ export const TIER_CONFIG = {
       analytics: true,
       socialInbox: true
     },
-    tabs: ['dashboard', 'compose', 'schedule', 'posts', 'assets', 'engagement', 'social-inbox', 'settings']
+    tabs: ['dashboard', 'compose', 'schedule', 'posts', 'assets', 'engagement', 'analytics', 'social-inbox', 'settings']
   },
 
   [SUBSCRIPTION_TIERS.PRO]: {
@@ -104,7 +104,7 @@ export const TIER_CONFIG = {
       analytics: true,
       socialInbox: true
     },
-    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'assets', 'engagement', 'social-inbox', 'team', 'settings']
+    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'assets', 'engagement', 'analytics', 'social-inbox', 'team', 'settings']
   },
 
   [SUBSCRIPTION_TIERS.PRO_PLUS]: {
@@ -134,7 +134,7 @@ export const TIER_CONFIG = {
       analytics: true,
       socialInbox: true
     },
-    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'assets', 'engagement', 'social-inbox', 'team', 'approvals', 'settings']
+    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'assets', 'engagement', 'analytics', 'social-inbox', 'team', 'approvals', 'settings']
   },
 
   [SUBSCRIPTION_TIERS.AGENCY]: {
@@ -166,7 +166,7 @@ export const TIER_CONFIG = {
       whiteLabel: true, // Future feature
       prioritySupport: true // Future feature
     },
-    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'assets', 'engagement', 'social-inbox', 'team', 'agency-team', 'approvals', 'settings']
+    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'assets', 'engagement', 'analytics', 'social-inbox', 'team', 'agency-team', 'approvals', 'settings']
   }
 };
 
@@ -277,7 +277,7 @@ export const ROLE_CONFIG = {
       canManageConnectedAccounts: true,
       canAccessSocialInbox: true
     },
-    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'engagement', 'social-inbox', 'team', 'approvals', 'settings']
+    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'engagement', 'analytics', 'social-inbox', 'team', 'approvals', 'settings']
   },
 
   [TEAM_ROLES.ADMIN]: {
@@ -300,7 +300,7 @@ export const ROLE_CONFIG = {
       canManageConnectedAccounts: true,
       canAccessSocialInbox: true
     },
-    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'engagement', 'social-inbox', 'team', 'approvals', 'settings']
+    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'engagement', 'analytics', 'social-inbox', 'team', 'approvals', 'settings']
   },
 
   [TEAM_ROLES.EDITOR]: {
@@ -323,7 +323,7 @@ export const ROLE_CONFIG = {
       canManageConnectedAccounts: false,
       canAccessSocialInbox: true
     },
-    tabs: ['dashboard', 'compose', 'schedule', 'posts', 'engagement', 'social-inbox', 'team'] // Can view team but not manage
+    tabs: ['dashboard', 'compose', 'schedule', 'posts', 'engagement', 'analytics', 'social-inbox', 'team'] // Can view team but not manage
   },
 
   [TEAM_ROLES.CLIENT]: {
@@ -369,7 +369,7 @@ export const ROLE_CONFIG = {
       canManageConnectedAccounts: false,
       canAccessSocialInbox: false
     },
-    tabs: ['dashboard', 'schedule', 'posts', 'engagement'] // Read-only tabs
+    tabs: ['dashboard', 'schedule', 'posts', 'engagement', 'analytics'] // Read-only tabs
   }
 };
 
