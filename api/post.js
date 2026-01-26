@@ -308,11 +308,11 @@ module.exports = async function handler(req, res) {
     const isScheduled = !!scheduledDate;
     console.log('[POST] Is scheduled:', isScheduled);
 
-    // Check if approval is required - either by tier feature OR if workspace has clients
-    let requiresApproval = false;
+    // For ALL scheduled posts, save to DB and let the scheduler handle Ayrshare
+    // This avoids timeout issues when Ayrshare takes too long to process media
     if (isScheduled && supabase) {
-      // CRITICAL: Check the WORKSPACE OWNER'S tier, not the current user's tier
-      // Approval workflows are a workspace-level feature based on the owner's subscription
+      // Check if approval is required - either by tier feature OR if workspace has clients
+      let requiresApproval = false;
       let tier = 'free';
 
       if (workspaceId) {
@@ -352,9 +352,8 @@ module.exports = async function handler(req, res) {
       requiresApproval = tierHasApproval || hasClients;
 
       console.log('[post] Workspace owner tier:', tier, '| Tier has approval:', tierHasApproval, '| Has clients:', hasClients, '| Requires approval:', requiresApproval);
-    }
 
-    // If scheduled, save to DB only - wait for approval before sending to Ayrshare
+    // If approval required, save as pending_approval
     if (requiresApproval) {
       if (!supabase) {
         return sendError(res, "Database service is required for scheduled posts", ErrorCodes.CONFIG_ERROR);
@@ -463,8 +462,74 @@ module.exports = async function handler(req, res) {
         message: 'Post scheduled and awaiting approval',
         postId: savedPost?.id
       });
-    }
+    } else {
+      // Scheduled post without approval - save to DB and let scheduler handle it
+      // This avoids timeout issues with Ayrshare processing media
 
+      // Check if this is an UPDATE to an existing post
+      if (postId) {
+        console.log('[post] Updating existing scheduled post:', postId);
+
+        const { data: updatedPost, error: updateError } = await supabase
+          .from("posts")
+          .update({
+            caption: text,
+            media_urls: mediaUrls || [],
+            scheduled_at: new Date(scheduledDate).toISOString(),
+            platforms: platforms,
+            status: 'scheduled',
+            approval_status: 'approved',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', postId)
+          .eq('workspace_id', workspaceId)
+          .select()
+          .single();
+
+        if (updateError) {
+          logError('post.update_scheduled', updateError, { postId, userId, workspaceId });
+          return sendError(res, "Failed to update scheduled post", ErrorCodes.DATABASE_ERROR);
+        }
+
+        console.log('[post] Scheduled post updated successfully:', updatedPost.id);
+
+        return sendSuccess(res, {
+          status: 'scheduled',
+          postId: updatedPost.id,
+          message: 'Post scheduled successfully'
+        });
+      }
+
+      // Otherwise, CREATE a new scheduled post
+      const { data: savedPost, error: saveError } = await supabase.from("posts").insert([{
+          user_id: userId,
+          workspace_id: workspaceId,
+          created_by: userId,
+          caption: text,
+          media_urls: mediaUrls || [],
+          status: 'scheduled',
+          scheduled_at: new Date(scheduledDate).toISOString(),
+          platforms: platforms,
+          approval_status: 'approved',
+          requires_approval: false
+        }]).select().single();
+
+        if (saveError) {
+          logError('post.save_scheduled', saveError, { userId, workspaceId });
+          return sendError(res, "Failed to save scheduled post", ErrorCodes.DATABASE_ERROR);
+        }
+
+        console.log('[post] Scheduled post saved successfully:', savedPost?.id);
+
+        return sendSuccess(res, {
+          status: 'scheduled',
+          message: 'Post scheduled successfully',
+          postId: savedPost?.id
+        });
+    }
+  }
+
+    // For immediate posts (not scheduled), proceed with Ayrshare call
     // Check Ayrshare is configured
     console.log('[POST] Checking Ayrshare configuration...');
     if (!isServiceConfigured('ayrshare')) {
