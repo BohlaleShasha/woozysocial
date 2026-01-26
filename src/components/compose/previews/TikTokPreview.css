@@ -127,8 +127,8 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: 200px;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+  height: 300px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
 }
 
 .tt-media-placeholder {
@@ -149,11 +149,11 @@
 /* Right Sidebar */
 .tt-sidebar {
   position: absolute;
-  right: 12px;
-  bottom: 120px;
+  right: 8px;
+  bottom: 100px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   align-items: center;
   z-index: 10;
 }
@@ -166,8 +166,8 @@
 }
 
 .tt-avatar-ring {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: 2px solid #FFFFFF;
   display: flex;
@@ -177,8 +177,8 @@
 }
 
 .tt-avatar {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   object-fit: cover;
   background: #1F1F1F;
@@ -232,13 +232,13 @@
 
 /* Spinning Disc */
 .tt-disc {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: linear-gradient(45deg, #FE2C55, #000000);
   padding: 2px;
   animation: spin 3s linear infinite;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 @keyframes spin {
@@ -286,7 +286,7 @@
   position: absolute;
   left: 12px;
   right: 80px;
-  bottom: 120px;
+  bottom: 100px;
   z-index: 10;
 }
 
