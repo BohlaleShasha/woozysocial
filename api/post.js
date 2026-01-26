@@ -538,7 +538,7 @@ module.exports = async function handler(req, res) {
           Authorization: `Bearer ${process.env.AYRSHARE_API_KEY}`,
           "Profile-Key": profileKey
         },
-        timeout: 30000 // 30 second timeout
+        timeout: 55000 // 55 second timeout (leave 5s buffer before Vercel kills the function)
       });
       console.log('[POST] Ayrshare response received:', {
         status: response.data?.status,

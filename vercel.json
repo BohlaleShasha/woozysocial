@@ -76,6 +76,10 @@
     }
   ],
   "functions": {
+    "api/post.js": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
     "api/stripe/webhook.js": {
       "maxDuration": 30,
       "memory": 1024
