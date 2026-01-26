@@ -343,7 +343,7 @@ export function useDashboardStats(workspaceId, userId) {
       const res = await fetch(`${baseURL}/api/post-history?${queryParam}`);
       if (!res.ok) throw new Error("Failed to fetch post history");
       const data = await res.json();
-      const posts = data.history || [];
+      const posts = data.data?.history || data.history || [];
 
       // Calculate stats
       const now = new Date();
