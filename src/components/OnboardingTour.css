@@ -1,0 +1,241 @@
+.onboarding-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.onboarding-modal {
+  background: var(--card-bg, #ffffff);
+  border-radius: 20px;
+  max-width: 480px;
+  width: 100%;
+  padding: 0;
+  position: relative;
+  animation: slideUp 0.3s ease;
+  overflow: hidden;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.onboarding-progress {
+  height: 4px;
+  background: var(--bg-tertiary, #f3f4f6);
+  width: 100%;
+}
+
+.onboarding-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #afabf9, #7c3aed);
+  transition: width 0.3s ease;
+  border-radius: 0 2px 2px 0;
+}
+
+.onboarding-step-indicator {
+  text-align: center;
+  padding: 16px 24px 0;
+  font-size: 13px;
+  color: var(--text-muted, #9ca3af);
+  font-weight: 500;
+}
+
+.onboarding-content {
+  padding: 24px 32px 16px;
+  text-align: center;
+}
+
+.onboarding-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  animation: bounce 0.5s ease;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.onboarding-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary, #000000);
+  margin: 0 0 12px 0;
+}
+
+.onboarding-description {
+  font-size: 16px;
+  color: var(--text-secondary, #374151);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.onboarding-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 24px;
+}
+
+.onboarding-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg-tertiary, #e5e7eb);
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.onboarding-dot:hover {
+  background: var(--text-muted, #9ca3af);
+}
+
+.onboarding-dot.active {
+  background: #afabf9;
+  transform: scale(1.2);
+}
+
+.onboarding-dot.completed {
+  background: #7c3aed;
+}
+
+.onboarding-actions {
+  display: flex;
+  gap: 12px;
+  padding: 0 24px 24px;
+  justify-content: center;
+}
+
+.onboarding-btn {
+  padding: 14px 28px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid transparent;
+  min-width: 120px;
+}
+
+.onboarding-btn.primary {
+  background: #afabf9;
+  color: #000000;
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.onboarding-btn.primary:hover {
+  background: #9d97f5;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(175, 171, 249, 0.4);
+}
+
+.onboarding-btn.secondary {
+  background: transparent;
+  color: var(--text-secondary, #374151);
+  border-color: var(--border-color, rgba(0, 0, 0, 0.1));
+}
+
+.onboarding-btn.secondary:hover {
+  background: var(--bg-hover, #f3f4f6);
+  border-color: var(--border-strong, rgba(0, 0, 0, 0.2));
+}
+
+.onboarding-skip-link {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 0 0 20px;
+  background: none;
+  border: none;
+  color: var(--text-muted, #9ca3af);
+  font-size: 14px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.onboarding-skip-link:hover {
+  color: var(--text-secondary, #374151);
+  text-decoration: underline;
+}
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+  .onboarding-overlay {
+    padding: 16px;
+  }
+
+  .onboarding-modal {
+    border-radius: 16px;
+  }
+
+  .onboarding-content {
+    padding: 20px 24px 12px;
+  }
+
+  .onboarding-icon {
+    font-size: 48px;
+  }
+
+  .onboarding-title {
+    font-size: 20px;
+  }
+
+  .onboarding-description {
+    font-size: 14px;
+  }
+
+  .onboarding-actions {
+    flex-direction: column;
+    padding: 0 20px 20px;
+  }
+
+  .onboarding-btn {
+    width: 100%;
+    min-width: unset;
+  }
+}
+
+/* Dark mode */
+[data-theme="dark"] .onboarding-modal {
+  background: var(--card-bg);
+}
+
+[data-theme="dark"] .onboarding-title {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .onboarding-description {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .onboarding-btn.secondary {
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .onboarding-btn.secondary:hover {
+  background: var(--bg-hover);
+}

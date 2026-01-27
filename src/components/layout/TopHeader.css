@@ -145,6 +145,33 @@
   cursor: not-allowed;
 }
 
+/* Theme Toggle Button */
+.theme-toggle-btn {
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary, #374151);
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.theme-toggle-btn:hover {
+  background-color: var(--bg-hover, #f3f4f6);
+  color: var(--accent-primary, #afabf9);
+}
+
+.theme-toggle-btn svg {
+  transition: transform 0.3s ease;
+}
+
+.theme-toggle-btn:hover svg {
+  transform: rotate(15deg);
+}
+
 /* Mobile Menu Button */
 .mobile-menu-btn {
   display: none;

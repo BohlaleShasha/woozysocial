@@ -10,6 +10,7 @@ import { TopHeader } from "./components/layout/TopHeader";
 import { MainContent } from "./components/layout/MainContent";
 import { ClientLayout } from "./components/layout/ClientLayout";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { OnboardingWrapper } from "./components/OnboardingWrapper";
 import { getOrganizationSchema, getWebSiteSchema } from "./utils/seoConfig";
 import "./App.css";
 
@@ -118,30 +119,32 @@ function App() {
               element={
                 <ProtectedRoute>
                   <RoleBasedRedirect>
-                    <div className="app-container">
-                      <Sidebar />
-                      <TopHeader />
-                      <MainContent>
-                        <Routes>
-                          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                          <Route path="/dashboard" element={<DashboardContent />} />
-                          <Route path="/brand-profile" element={<BrandProfileContent />} />
-                          <Route path="/compose" element={<ComposeContent />} />
-                          <Route path="/schedule" element={<ScheduleContent />} />
-                          <Route path="/posts" element={<PostsContent />} />
-                          <Route path="/assets" element={<AssetsContent />} />
-                          <Route path="/engagement" element={<EngagementContent />} />
-                          <Route path="/social-inbox" element={<SocialInboxContent />} />
-                          <Route path="/team" element={<TeamContent />} />
-                          <Route path="/agency-team" element={<AgencyTeamContent />} />
-                          <Route path="/approvals" element={<Approvals />} />
-                          <Route path="/notifications" element={<Notifications />} />
-                          <Route path="/settings" element={<SettingsContent />} />
-                          <Route path="/profile-settings" element={<ProfileSettings />} />
-                          <Route path="/pricing" element={<Pricing />} />
-                        </Routes>
-                      </MainContent>
-                    </div>
+                    <OnboardingWrapper>
+                      <div className="app-container">
+                        <Sidebar />
+                        <TopHeader />
+                        <MainContent>
+                          <Routes>
+                            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                            <Route path="/dashboard" element={<DashboardContent />} />
+                            <Route path="/brand-profile" element={<BrandProfileContent />} />
+                            <Route path="/compose" element={<ComposeContent />} />
+                            <Route path="/schedule" element={<ScheduleContent />} />
+                            <Route path="/posts" element={<PostsContent />} />
+                            <Route path="/assets" element={<AssetsContent />} />
+                            <Route path="/engagement" element={<EngagementContent />} />
+                            <Route path="/social-inbox" element={<SocialInboxContent />} />
+                            <Route path="/team" element={<TeamContent />} />
+                            <Route path="/agency-team" element={<AgencyTeamContent />} />
+                            <Route path="/approvals" element={<Approvals />} />
+                            <Route path="/notifications" element={<Notifications />} />
+                            <Route path="/settings" element={<SettingsContent />} />
+                            <Route path="/profile-settings" element={<ProfileSettings />} />
+                            <Route path="/pricing" element={<Pricing />} />
+                          </Routes>
+                        </MainContent>
+                      </div>
+                    </OnboardingWrapper>
                   </RoleBasedRedirect>
                 </ProtectedRoute>
               }
