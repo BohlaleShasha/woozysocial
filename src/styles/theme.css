@@ -1367,6 +1367,35 @@ body.dark {
   color: var(--text-primary);
 }
 
+/* Brand Profile form inputs */
+[data-theme="dark"] .brand-profile-content input,
+[data-theme="dark"] .brand-profile-content textarea,
+[data-theme="dark"] .brand-profile-content select,
+[data-theme="dark"] .form-group input,
+[data-theme="dark"] .form-group textarea,
+[data-theme="dark"] .form-group select,
+.dark .brand-profile-content input,
+.dark .brand-profile-content textarea,
+.dark .brand-profile-content select,
+.dark .form-group input,
+.dark .form-group textarea,
+.dark .form-group select {
+  background-color: var(--input-bg) !important;
+  border-color: var(--input-border) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .brand-profile-content input::placeholder,
+[data-theme="dark"] .brand-profile-content textarea::placeholder,
+[data-theme="dark"] .form-group input::placeholder,
+[data-theme="dark"] .form-group textarea::placeholder,
+.dark .brand-profile-content input::placeholder,
+.dark .brand-profile-content textarea::placeholder,
+.dark .form-group input::placeholder,
+.dark .form-group textarea::placeholder {
+  color: var(--text-muted) !important;
+}
+
 /* Warning/info banners should have subtle dark backgrounds */
 [data-theme="dark"] .warning-banner,
 [data-theme="dark"] .info-banner,
