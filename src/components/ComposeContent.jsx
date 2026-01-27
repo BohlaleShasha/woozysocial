@@ -1525,14 +1525,14 @@ export const ComposeContent = () => {
 
             {/* Link Shortener Section */}
             {showLinkShortener && (
-              <div style={{
+              <div className="link-shortener-section" style={{
                 marginTop: '20px',
                 padding: '16px',
-                backgroundColor: '#F1F6F4',
+                backgroundColor: 'var(--bg-secondary, #F1F6F4)',
                 borderRadius: '10px',
-                border: '1px solid rgba(0, 0, 0, 0.1)'
+                border: '1px solid var(--border-color, rgba(0, 0, 0, 0.1))'
               }}>
-                <h4 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: '#114C5A' }}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: '600', color: 'var(--text-primary, #114C5A)' }}>
                   Link Shortener & Tracker
                 </h4>
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
@@ -1541,13 +1541,16 @@ export const ComposeContent = () => {
                     value={urlToShorten}
                     onChange={(e) => setUrlToShorten(e.target.value)}
                     placeholder="Enter URL to shorten (e.g., https://example.com)"
+                    className="link-shortener-input"
                     style={{
                       flex: 1,
                       padding: '10px 12px',
-                      border: '1px solid rgba(0, 0, 0, 0.2)',
+                      border: '1px solid var(--border-color, rgba(0, 0, 0, 0.2))',
                       borderRadius: '8px',
                       fontSize: '14px',
-                      fontFamily: 'Inter, sans-serif'
+                      fontFamily: 'Inter, sans-serif',
+                      backgroundColor: 'var(--input-bg, #ffffff)',
+                      color: 'var(--text-primary, #000000)'
                     }}
                   />
                   <button
@@ -1560,7 +1563,7 @@ export const ComposeContent = () => {
                       borderRadius: '8px',
                       fontSize: '14px',
                       fontWeight: '600',
-                      color: '#114C5A',
+                      color: '#000',
                       cursor: isShorteningLink || !urlToShorten ? 'not-allowed' : 'pointer',
                       opacity: isShorteningLink || !urlToShorten ? 0.5 : 1
                     }}
@@ -1570,9 +1573,9 @@ export const ComposeContent = () => {
                 </div>
 
                 {shortenedLink && (
-                  <div style={{
+                  <div className="shortened-link-result" style={{
                     padding: '12px',
-                    backgroundColor: 'rgba(255, 200, 1, 0.1)',
+                    backgroundColor: 'var(--accent-bg-subtle, rgba(175, 171, 249, 0.1))',
                     borderRadius: '8px',
                     border: '1px solid #afabf9'
                   }}>
@@ -1581,21 +1584,23 @@ export const ComposeContent = () => {
                         type="text"
                         value={shortenedLink.shortLink}
                         readOnly
+                        className="shortened-link-display"
                         style={{
                           flex: 1,
                           padding: '8px 12px',
-                          backgroundColor: '#ffffff',
-                          border: '1px solid rgba(0, 0, 0, 0.1)',
+                          backgroundColor: 'var(--input-bg, #ffffff)',
+                          border: '1px solid var(--border-color, rgba(0, 0, 0, 0.1))',
                           borderRadius: '6px',
                           fontSize: '14px',
-                          fontFamily: 'monospace'
+                          fontFamily: 'monospace',
+                          color: 'var(--text-primary, #000000)'
                         }}
                       />
                       <button
                         onClick={handleCopyShortLink}
                         style={{
                           padding: '8px 16px',
-                          backgroundColor: '#114C5A',
+                          backgroundColor: 'var(--accent-dark, #114C5A)',
                           border: 'none',
                           borderRadius: '6px',
                           fontSize: '13px',
@@ -1607,7 +1612,7 @@ export const ComposeContent = () => {
                         Copy
                       </button>
                     </div>
-                    <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: 'rgba(0, 0, 0, 0.6)' }}>
+                    <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: 'var(--text-tertiary, rgba(0, 0, 0, 0.6))' }}>
                       ✓ This link is trackable. View analytics in the Posts tab after using it.
                     </p>
                   </div>
@@ -1750,9 +1755,9 @@ export const ComposeContent = () => {
               </div>
 
               {/* Data Source Indicator */}
-              <div style={{
+              <div className="data-source-indicator" style={{
                 padding: '8px 12px',
-                backgroundColor: hasRealData ? '#d1fae5' : '#fef3c7',
+                backgroundColor: hasRealData ? 'var(--success-bg, #d1fae5)' : 'var(--warning-bg, #fef3c7)',
                 borderRadius: '6px',
                 marginBottom: '12px',
                 fontSize: '11px',
@@ -1761,7 +1766,7 @@ export const ComposeContent = () => {
                 gap: '6px'
               }}>
                 <span>{hasRealData ? '✓' : 'ℹ'}</span>
-                <span style={{ color: hasRealData ? '#065f46' : '#92400e' }}>
+                <span style={{ color: hasRealData ? 'var(--success-text, #065f46)' : 'var(--warning-text, #92400e)' }}>
                   {hasRealData
                     ? `Personalized data from your ${analyticsData?.summary?.totalPosts || 0} posts`
                     : 'Industry averages (post 10+ times for personalized insights)'}
@@ -1772,7 +1777,7 @@ export const ComposeContent = () => {
               {activeWorkspace?.timezone && (
                 <div style={{
                   fontSize: '10px',
-                  color: '#6b7280',
+                  color: 'var(--text-tertiary, #6b7280)',
                   marginBottom: '12px',
                   display: 'flex',
                   alignItems: 'center',
@@ -1805,57 +1810,57 @@ export const ComposeContent = () => {
               {/* Analytics Insights */}
               {analyticsData?.summary && (
                 <div className="analytics-insights">
-                  <h4 style={{ margin: '16px 0 12px', fontSize: '14px', fontWeight: '600', color: '#374151' }}>
+                  <h4 style={{ margin: '16px 0 12px', fontSize: '14px', fontWeight: '600', color: 'var(--text-secondary, #374151)' }}>
                     📊 Last 7 Days
                   </h4>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                    <div style={{
+                    <div className="analytics-stat-box" style={{
                       padding: '10px',
-                      backgroundColor: '#f3f4f6',
+                      backgroundColor: 'var(--bg-tertiary, #f3f4f6)',
                       borderRadius: '8px',
                       textAlign: 'center'
                     }}>
-                      <div style={{ fontSize: '20px', fontWeight: '700', color: '#111827' }}>
+                      <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text-primary, #111827)' }}>
                         {analyticsData.summary.totalPosts || 0}
                       </div>
-                      <div style={{ fontSize: '11px', color: '#6b7280' }}>Posts</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-tertiary, #6b7280)' }}>Posts</div>
                     </div>
-                    <div style={{
+                    <div className="analytics-stat-box" style={{
                       padding: '10px',
-                      backgroundColor: '#f3f4f6',
+                      backgroundColor: 'var(--bg-tertiary, #f3f4f6)',
                       borderRadius: '8px',
                       textAlign: 'center'
                     }}>
-                      <div style={{ fontSize: '20px', fontWeight: '700', color: '#111827' }}>
+                      <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text-primary, #111827)' }}>
                         {analyticsData.summary.totalEngagements?.toLocaleString() || 0}
                       </div>
-                      <div style={{ fontSize: '11px', color: '#6b7280' }}>Engagements</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-tertiary, #6b7280)' }}>Engagements</div>
                     </div>
-                    <div style={{
+                    <div className="analytics-stat-box" style={{
                       padding: '10px',
-                      backgroundColor: '#f3f4f6',
+                      backgroundColor: 'var(--bg-tertiary, #f3f4f6)',
                       borderRadius: '8px',
                       textAlign: 'center'
                     }}>
-                      <div style={{ fontSize: '20px', fontWeight: '700', color: '#111827' }}>
+                      <div style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text-primary, #111827)' }}>
                         {analyticsData.summary.avgEngagement || 0}
                       </div>
-                      <div style={{ fontSize: '11px', color: '#6b7280' }}>Avg/Post</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-tertiary, #6b7280)' }}>Avg/Post</div>
                     </div>
-                    <div style={{
+                    <div className="analytics-stat-box" style={{
                       padding: '10px',
-                      backgroundColor: analyticsData.summary.trendPercent >= 0 ? '#d1fae5' : '#fee2e2',
+                      backgroundColor: analyticsData.summary.trendPercent >= 0 ? 'var(--success-bg, #d1fae5)' : 'var(--error-bg, #fee2e2)',
                       borderRadius: '8px',
                       textAlign: 'center'
                     }}>
                       <div style={{
                         fontSize: '20px',
                         fontWeight: '700',
-                        color: analyticsData.summary.trendPercent >= 0 ? '#059669' : '#dc2626'
+                        color: analyticsData.summary.trendPercent >= 0 ? 'var(--success-text, #059669)' : 'var(--error-text, #dc2626)'
                       }}>
                         {analyticsData.summary.trendPercent >= 0 ? '+' : ''}{analyticsData.summary.trendPercent || 0}%
                       </div>
-                      <div style={{ fontSize: '11px', color: '#6b7280' }}>Trend</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-tertiary, #6b7280)' }}>Trend</div>
                     </div>
                   </div>
 
@@ -1864,7 +1869,7 @@ export const ComposeContent = () => {
                     <div style={{ marginTop: '12px' }}>
                       <div style={{
                         fontSize: '12px',
-                        color: '#6b7280',
+                        color: 'var(--text-tertiary, #6b7280)',
                         marginBottom: '6px',
                         display: 'flex',
                         justifyContent: 'space-between',
@@ -1873,22 +1878,22 @@ export const ComposeContent = () => {
                         <span>Top posting times{hasRealData ? ' (your data)' : ' (industry avg)'}:</span>
                       </div>
                       {bestTimes.map((time, idx) => (
-                        <div key={idx} style={{
+                        <div key={idx} className="best-time-item" style={{
                           display: 'flex',
                           alignItems: 'center',
                           gap: '8px',
                           padding: '8px 10px',
-                          backgroundColor: idx === 0 ? '#ddd6fe' : '#f3f4f6',
+                          backgroundColor: idx === 0 ? 'var(--accent-bg, #ddd6fe)' : 'var(--bg-tertiary, #f3f4f6)',
                           borderRadius: '6px',
                           marginBottom: '4px',
                           fontSize: '12px'
                         }}>
                           <span style={{
                             fontWeight: '600',
-                            color: idx === 0 ? '#7c3aed' : '#6b7280',
+                            color: idx === 0 ? 'var(--accent-primary, #7c3aed)' : 'var(--text-tertiary, #6b7280)',
                             minWidth: '20px'
                           }}>#{idx + 1}</span>
-                          <span style={{ flex: 1 }}>{time.day} at {time.time}</span>
+                          <span style={{ flex: 1, color: 'var(--text-primary, inherit)' }}>{time.day} at {time.time}</span>
                           <div style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -1897,7 +1902,7 @@ export const ComposeContent = () => {
                             <div style={{
                               width: '40px',
                               height: '4px',
-                              backgroundColor: '#e5e7eb',
+                              backgroundColor: 'var(--border-color, #e5e7eb)',
                               borderRadius: '2px',
                               overflow: 'hidden'
                             }}>
@@ -1908,12 +1913,12 @@ export const ComposeContent = () => {
                                 borderRadius: '2px'
                               }} />
                             </div>
-                            <span style={{ color: '#6b7280', fontSize: '10px', minWidth: '28px' }}>
+                            <span style={{ color: 'var(--text-tertiary, #6b7280)', fontSize: '10px', minWidth: '28px' }}>
                               {time.score}%
                             </span>
                           </div>
                           {time.avgEngagement && (
-                            <span style={{ fontSize: '10px', color: '#10b981' }}>
+                            <span style={{ fontSize: '10px', color: 'var(--success-text, #10b981)' }}>
                               ~{time.avgEngagement} eng
                             </span>
                           )}
