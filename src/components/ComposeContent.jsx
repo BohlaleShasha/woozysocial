@@ -239,6 +239,7 @@ export const ComposeContent = () => {
   }, [networks, toast]);
 
   // Load draft from sessionStorage if coming from Posts page
+  // This is the ONLY way to load drafts - user must explicitly select "Continue Editing" from Posts page
   useEffect(() => {
     const loadDraftData = sessionStorage.getItem("loadDraft");
     if (loadDraftData) {
@@ -252,39 +253,6 @@ export const ComposeContent = () => {
       }
     }
   }, [loadDraftIntoState]);
-
-  // Auto-load most recent draft if compose is empty
-  useEffect(() => {
-    const loadRecentDraft = async () => {
-      // Skip if already have a draft loaded or sessionStorage draft exists
-      if (currentDraftId || sessionStorage.getItem("loadDraft")) return;
-      if (!user || !activeWorkspace?.id) return;
-
-      try {
-        // Fetch the most recent draft using API endpoint
-        const res = await fetch(
-          `${baseURL}/api/drafts/list?workspaceId=${activeWorkspace.id}&userId=${user.id}&limit=1`
-        );
-
-        if (!res.ok) throw new Error("Failed to fetch drafts");
-
-        const json = await res.json();
-        const drafts = json.data || [];
-
-        if (drafts.length > 0) {
-          const recentDraft = drafts[0];
-          // Only load if draft has content
-          if (recentDraft.caption || (recentDraft.media_urls && recentDraft.media_urls.length > 0)) {
-            loadDraftIntoState(recentDraft, true);
-          }
-        }
-      } catch (error) {
-        console.error("Error loading recent draft:", error);
-      }
-    };
-
-    loadRecentDraft();
-  }, [user, activeWorkspace?.id, currentDraftId, loadDraftIntoState]);
 
   // Auto-save draft functionality
   const saveDraft = useCallback(async () => {
@@ -752,6 +720,7 @@ export const ComposeContent = () => {
         setTempScheduledDate(null);
         setCurrentDraftId(null);
         setLastSaved(null);
+        setIsEditingScheduledPost(false);
       } else {
         const errorData = await response.json().catch(() => ({}));
 
@@ -1151,7 +1120,7 @@ export const ComposeContent = () => {
             isClosable: true
           });
         }
-        // Reset form
+        // Reset form completely
         setPost({ text: "", media: [] });
         setNetworks({
           threads: false,
@@ -1172,6 +1141,7 @@ export const ComposeContent = () => {
         setScheduledDate(null);
         setCurrentDraftId(null);
         setLastSaved(null);
+        setIsEditingScheduledPost(false);
       } else {
         const errorData = await response.json().catch(() => ({}));
 
