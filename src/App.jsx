@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { Helmet } from "react-helmet-async";
 import { AuthProvider } from "./contexts/AuthContext";
 import { WorkspaceProvider } from "./contexts/WorkspaceContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { RoleBasedRedirect } from "./components/auth/RoleBasedRedirect";
 import { Sidebar } from "./components/layout/Sidebar";
@@ -71,8 +72,9 @@ const PageLoader = () => (
 function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <WorkspaceProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <WorkspaceProvider>
           <Router>
           {/* Global Schema.org Structured Data */}
           <Helmet>
@@ -156,7 +158,8 @@ function App() {
           </Suspense>
           </Router>
         </WorkspaceProvider>
-      </AuthProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }
