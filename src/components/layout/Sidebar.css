@@ -31,9 +31,9 @@
   background-color: transparent;
   border: none;
   border-radius: 10px;
-  height: 100px;
+  height: 130px;
   width: 245px;
-  padding: 5px 20px;
+  padding: 10px 20px;
   flex-shrink: 0;
 }
 
