@@ -9,7 +9,7 @@ import { FaSearch, FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaReddit, 
 import { FaTiktok } from "react-icons/fa6";
 import { SiX, SiBluesky } from "react-icons/si";
 import { PostDetailPanel } from "./comments/PostDetailPanel";
-import { TableSkeleton } from "./ui/LoadingSpinner";
+import { LoadingContainer } from "./ui/LoadingSpinner";
 import { formatTableDateTime } from "../utils/timezones";
 import "./PostsContent.css";
 
@@ -290,7 +290,7 @@ export const PostsContent = () => {
 
         <div className="posts-table-body">
           {loading ? (
-            <TableSkeleton rows={5} columns={4} />
+            <LoadingContainer message={`Loading ${activeTab}...`} />
           ) : filteredPosts.length === 0 ? (
             <div className="posts-empty">
               {searchQuery ? "No posts match your search" : `No ${activeTab} posts yet`}

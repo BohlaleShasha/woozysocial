@@ -832,8 +832,10 @@ module.exports = async function handler(req, res) {
 };
 
 // Disable Vercel's body parser so formidable can parse FormData
+// Allow 60 seconds for processing multi-media uploads
 module.exports.config = {
   api: {
     bodyParser: false,
   },
+  maxDuration: 60
 };
