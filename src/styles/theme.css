@@ -823,3 +823,187 @@ body.dark {
   border-color: var(--border-color);
   color: var(--text-primary);
 }
+
+/* Dashboard content */
+[data-theme="dark"] .dashboard-container,
+[data-theme="dark"] .dashboard-content,
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .quick-actions-section,
+[data-theme="dark"] .recent-posts-section,
+[data-theme="dark"] .social-accounts-section,
+[data-theme="dark"] .accounts-grid,
+[data-theme="dark"] .account-card,
+.dark .dashboard-container,
+.dark .dashboard-content,
+.dark .stat-card,
+.dark .quick-actions-section,
+.dark .recent-posts-section,
+.dark .social-accounts-section,
+.dark .accounts-grid,
+.dark .account-card {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* Compose content */
+[data-theme="dark"] .compose-container,
+[data-theme="dark"] .compose-content,
+[data-theme="dark"] .compose-card,
+[data-theme="dark"] .compose-main,
+[data-theme="dark"] .compose-sidebar,
+[data-theme="dark"] .compose-form,
+[data-theme="dark"] .preview-card,
+[data-theme="dark"] .preview-section,
+[data-theme="dark"] .platform-preview,
+[data-theme="dark"] .media-upload-zone,
+[data-theme="dark"] .scheduling-section,
+[data-theme="dark"] .prediction-card,
+[data-theme="dark"] .best-times-section,
+[data-theme="dark"] .best-time-item,
+[data-theme="dark"] .hashtag-section,
+[data-theme="dark"] .hashtag-suggestions,
+[data-theme="dark"] .compose-actions,
+[data-theme="dark"] .compose-textarea,
+[data-theme="dark"] .text-input-container,
+.dark .compose-container,
+.dark .compose-content,
+.dark .compose-card,
+.dark .compose-main,
+.dark .compose-sidebar,
+.dark .compose-form,
+.dark .preview-card,
+.dark .preview-section,
+.dark .platform-preview,
+.dark .media-upload-zone,
+.dark .scheduling-section,
+.dark .prediction-card,
+.dark .best-times-section,
+.dark .best-time-item,
+.dark .hashtag-section,
+.dark .hashtag-suggestions,
+.dark .compose-actions,
+.dark .compose-textarea,
+.dark .text-input-container {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* Modals */
+[data-theme="dark"] .modal,
+[data-theme="dark"] .modal-content,
+[data-theme="dark"] .modal-header,
+[data-theme="dark"] .modal-body,
+[data-theme="dark"] .modal-footer,
+[data-theme="dark"] .invite-modal,
+[data-theme="dark"] .invite-modal-content,
+[data-theme="dark"] .calendar-post-modal,
+[data-theme="dark"] .delete-modal,
+[data-theme="dark"] .confirmation-modal,
+.dark .modal,
+.dark .modal-content,
+.dark .modal-header,
+.dark .modal-body,
+.dark .modal-footer,
+.dark .invite-modal,
+.dark .invite-modal-content,
+.dark .calendar-post-modal,
+.dark .delete-modal,
+.dark .confirmation-modal {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* Posts content */
+[data-theme="dark"] .posts-container,
+[data-theme="dark"] .post-card,
+[data-theme="dark"] .post-list,
+[data-theme="dark"] .post-detail,
+[data-theme="dark"] .post-detail-panel,
+.dark .posts-container,
+.dark .post-card,
+.dark .post-list,
+.dark .post-detail,
+.dark .post-detail-panel {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* Schedule content */
+[data-theme="dark"] .schedule-container,
+[data-theme="dark"] .calendar-container,
+[data-theme="dark"] .calendar-header,
+[data-theme="dark"] .calendar-grid,
+[data-theme="dark"] .calendar-day,
+[data-theme="dark"] .scheduled-post-item,
+.dark .schedule-container,
+.dark .calendar-container,
+.dark .calendar-header,
+.dark .calendar-grid,
+.dark .calendar-day,
+.dark .scheduled-post-item {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* Team content */
+[data-theme="dark"] .team-container,
+[data-theme="dark"] .team-card,
+[data-theme="dark"] .member-card,
+[data-theme="dark"] .member-list,
+[data-theme="dark"] .invite-section,
+.dark .team-container,
+.dark .team-card,
+.dark .member-card,
+.dark .member-list,
+.dark .invite-section {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* Engagement content */
+[data-theme="dark"] .engagement-container,
+[data-theme="dark"] .engagement-card,
+[data-theme="dark"] .metric-card,
+.dark .engagement-container,
+.dark .engagement-card,
+.dark .metric-card {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* Social inbox */
+[data-theme="dark"] .inbox-container,
+[data-theme="dark"] .inbox-list,
+[data-theme="dark"] .inbox-item,
+[data-theme="dark"] .message-panel,
+[data-theme="dark"] .message-item,
+[data-theme="dark"] .reply-box,
+.dark .inbox-container,
+.dark .inbox-list,
+.dark .inbox-item,
+.dark .message-panel,
+.dark .message-item,
+.dark .reply-box {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* Generic white backgrounds */
+[data-theme="dark"] [style*="background: white"],
+[data-theme="dark"] [style*="background-color: white"],
+[data-theme="dark"] [style*="background: #fff"],
+[data-theme="dark"] [style*="background-color: #fff"],
+.dark [style*="background: white"],
+.dark [style*="background-color: white"],
+.dark [style*="background: #fff"],
+.dark [style*="background-color: #fff"] {
+  background-color: var(--card-bg) !important;
+}
