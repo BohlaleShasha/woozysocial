@@ -77,6 +77,12 @@ export const DashboardContent = () => {
     refetchAccounts();
   };
 
+  // Detect if on mobile/tablet (iOS blocks popups after async calls)
+  const isMobileOrTablet = () => {
+    return /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) ||
+      (navigator.userAgent.includes("Mac") && "ontouchend" in document);
+  };
+
   // Function to handle connecting a platform
   const handleConnectPlatform = async (platformName) => {
     if (!user) return;
@@ -87,12 +93,21 @@ export const DashboardContent = () => {
       : `userId=${user.id}`;
 
     setConnectingPlatform(platformName);
+
+    // On mobile/tablet, open window IMMEDIATELY to avoid popup blocker
+    // iOS Safari blocks popups if there's an async call before window.open
+    let popup = null;
+    if (isMobileOrTablet()) {
+      popup = window.open('about:blank', '_blank');
+    }
+
     try {
       const res = await fetch(`${baseURL}/api/generate-jwt?${queryParam}`);
       const data = await res.json();
       const url = data.data?.url || data.url;
 
       if (!res.ok || !url) {
+        if (popup) popup.close();
         toast({
           title: "Connection failed",
           description: data.error || "Failed to connect. Please try again.",
@@ -104,16 +119,22 @@ export const DashboardContent = () => {
         return;
       }
 
-      const width = 600;
-      const height = 700;
-      const left = (window.screen.width - width) / 2;
-      const top = (window.screen.height - height) / 2;
+      // If we already have a popup (mobile), navigate it to the URL
+      if (popup) {
+        popup.location.href = url;
+      } else {
+        // Desktop: open popup normally
+        const width = 600;
+        const height = 700;
+        const left = (window.screen.width - width) / 2;
+        const top = (window.screen.height - height) / 2;
 
-      const popup = window.open(
-        url,
-        'Connect Social Account',
-        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
-      );
+        popup = window.open(
+          url,
+          'Connect Social Account',
+          `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+        );
+      }
 
       if (!popup || popup.closed) {
         setPopupBlockedDialog({ isOpen: true, url });
@@ -122,16 +143,21 @@ export const DashboardContent = () => {
       }
 
       const pollTimer = setInterval(() => {
-        if (popup.closed) {
-          clearInterval(pollTimer);
-          setConnectingPlatform(null);
-          setTimeout(() => {
-            refreshAccounts();
-            window.dispatchEvent(new CustomEvent('socialAccountsUpdated'));
-          }, 1000);
+        try {
+          if (popup.closed) {
+            clearInterval(pollTimer);
+            setConnectingPlatform(null);
+            setTimeout(() => {
+              refreshAccounts();
+              window.dispatchEvent(new CustomEvent('socialAccountsUpdated'));
+            }, 1000);
+          }
+        } catch (e) {
+          // Cross-origin error when checking popup.closed - popup is still open
         }
       }, 500);
     } catch (error) {
+      if (popup) popup.close();
       toast({
         title: "Connection failed",
         description: "Failed to connect. Please try again.",

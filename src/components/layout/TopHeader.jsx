@@ -68,38 +68,69 @@ export const TopHeader = () => {
     navigate('/login');
   };
 
+  // Detect if on mobile/tablet (iOS blocks popups after async calls)
+  const isMobileOrTablet = () => {
+    return /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) ||
+      (navigator.userAgent.includes("Mac") && "ontouchend" in document);
+  };
+
   const handleConnectSocialAccounts = async () => {
     if (!user || isLinking || !activeWorkspace) return;
 
-    try {
-      setIsLinking(true);
-      setShowDropdown(false);
+    setIsLinking(true);
+    setShowDropdown(false);
 
+    // On mobile/tablet, open window IMMEDIATELY to avoid popup blocker
+    // iOS Safari blocks popups if there's an async call before window.open
+    let popup = null;
+    if (isMobileOrTablet()) {
+      popup = window.open('about:blank', '_blank');
+    }
+
+    try {
       const r = await fetch(`${baseURL}/api/generate-jwt?workspaceId=${activeWorkspace.id}`);
       if (!r.ok) throw new Error("Failed to generate link");
       const d = await r.json();
       const url = d.data?.url || d.url;
 
-      const width = 900;
-      const height = 700;
-      const left = window.screen.width / 2 - width / 2;
-      const top = window.screen.height / 2 - height / 2;
+      // If we already have a popup (mobile), navigate it to the URL
+      if (popup) {
+        popup.location.href = url;
+      } else {
+        // Desktop: open popup normally
+        const width = 900;
+        const height = 700;
+        const left = window.screen.width / 2 - width / 2;
+        const top = window.screen.height / 2 - height / 2;
 
-      const popup = window.open(
-        url,
-        "AyrshareLink",
-        `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes`
-      );
+        popup = window.open(
+          url,
+          "AyrshareLink",
+          `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes`
+        );
+      }
+
+      if (!popup || popup.closed) {
+        // Popup was blocked, open in new tab as fallback
+        window.open(url, '_blank');
+        setIsLinking(false);
+        return;
+      }
 
       // Poll to detect when popup closes
       const pollTimer = setInterval(() => {
-        if (popup.closed) {
-          clearInterval(pollTimer);
-          setIsLinking(false);
-          window.dispatchEvent(new CustomEvent('socialAccountsUpdated'));
+        try {
+          if (popup.closed) {
+            clearInterval(pollTimer);
+            setIsLinking(false);
+            window.dispatchEvent(new CustomEvent('socialAccountsUpdated'));
+          }
+        } catch (e) {
+          // Cross-origin error - popup still open
         }
       }, 500);
     } catch (err) {
+      if (popup) popup.close();
       console.error("Error connecting social accounts:", err);
       setIsLinking(false);
     }
