@@ -160,20 +160,57 @@ module.exports = async function handler(req, res) {
         console.error(`[Scheduler] Error processing post ${post.id}:`, postError);
         logError('scheduler.process', postError, { postId: post.id });
 
-        // Update post as failed
-        await supabase
-          .from('posts')
-          .update({
-            status: 'failed',
-            last_error: postError.response?.data?.message || postError.message,
-            posted_at: new Date().toISOString()
-          })
-          .eq('id', post.id);
+        // IMPORTANT: Check if Ayrshare returned success data despite HTTP 400 status
+        // Ayrshare has a quirk where it returns HTTP 400 with a success response body
+        const responseData = postError.response?.data;
+        const isActuallySuccessful = responseData?.status === 'success'
+          || (Array.isArray(responseData?.errors) && responseData.errors.length === 0)
+          || responseData?.postIds?.length > 0;
 
-        results.failed.push({
-          postId: post.id,
-          error: postError.message
-        });
+        const ayrPostId = responseData?.postIds?.[0]?.id
+          || responseData?.posts?.[0]?.id
+          || responseData?.id
+          || responseData?.postId
+          || responseData?.refId;
+
+        if (isActuallySuccessful && ayrPostId) {
+          // Post actually succeeded despite HTTP 400 - save as successful
+          console.log(`[Scheduler] Post ${post.id} succeeded despite HTTP 400 - ayr_post_id: ${ayrPostId}`);
+
+          await supabase
+            .from('posts')
+            .update({
+              status: 'posted',
+              ayr_post_id: ayrPostId,
+              posted_at: new Date().toISOString(),
+              last_error: null
+            })
+            .eq('id', post.id);
+
+          // Invalidate cache after successful post
+          await invalidateWorkspaceCache(post.workspace_id);
+
+          results.success.push({
+            postId: post.id,
+            ayrPostId,
+            warning: 'Succeeded despite HTTP 400'
+          });
+        } else {
+          // Post actually failed - no post ID found
+          await supabase
+            .from('posts')
+            .update({
+              status: 'failed',
+              last_error: postError.response?.data?.message || postError.message,
+              posted_at: new Date().toISOString()
+            })
+            .eq('id', post.id);
+
+          results.failed.push({
+            postId: post.id,
+            error: postError.message
+          });
+        }
       }
     }
 
