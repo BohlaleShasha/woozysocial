@@ -12,6 +12,14 @@ function parseFormData(req) {
     const fields = {};
     const files = [];
     const busboy = Busboy({ headers: req.headers });
+    let filesPending = 0;
+    let busboyFinished = false;
+
+    const checkComplete = () => {
+      if (busboyFinished && filesPending === 0) {
+        resolve({ fields, files });
+      }
+    };
 
     busboy.on('field', (name, value) => {
       fields[name] = value;
@@ -20,6 +28,7 @@ function parseFormData(req) {
     busboy.on('file', (fieldname, file, info) => {
       const { filename, encoding, mimeType } = info;
       const chunks = [];
+      filesPending++;
 
       file.on('data', (data) => {
         chunks.push(data);
@@ -32,11 +41,19 @@ function parseFormData(req) {
           encoding,
           mimeType
         });
+        filesPending--;
+        checkComplete();
+      });
+
+      file.on('error', (err) => {
+        filesPending--;
+        reject(err);
       });
     });
 
     busboy.on('finish', () => {
-      resolve({ fields, files });
+      busboyFinished = true;
+      checkComplete();
     });
 
     busboy.on('error', reject);
