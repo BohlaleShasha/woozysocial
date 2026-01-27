@@ -1367,33 +1367,41 @@ body.dark {
   color: var(--text-primary);
 }
 
-/* Brand Profile form inputs */
+/* Global input override for dark mode - hardcoded colors for reliability */
+[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+[data-theme="dark"] textarea,
+[data-theme="dark"] select,
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+.dark textarea,
+.dark select {
+  background-color: #27272a !important;
+  border-color: #3f3f46 !important;
+  color: #fafafa !important;
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder,
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #71717a !important;
+}
+
+/* Brand Profile form inputs - extra specificity */
 [data-theme="dark"] .brand-profile-content input,
 [data-theme="dark"] .brand-profile-content textarea,
 [data-theme="dark"] .brand-profile-content select,
-[data-theme="dark"] .form-group input,
-[data-theme="dark"] .form-group textarea,
-[data-theme="dark"] .form-group select,
+[data-theme="dark"] .brand-profile-container input,
+[data-theme="dark"] .brand-profile-container textarea,
+[data-theme="dark"] .brand-profile-container select,
 .dark .brand-profile-content input,
 .dark .brand-profile-content textarea,
 .dark .brand-profile-content select,
-.dark .form-group input,
-.dark .form-group textarea,
-.dark .form-group select {
-  background-color: var(--input-bg) !important;
-  border-color: var(--input-border) !important;
-  color: var(--text-primary) !important;
-}
-
-[data-theme="dark"] .brand-profile-content input::placeholder,
-[data-theme="dark"] .brand-profile-content textarea::placeholder,
-[data-theme="dark"] .form-group input::placeholder,
-[data-theme="dark"] .form-group textarea::placeholder,
-.dark .brand-profile-content input::placeholder,
-.dark .brand-profile-content textarea::placeholder,
-.dark .form-group input::placeholder,
-.dark .form-group textarea::placeholder {
-  color: var(--text-muted) !important;
+.dark .brand-profile-container input,
+.dark .brand-profile-container textarea,
+.dark .brand-profile-container select {
+  background-color: #27272a !important;
+  border-color: #3f3f46 !important;
+  color: #fafafa !important;
 }
 
 /* Warning/info banners should have subtle dark backgrounds */
