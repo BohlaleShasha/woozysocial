@@ -29,15 +29,16 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #f1f6f4;
+  background-color: var(--bg-primary, #f1f6f4);
+  color: var(--text-primary, #000000);
 }
 
-/* Global input styling - ensure white backgrounds */
+/* Global input styling */
 input,
 textarea,
 select {
-  background-color: #ffffff !important;
-  color: #000000 !important;
+  background-color: var(--input-bg, #ffffff);
+  color: var(--text-primary, #000000);
 }
 
 input:-webkit-autofill,
@@ -49,9 +50,33 @@ textarea:-webkit-autofill:focus,
 select:-webkit-autofill,
 select:-webkit-autofill:hover,
 select:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0 30px #ffffff inset !important;
-  -webkit-text-fill-color: #000000 !important;
-  background-color: #ffffff !important;
+  -webkit-box-shadow: 0 0 0 30px var(--input-bg, #ffffff) inset !important;
+  -webkit-text-fill-color: var(--text-primary, #000000) !important;
+  background-color: var(--input-bg, #ffffff) !important;
+}
+
+/* Dark mode overrides for autofill */
+[data-theme="dark"] input:-webkit-autofill,
+[data-theme="dark"] input:-webkit-autofill:hover,
+[data-theme="dark"] input:-webkit-autofill:focus,
+[data-theme="dark"] textarea:-webkit-autofill,
+[data-theme="dark"] textarea:-webkit-autofill:hover,
+[data-theme="dark"] textarea:-webkit-autofill:focus,
+[data-theme="dark"] select:-webkit-autofill,
+[data-theme="dark"] select:-webkit-autofill:hover,
+[data-theme="dark"] select:-webkit-autofill:focus,
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+.dark textarea:-webkit-autofill,
+.dark textarea:-webkit-autofill:hover,
+.dark textarea:-webkit-autofill:focus,
+.dark select:-webkit-autofill,
+.dark select:-webkit-autofill:hover,
+.dark select:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 30px #27272a inset !important;
+  -webkit-text-fill-color: #fafafa !important;
+  background-color: #27272a !important;
 }
 
 #root {

@@ -614,3 +614,212 @@ body.dark {
 .dark .profile-avatar:hover {
   background-color: var(--accent-hover);
 }
+
+/* Approvals page */
+[data-theme="dark"] .approvals-container,
+[data-theme="dark"] .approvals-content,
+[data-theme="dark"] .approval-card,
+[data-theme="dark"] .approval-item,
+[data-theme="dark"] .approval-modal,
+[data-theme="dark"] .approval-modal-content,
+[data-theme="dark"] .comment-card,
+[data-theme="dark"] .comment-section,
+.dark .approvals-container,
+.dark .approvals-content,
+.dark .approval-card,
+.dark .approval-item,
+.dark .approval-modal,
+.dark .approval-modal-content,
+.dark .comment-card,
+.dark .comment-section {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* Assets page */
+[data-theme="dark"] .assets-content,
+[data-theme="dark"] .assets-container,
+[data-theme="dark"] .asset-card,
+[data-theme="dark"] .asset-modal,
+[data-theme="dark"] .upload-zone,
+[data-theme="dark"] .folder-card,
+.dark .assets-content,
+.dark .assets-container,
+.dark .asset-card,
+.dark .asset-modal,
+.dark .upload-zone,
+.dark .folder-card {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* Brand profile page cards */
+[data-theme="dark"] .brand-card,
+[data-theme="dark"] .brand-section-card,
+[data-theme="dark"] .tone-card,
+[data-theme="dark"] .voice-card,
+.dark .brand-card,
+.dark .brand-section-card,
+.dark .tone-card,
+.dark .voice-card {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+}
+
+/* Notifications page */
+[data-theme="dark"] .notifications-container,
+[data-theme="dark"] .notifications-content,
+[data-theme="dark"] .notification-card,
+[data-theme="dark"] .notification-list-item,
+.dark .notifications-container,
+.dark .notifications-content,
+.dark .notification-card,
+.dark .notification-list-item {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* Client pages */
+[data-theme="dark"] .client-dashboard,
+[data-theme="dark"] .client-container,
+[data-theme="dark"] .client-card,
+[data-theme="dark"] .client-approvals-container,
+[data-theme="dark"] .client-approval-card,
+[data-theme="dark"] .client-calendar-container,
+[data-theme="dark"] .calendar-card,
+[data-theme="dark"] .client-approved-container,
+.dark .client-dashboard,
+.dark .client-container,
+.dark .client-card,
+.dark .client-approvals-container,
+.dark .client-approval-card,
+.dark .client-calendar-container,
+.dark .calendar-card,
+.dark .client-approved-container {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* Client layout */
+[data-theme="dark"] .client-layout,
+[data-theme="dark"] .client-main-content,
+[data-theme="dark"] .client-header,
+.dark .client-layout,
+.dark .client-main-content,
+.dark .client-header {
+  background-color: var(--bg-primary);
+  border-color: var(--border-color);
+}
+
+/* Accept invite page */
+[data-theme="dark"] .accept-invite-container,
+[data-theme="dark"] .invite-card,
+.dark .accept-invite-container,
+.dark .invite-card {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* Auth pages */
+[data-theme="dark"] .auth-card,
+[data-theme="dark"] .auth-container,
+[data-theme="dark"] .login-card,
+[data-theme="dark"] .signup-card,
+.dark .auth-card,
+.dark .auth-container,
+.dark .login-card,
+.dark .signup-card {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* Pricing page */
+[data-theme="dark"] .pricing-container,
+[data-theme="dark"] .pricing-card,
+[data-theme="dark"] .plan-card,
+.dark .pricing-container,
+.dark .pricing-card,
+.dark .plan-card {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* Agency team */
+[data-theme="dark"] .agency-team-content,
+[data-theme="dark"] .agency-team-card,
+[data-theme="dark"] .agency-modal,
+.dark .agency-team-content,
+.dark .agency-team-card,
+.dark .agency-modal {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* Comments */
+[data-theme="dark"] .comment-input,
+[data-theme="dark"] .comment-box,
+[data-theme="dark"] .mentions-dropdown,
+.dark .comment-input,
+.dark .comment-box,
+.dark .mentions-dropdown {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* Link shortener */
+[data-theme="dark"] .link-shortener,
+[data-theme="dark"] .shortener-card,
+.dark .link-shortener,
+.dark .shortener-card {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+}
+
+/* Analytics */
+[data-theme="dark"] .analytics-content,
+[data-theme="dark"] .analytics-card,
+[data-theme="dark"] .chart-card,
+.dark .analytics-content,
+.dark .analytics-card,
+.dark .chart-card {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+}
+
+/* Automation */
+[data-theme="dark"] .automation-content,
+[data-theme="dark"] .automation-card,
+.dark .automation-content,
+.dark .automation-card {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+}
+
+/* Not found page */
+[data-theme="dark"] .not-found-container,
+[data-theme="dark"] .not-found-card,
+.dark .not-found-container,
+.dark .not-found-card {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* Error boundary */
+[data-theme="dark"] .error-boundary,
+[data-theme="dark"] .error-card,
+.dark .error-boundary,
+.dark .error-card {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}

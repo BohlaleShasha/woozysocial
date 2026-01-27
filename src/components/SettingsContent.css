@@ -2,7 +2,7 @@
   padding: 40px 60px;
   width: 100%;
   min-height: 100vh;
-  background: #F1F6F4;
+  background: var(--bg-primary, #F1F6F4);
 }
 
 .settings-header {
@@ -12,13 +12,13 @@
 .settings-title {
   font-size: 48px;
   font-weight: 700;
-  color: #114C5A;
+  color: var(--text-primary, #114C5A);
   margin: 0 0 12px 0;
 }
 
 .settings-subtitle {
   font-size: 18px;
-  color: #114C5A;
+  color: var(--text-secondary, #114C5A);
   opacity: 0.7;
   margin: 0;
 }
@@ -35,11 +35,11 @@
 }
 
 .settings-section {
-  background-color: #ffffff;
-  border: 2px solid rgba(0, 0, 0, 0.4);
+  background-color: var(--card-bg, #ffffff);
+  border: 2px solid var(--border-strong, rgba(0, 0, 0, 0.4));
   border-radius: 16px;
   padding: 32px;
-  box-shadow: 0 4px 12px rgba(17, 76, 90, 0.08);
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(17, 76, 90, 0.08));
   transition: all 0.3s;
 }
 
@@ -57,13 +57,13 @@
 .section-title {
   font-size: 28px;
   font-weight: 700;
-  color: #114C5A;
+  color: var(--text-primary, #114C5A);
   margin: 0 0 8px 0;
 }
 
 .section-subtitle {
   font-size: 15px;
-  color: #114C5A;
+  color: var(--text-secondary, #114C5A);
   opacity: 0.6;
   margin: 0;
 }
@@ -83,18 +83,18 @@
 .form-label {
   font-size: 16px;
   font-weight: 600;
-  color: #114C5A;
+  color: var(--text-primary, #114C5A);
   margin-bottom: 4px;
 }
 
 .form-input,
 .form-select {
   padding: 14px 18px;
-  border: 2px solid rgba(0, 0, 0, 0.4);
+  border: 2px solid var(--border-strong, rgba(0, 0, 0, 0.4));
   border-radius: 10px;
   font-size: 15px;
-  color: #114C5A;
-  background-color: #F1F6F4;
+  color: var(--text-primary, #114C5A);
+  background-color: var(--input-bg, #F1F6F4);
   transition: all 0.2s;
   font-family: inherit;
 }

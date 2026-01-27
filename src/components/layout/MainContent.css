@@ -9,6 +9,7 @@
   min-height: calc(100vh - 70px);
   z-index: 1;
   transition: margin-left 0.3s ease;
+  background-color: var(--bg-primary, #f1f6f4);
 }
 
 .main-content::-webkit-scrollbar {
