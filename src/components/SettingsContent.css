@@ -467,3 +467,61 @@ input:checked + .toggle-slider:before {
     height: 120px;
   }
 }
+
+/* Theme Toggle Buttons */
+.theme-toggle-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.theme-option-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  background-color: var(--bg-tertiary, #f9fafb);
+  color: var(--text-secondary, #374151);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.theme-option-btn:hover {
+  border-color: var(--accent-primary, #afabf9);
+  background-color: var(--bg-hover, #f3f4f6);
+}
+
+.theme-option-btn.active {
+  border-color: var(--accent-primary, #afabf9);
+  background-color: var(--accent-primary, #afabf9);
+  color: #000000;
+}
+
+.theme-option-btn svg {
+  flex-shrink: 0;
+}
+
+/* Dark mode styles for theme buttons */
+[data-theme="dark"] .theme-option-btn,
+.dark .theme-option-btn {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-color);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .theme-option-btn:hover,
+.dark .theme-option-btn:hover {
+  border-color: var(--accent-primary);
+  background-color: var(--bg-hover);
+}
+
+[data-theme="dark"] .theme-option-btn.active,
+.dark .theme-option-btn.active {
+  border-color: var(--accent-primary);
+  background-color: var(--accent-primary);
+  color: #000000;
+}

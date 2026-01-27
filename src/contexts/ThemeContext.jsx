@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const ThemeContext = createContext({});
 
@@ -10,32 +10,59 @@ export const useTheme = () => {
   return context;
 };
 
+// Apply theme to DOM immediately (called both on init and on change)
+const applyThemeToDOM = (theme) => {
+  document.documentElement.setAttribute('data-theme', theme);
+  document.body.setAttribute('data-theme', theme);
+
+  // Also set class for broader CSS compatibility
+  document.documentElement.classList.remove('light', 'dark');
+  document.documentElement.classList.add(theme);
+  document.body.classList.remove('light', 'dark');
+  document.body.classList.add(theme);
+
+  // Update meta theme-color for mobile browsers
+  const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+  if (metaThemeColor) {
+    metaThemeColor.setAttribute('content', theme === 'dark' ? '#18181b' : '#ffffff');
+  }
+};
+
+// Check localStorage and system preference for initial theme
+const getInitialTheme = () => {
+  if (typeof window === 'undefined') return 'light';
+
+  const savedTheme = localStorage.getItem('woozy_theme');
+  if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
+    return savedTheme;
+  }
+  // Check system preference
+  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    return 'dark';
+  }
+  return 'light';
+};
+
+// Apply theme immediately before React hydrates to prevent flash
+const initialTheme = getInitialTheme();
+applyThemeToDOM(initialTheme);
+
 export const ThemeProvider = ({ children }) => {
-  // Check localStorage and system preference for initial theme
-  const getInitialTheme = () => {
-    const savedTheme = localStorage.getItem('woozy_theme');
-    if (savedTheme) {
-      return savedTheme;
-    }
-    // Check system preference
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark';
-    }
-    return 'light';
-  };
+  const [theme, setThemeState] = useState(initialTheme);
 
-  const [theme, setTheme] = useState(getInitialTheme);
+  // Custom setTheme that also saves to localStorage
+  const setTheme = useCallback((newTheme) => {
+    if (newTheme !== 'light' && newTheme !== 'dark') return;
 
-  // Apply theme to document
+    setThemeState(newTheme);
+    localStorage.setItem('woozy_theme', newTheme);
+    applyThemeToDOM(newTheme);
+  }, []);
+
+  // Apply theme to document whenever it changes
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
+    applyThemeToDOM(theme);
     localStorage.setItem('woozy_theme', theme);
-
-    // Also update meta theme-color for mobile browsers
-    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    if (metaThemeColor) {
-      metaThemeColor.setAttribute('content', theme === 'dark' ? '#1a1a2e' : '#ffffff');
-    }
   }, [theme]);
 
   // Listen for system theme changes
@@ -54,7 +81,7 @@ export const ThemeProvider = ({ children }) => {
   }, []);
 
   const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+    setTheme(theme === 'light' ? 'dark' : 'light');
   };
 
   const setLightTheme = () => setTheme('light');

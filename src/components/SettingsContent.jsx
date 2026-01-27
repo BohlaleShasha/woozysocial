@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useWorkspace } from "../contexts/WorkspaceContext";
+import { useTheme } from "../contexts/ThemeContext";
 import { TIMEZONES_BY_REGION, getBrowserTimezone } from "../utils/timezones";
 import "./SettingsContent.css";
 
 export const SettingsContent = () => {
   const { user } = useAuth();
   const { activeWorkspace, updateWorkspace } = useWorkspace();
+  const { theme, isDark, setLightTheme, setDarkTheme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
 
   const [settings, setSettings] = useState({
     timezone: "UTC",
-    language: "English",
-    theme: "Light"
+    language: "English"
   });
 
   // Load workspace settings
@@ -23,8 +24,7 @@ export const SettingsContent = () => {
         // IMPORTANT: Use WORKSPACE timezone, but preserve existing value if workspace timezone is not set
         // This prevents reverting to UTC after save if there's a timing issue
         timezone: activeWorkspace?.timezone || prevSettings.timezone || "UTC",
-        language: "English",
-        theme: "Light"
+        language: "English"
       }));
     }
   }, [activeWorkspace]);
@@ -67,22 +67,68 @@ export const SettingsContent = () => {
   return (
     <div className="settings-container">
       <div className="settings-header">
-        <h1 className="settings-title">Workspace Settings</h1>
-        <p className="settings-subtitle">Manage workspace preferences and configuration</p>
+        <h1 className="settings-title">Settings</h1>
+        <p className="settings-subtitle">Manage your preferences and workspace configuration</p>
       </div>
 
       <div className="settings-content">
+        {/* Appearance Section - Personal preference, applies immediately */}
+        <div className="settings-section">
+          <div className="section-header">
+            <h2 className="section-title">Appearance</h2>
+            <p className="section-subtitle">Customize how Woozy looks for you</p>
+          </div>
+          <div className="settings-form">
+            <div className="form-group">
+              <label className="form-label">Theme</label>
+              <p className="form-helper-text">
+                Choose your preferred color scheme
+              </p>
+              <div className="theme-toggle-buttons">
+                <button
+                  type="button"
+                  className={`theme-option-btn ${!isDark ? 'active' : ''}`}
+                  onClick={setLightTheme}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="5"/>
+                    <line x1="12" y1="1" x2="12" y2="3"/>
+                    <line x1="12" y1="21" x2="12" y2="23"/>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                    <line x1="1" y1="12" x2="3" y2="12"/>
+                    <line x1="21" y1="12" x2="23" y2="12"/>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                  </svg>
+                  Light
+                </button>
+                <button
+                  type="button"
+                  className={`theme-option-btn ${isDark ? 'active' : ''}`}
+                  onClick={setDarkTheme}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                  </svg>
+                  Dark
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Workspace Preferences Section */}
         <div className="settings-section">
           <div className="section-header">
             <h2 className="section-title">Workspace Preferences</h2>
-            <p className="section-subtitle">Customize workspace settings for all members</p>
+            <p className="section-subtitle">Settings that apply to all workspace members</p>
           </div>
           <div className="settings-form">
             <div className="form-group">
               <label className="form-label">Workspace Timezone</label>
               <p className="form-helper-text">
-                Set the timezone for this workspace. All scheduled posts will use this timezone. Currently detected: {getBrowserTimezone()}
+                All scheduled posts will use this timezone. Currently detected: {getBrowserTimezone()}
               </p>
               <select
                 className="form-select"
@@ -114,21 +160,6 @@ export const SettingsContent = () => {
                 <option value="Spanish">Spanish</option>
                 <option value="French">French</option>
                 <option value="German">German</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Theme</label>
-              <p className="form-helper-text">
-                Default theme for this workspace
-              </p>
-              <select
-                className="form-select"
-                value={settings.theme}
-                onChange={(e) => setSettings({ ...settings, theme: e.target.value })}
-              >
-                <option value="Light">Light</option>
-                <option value="Dark">Dark</option>
-                <option value="Auto">Auto</option>
               </select>
             </div>
             {saveMessage && (
