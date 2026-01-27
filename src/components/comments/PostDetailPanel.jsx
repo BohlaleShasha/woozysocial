@@ -1,10 +1,12 @@
-import React, { useEffect } from 'react';
-import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaTiktok, FaEdit } from 'react-icons/fa';
+import React, { useEffect, useState } from 'react';
+import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaTiktok, FaEdit, FaTrash } from 'react-icons/fa';
 import { SiX } from 'react-icons/si';
 import { CommentThread } from './CommentThread';
 import { CommentInput } from './CommentInput';
 import { useWorkspace } from '../../contexts/WorkspaceContext';
 import { useNavigate } from 'react-router-dom';
+import { DeleteConfirmationModal } from '../modals/DeleteConfirmationModal';
+import { baseURL } from '../../utils/constants';
 import './PostDetailPanel.css';
 
 const PLATFORM_ICONS = {
@@ -34,11 +36,17 @@ export const PostDetailPanel = ({
   onRequestChanges,
   showApprovalActions = false,
   onEditDraft,
-  onEditScheduledPost
+  onEditScheduledPost,
+  onDelete
 }) => {
-  const { workspaceMembership } = useWorkspace();
+  const { workspaceMembership, activeWorkspace } = useWorkspace();
   const navigate = useNavigate();
   const canApprove = ['owner', 'admin', 'client'].includes(workspaceMembership?.role);
+  const canDelete = ['owner', 'admin'].includes(workspaceMembership?.role);
+
+  // Delete modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Close on Escape key
   useEffect(() => {
@@ -75,6 +83,66 @@ export const PostDetailPanel = ({
       failed: 'Failed'
     };
     return labels[status] || status;
+  };
+
+  const handleDelete = async (postToDelete, deleteFromPlatforms) => {
+    setIsDeleting(true);
+
+    try {
+      // Determine the post ID to use (Ayrshare post ID)
+      const ayrPostId = postToDelete.ayr_post_id || postToDelete.id;
+
+      if (!ayrPostId) {
+        alert('Cannot delete: Post ID not found');
+        setIsDeleting(false);
+        return;
+      }
+
+      if (!activeWorkspace?.id) {
+        alert('Cannot delete: Workspace not found');
+        setIsDeleting(false);
+        return;
+      }
+
+      // Call the delete API
+      const response = await fetch(`${baseURL}/api/post/delete`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          postId: ayrPostId,
+          workspaceId: activeWorkspace.id,
+          deleteFromDatabase: true
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Success - show message and close panel
+        alert('Post deleted successfully');
+        setShowDeleteModal(false);
+        onClose();
+
+        // Call the onDelete callback if provided
+        if (onDelete) {
+          onDelete(postToDelete.id);
+        }
+
+        // Refresh the page or update the list
+        window.location.reload(); // Simple approach - could be improved with state management
+      } else {
+        // Error from API
+        const errorMsg = data.data?.message || data.error || 'Failed to delete post';
+        alert(`Error: ${errorMsg}`);
+      }
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      alert('Failed to delete post. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -190,6 +258,20 @@ export const PostDetailPanel = ({
           </div>
         )}
 
+        {/* Delete Action */}
+        {canDelete && (post.status === 'posted' || post.status === 'scheduled' || post.status === 'failed') && (
+          <div className="delete-actions">
+            <button
+              className="btn-delete-post"
+              onClick={() => setShowDeleteModal(true)}
+              title="Delete this post"
+            >
+              <FaTrash size={16} />
+              Delete Post
+            </button>
+          </div>
+        )}
+
         {/* Approval Actions */}
         {showApprovalActions && canApprove && (
           post.approval_status === 'pending' || post.status === 'pending_approval'
@@ -208,6 +290,15 @@ export const PostDetailPanel = ({
         )}
       </div>
     </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDelete}
+        post={post}
+        isDeleting={isDeleting}
+      />
     </>
   );
 };

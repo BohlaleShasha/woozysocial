@@ -171,6 +171,41 @@
   transform: translateY(-1px);
 }
 
+/* Delete Actions */
+.delete-actions {
+  display: flex;
+  gap: 12px;
+  padding-top: 16px;
+  margin-top: 16px;
+}
+
+.btn-delete-post {
+  flex: 1;
+  padding: 12px;
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-delete-post:hover {
+  background: #fecaca;
+  border-color: #fca5a5;
+  transform: translateY(-1px);
+}
+
+.btn-delete-post:active {
+  transform: translateY(0);
+}
+
 .approval-actions {
   display: flex;
   gap: 12px;
