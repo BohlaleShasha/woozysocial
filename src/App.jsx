@@ -48,6 +48,7 @@ const ClientAnalytics = lazy(() => import("./pages/client/ClientAnalytics").then
 const ClientBrandProfile = lazy(() => import("./pages/client/ClientBrandProfile").then(m => ({ default: m.ClientBrandProfile })));
 const ClientSocialInbox = lazy(() => import("./pages/client/ClientSocialInbox").then(m => ({ default: m.ClientSocialInbox })));
 const ClientTeam = lazy(() => import("./pages/client/ClientTeam").then(m => ({ default: m.ClientTeam })));
+const ClientProfileSettings = lazy(() => import("./pages/client/ClientProfileSettings").then(m => ({ default: m.ClientProfileSettings })));
 
 // 404 page
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -115,6 +116,7 @@ function App() {
                         <Route path="/brand-profile" element={<ClientBrandProfile />} />
                         <Route path="/social-inbox" element={<ClientSocialInbox />} />
                         <Route path="/analytics" element={<ClientAnalytics />} />
+                        <Route path="/profile-settings" element={<ClientProfileSettings />} />
                         <Route path="/notifications" element={<Notifications />} />
                       </Routes>
                     </ClientLayout>

@@ -14,7 +14,8 @@ export const ClientSidebar = () => {
     { name: "Team", path: "/client/team" },
     { name: "Brand Profile", path: "/client/brand-profile" },
     { name: "Social Inbox", path: "/client/social-inbox" },
-    { name: "Analytics", path: "/client/analytics" }
+    { name: "Analytics", path: "/client/analytics" },
+    { name: "Profile Settings", path: "/client/profile-settings" }
   ];
 
   return (
