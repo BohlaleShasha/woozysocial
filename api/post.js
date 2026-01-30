@@ -234,6 +234,7 @@ module.exports = async function handler(req, res) {
         settings = postSettings;
       }
     }
+    console.log('[POST] Post settings parsed:', settings);
 
     console.log('[POST] Extracted params:', {
       hasText: !!text,
@@ -387,6 +388,7 @@ module.exports = async function handler(req, res) {
             scheduled_at: new Date(scheduledDate).toISOString(),
             platforms: platforms,
             approval_status: 'pending', // Reset for re-approval
+            post_settings: settings, // Phase 4: Save post settings
             updated_at: new Date().toISOString()
           })
           .eq('id', postId)
@@ -449,7 +451,8 @@ module.exports = async function handler(req, res) {
           scheduled_at: new Date(scheduledDate).toISOString(),
           platforms: platforms,
           approval_status: 'pending',
-          requires_approval: true
+          requires_approval: true,
+          post_settings: settings // Phase 4: Save post settings
         }]).select().single();
 
         if (saveError) {
@@ -501,6 +504,7 @@ module.exports = async function handler(req, res) {
             platforms: platforms,
             status: 'scheduled',
             approval_status: 'approved',
+            post_settings: settings, // Phase 4: Save post settings
             updated_at: new Date().toISOString()
           })
           .eq('id', postId)
@@ -538,7 +542,8 @@ module.exports = async function handler(req, res) {
           scheduled_at: new Date(scheduledDate).toISOString(),
           platforms: platforms,
           approval_status: 'approved',
-          requires_approval: false
+          requires_approval: false,
+          post_settings: settings // Phase 4: Save post settings
         }]).select().single();
 
         if (saveError) {
@@ -618,27 +623,67 @@ module.exports = async function handler(req, res) {
     }
 
     // Apply post settings (Phase 4)
+    console.log('[POST] Applying post settings...');
+
+    // Auto-shorten links
     if (settings.shortenLinks) {
       postData.shortenLinks = true;
+      console.log('[POST] - shortenLinks enabled');
     }
 
     // Twitter thread options
-    if (settings.threadPost && platforms.some(p => ['twitter', 'x'].includes(p.toLowerCase()))) {
+    const hasTwitter = platforms.some(p => ['twitter', 'x'].includes(p.toLowerCase()));
+    if (settings.threadPost && hasTwitter) {
       postData.twitterOptions = {
         thread: true,
         threadNumber: settings.threadNumber !== false
       };
+      console.log('[POST] - Twitter thread options:', postData.twitterOptions);
     }
 
-    // Instagram post type options
-    if (settings.instagramType && platforms.includes('instagram')) {
+    // Instagram post type options (case-insensitive platform check)
+    const hasInstagram = platforms.some(p => p.toLowerCase() === 'instagram');
+    if (settings.instagramType && hasInstagram) {
+      // Check if media contains videos
+      const hasVideo = mediaUrls && mediaUrls.length > 0 && mediaUrls.some(url => {
+        const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm'];
+        return videoExtensions.some(ext => url.toLowerCase().includes(ext));
+      });
+
+      const hasImage = mediaUrls && mediaUrls.length > 0 && mediaUrls.some(url => {
+        const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+        return imageExtensions.some(ext => url.toLowerCase().includes(ext));
+      });
+
+      // Validate mixed media - Instagram doesn't support video + photos in same post
+      if (hasVideo && hasImage) {
+        console.error('[POST] Mixed media detected (video + photos) - not supported by Instagram');
+        return sendError(
+          res,
+          "Instagram does not support mixing videos and photos in the same post. Please use either videos only or photos only.",
+          ErrorCodes.VALIDATION_ERROR
+        );
+      }
+
       if (settings.instagramType === 'story') {
         postData.instagramOptions = { stories: true };
+        console.log('[POST] - Instagram Story mode enabled');
       } else if (settings.instagramType === 'reel') {
+        // Only set reel options if not auto-detected
+        // Ayrshare auto-detects videos as reels, so we only need to specify if forcing
         postData.instagramOptions = { reels: true, shareReelsFeed: true };
+        console.log('[POST] - Instagram Reel mode enabled');
       }
       // 'feed' is default, no special options needed
     }
+
+    console.log('[POST] Post settings applied. Final postData:', {
+      platforms: postData.platforms,
+      hasMedia: !!postData.mediaUrls,
+      shortenLinks: postData.shortenLinks,
+      twitterOptions: postData.twitterOptions,
+      instagramOptions: postData.instagramOptions
+    });
 
     // Send to Ayrshare
     console.log('[POST] Sending to Ayrshare...', {
@@ -703,7 +748,8 @@ module.exports = async function handler(req, res) {
             posted_at: isScheduled ? null : new Date().toISOString(),
             platforms: platforms,
             approval_status: 'approved',
-            requires_approval: false
+            requires_approval: false,
+            post_settings: settings // Phase 4: Save post settings
           };
 
           const { data: savedPost, error: dbError } = await supabase
@@ -744,7 +790,8 @@ module.exports = async function handler(req, res) {
           status: 'failed',
           scheduled_at: scheduledDate ? new Date(scheduledDate).toISOString() : null,
           platforms: platforms,
-          last_error: axiosError.response?.data?.message || axiosError.message
+          last_error: axiosError.response?.data?.message || axiosError.message,
+          post_settings: settings // Phase 4: Save post settings
         }]);
         if (dbErr) logError('post.save_failed', dbErr);
       }
@@ -780,7 +827,8 @@ module.exports = async function handler(req, res) {
           status: 'failed',
           scheduled_at: scheduledDate ? new Date(scheduledDate).toISOString() : null,
           platforms: platforms,
-          last_error: response.data.message || 'Post failed'
+          last_error: response.data.message || 'Post failed',
+          post_settings: settings // Phase 4: Save post settings
         }]);
         if (dbErr) logError('post.save_failed', dbErr);
       }
@@ -810,7 +858,8 @@ module.exports = async function handler(req, res) {
         posted_at: isScheduled ? null : new Date().toISOString(),
         platforms: platforms,
         approval_status: 'approved',
-        requires_approval: false
+        requires_approval: false,
+        post_settings: settings // Phase 4: Save post settings
       };
       console.log('[POST] Post record to save:', {
         ...postRecord,
