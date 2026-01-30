@@ -217,9 +217,23 @@ module.exports = async function handler(req, res) {
       console.log('[POST] JSON parsed, keys:', Object.keys(body));
     }
 
-    const { text, networks, scheduledDate, userId, workspaceId, postId } = body;
+    const { text, networks, scheduledDate, userId, workspaceId, postId, postSettings } = body;
     let { mediaUrl } = body;
     let mediaUrls = [];
+
+    // Parse postSettings (Phase 4)
+    let settings = {};
+    if (postSettings) {
+      if (typeof postSettings === 'string') {
+        try {
+          settings = JSON.parse(postSettings);
+        } catch (e) {
+          console.error('[POST] Failed to parse postSettings:', e);
+        }
+      } else {
+        settings = postSettings;
+      }
+    }
 
     console.log('[POST] Extracted params:', {
       hasText: !!text,
@@ -601,6 +615,29 @@ module.exports = async function handler(req, res) {
 
     if (mediaUrls && mediaUrls.length > 0) {
       postData.mediaUrls = mediaUrls;
+    }
+
+    // Apply post settings (Phase 4)
+    if (settings.shortenLinks) {
+      postData.shortenLinks = true;
+    }
+
+    // Twitter thread options
+    if (settings.threadPost && platforms.some(p => ['twitter', 'x'].includes(p.toLowerCase()))) {
+      postData.twitterOptions = {
+        thread: true,
+        threadNumber: settings.threadNumber !== false
+      };
+    }
+
+    // Instagram post type options
+    if (settings.instagramType && platforms.includes('instagram')) {
+      if (settings.instagramType === 'story') {
+        postData.instagramOptions = { stories: true };
+      } else if (settings.instagramType === 'reel') {
+        postData.instagramOptions = { reels: true, shareReelsFeed: true };
+      }
+      // 'feed' is default, no special options needed
     }
 
     // Send to Ayrshare
