@@ -100,7 +100,7 @@ export const PostSettings = ({
                 <span>Thread Post</span>
               </label>
               <p className="setting-description">
-                Break long posts into threaded tweets (Twitter/X). <strong>Tip:</strong> Add blank lines (double Enter) between paragraphs to ensure each tweet stays under 280 characters.
+                Break long posts into threaded tweets (Twitter/X). Paragraphs are automatically split at sentence boundaries to keep each tweet under 280 characters.
               </p>
 
               {/* Show thread numbering option if thread is enabled */}

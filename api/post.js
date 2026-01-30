@@ -682,17 +682,73 @@ module.exports = async function handler(req, res) {
       // 'feed' is default, no special options needed
     }
 
-    // Twitter thread validation
+    // Twitter thread auto-splitting
     if (settings.threadPost && hasTwitter) {
-      // Ayrshare breaks threads on line breaks, not character count
-      // Warn if any paragraph between line breaks exceeds 280 characters
+      // Ayrshare breaks threads on double line breaks (\n\n)
+      // If any paragraph exceeds 280 chars, auto-split at sentence boundaries
       const paragraphs = text.split('\n\n');
-      const longParagraphs = paragraphs.filter(p => p.length > 280);
+      const processedParagraphs = [];
 
-      if (longParagraphs.length > 0) {
-        const maxLength = Math.max(...longParagraphs.map(p => p.length));
-        console.warn(`[POST] Thread contains paragraphs longer than 280 chars. Longest: ${maxLength} chars`);
-        console.warn('[POST] This may cause Ayrshare to fail the thread. Consider adding more line breaks.');
+      for (const paragraph of paragraphs) {
+        if (paragraph.length <= 280) {
+          // Paragraph is fine, keep as-is
+          processedParagraphs.push(paragraph);
+        } else {
+          // Paragraph too long - split at sentence boundaries
+          console.log(`[POST] Auto-splitting long paragraph (${paragraph.length} chars) for thread`);
+
+          // Split on sentence endings (. ! ?) followed by space or newline
+          const sentences = paragraph.split(/([.!?])\s+/).filter(s => s.trim().length > 0);
+
+          let currentChunk = '';
+          for (let i = 0; i < sentences.length; i++) {
+            const sentence = sentences[i];
+
+            // Check if adding this sentence would exceed limit
+            if (currentChunk.length + sentence.length + 1 > 280) {
+              // Save current chunk if it has content
+              if (currentChunk.trim().length > 0) {
+                processedParagraphs.push(currentChunk.trim());
+                currentChunk = sentence;
+              } else {
+                // Single sentence is too long, split at word boundaries
+                const words = sentence.split(' ');
+                let wordChunk = '';
+                for (const word of words) {
+                  if (wordChunk.length + word.length + 1 > 280) {
+                    if (wordChunk.trim().length > 0) {
+                      processedParagraphs.push(wordChunk.trim());
+                      wordChunk = word;
+                    } else {
+                      // Single word too long, just add it (truncation handled by Twitter)
+                      processedParagraphs.push(word);
+                    }
+                  } else {
+                    wordChunk += (wordChunk.length > 0 ? ' ' : '') + word;
+                  }
+                }
+                if (wordChunk.trim().length > 0) {
+                  currentChunk = wordChunk;
+                }
+              }
+            } else {
+              currentChunk += (currentChunk.length > 0 ? ' ' : '') + sentence;
+            }
+          }
+
+          // Add final chunk
+          if (currentChunk.trim().length > 0) {
+            processedParagraphs.push(currentChunk.trim());
+          }
+        }
+      }
+
+      // Rejoin paragraphs with double line breaks
+      const processedText = processedParagraphs.join('\n\n');
+
+      if (processedText !== text) {
+        console.log(`[POST] Text auto-split for threading: ${paragraphs.length} → ${processedParagraphs.length} paragraphs`);
+        postData.post = processedText;
       }
     }
 
