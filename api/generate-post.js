@@ -276,7 +276,7 @@ FORMAT: Number each variation 1., 2., 3. with the full post text ready to use.`;
       { role: 'user', content: `Create 3 social media posts about: ${prompt}\n\nWrite like you're sharing with a friend - comfortable, casual, real. No corporate speak. Ready to copy-paste.` }
     ],
     temperature: 0.85,  // Slightly higher for more creativity
-    max_tokens: 4000    // Increased tokens for longer, more detailed responses
+    max_tokens: 800     // Optimized for short, punchy captions
   }, {
     headers: {
       'Content-Type': 'application/json',
