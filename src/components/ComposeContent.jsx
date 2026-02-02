@@ -71,6 +71,7 @@ export const ComposeContent = () => {
   const [lastSaved, setLastSaved] = useState(null);
   const autoSaveTimerRef = useRef(null);
   const isSavingRef = useRef(false); // Lock to prevent concurrent saves
+  const progressIntervalRef = useRef(null); // For progress countdown
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isOpen: isAiOpen, onOpen: onAiOpen, onClose: onAiClose } = useDisclosure();
@@ -120,6 +121,51 @@ export const ComposeContent = () => {
       profilePicture: account?.profilePicture || null
     };
   };
+
+  // Progress countdown effect - makes the timer feel realistic
+  useEffect(() => {
+    if (isLoading && postingProgress.step && postingProgress.step !== 'complete') {
+      // Clear any existing interval
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
+
+      // Start countdown interval
+      progressIntervalRef.current = setInterval(() => {
+        setPostingProgress(prev => {
+          if (prev.estimatedTime <= 1 || prev.step === 'complete') {
+            return prev;
+          }
+
+          // Calculate progress based on step
+          let targetPercent = prev.percent;
+          if (prev.step === 'uploading') {
+            targetPercent = Math.min(prev.percent + 2, 45);
+          } else if (prev.step === 'publishing') {
+            targetPercent = Math.min(prev.percent + 3, 95);
+          }
+
+          return {
+            ...prev,
+            percent: targetPercent,
+            estimatedTime: Math.max(0, prev.estimatedTime - 1)
+          };
+        });
+      }, 1000);
+
+      return () => {
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+        }
+      };
+    } else {
+      // Clear interval when not loading
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+    }
+  }, [isLoading, postingProgress.step]);
 
   // Fetch real analytics data for best posting time and insights
   useEffect(() => {
@@ -1408,7 +1454,7 @@ export const ComposeContent = () => {
           <div className="posting-progress-modal">
             <div className="progress-spinner"></div>
             <p className="progress-step">
-              {postingProgress.step === 'uploading' && 'Uploading media...'}
+              {postingProgress.step === 'uploading' && 'Preparing your post...'}
               {postingProgress.step === 'publishing' && 'Publishing to platforms...'}
               {postingProgress.step === 'complete' && 'Complete!'}
             </p>
@@ -1421,7 +1467,9 @@ export const ComposeContent = () => {
             <p className="progress-time">
               {postingProgress.step === 'complete'
                 ? 'Done!'
-                : `~${postingProgress.estimatedTime}s remaining`}
+                : postingProgress.estimatedTime > 0
+                  ? `~${postingProgress.estimatedTime}s remaining`
+                  : 'Almost done...'}
             </p>
           </div>
         </div>
