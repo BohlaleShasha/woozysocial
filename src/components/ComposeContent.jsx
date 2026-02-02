@@ -1759,7 +1759,7 @@ export const ComposeContent = () => {
                     title="Generate with AI"
                     style={{ marginLeft: '8px' }}
                   >
-                    ✨
+                    AI
                   </button>
                 </FeatureGate>
                 <FeatureGate
@@ -2324,7 +2324,7 @@ export const ComposeContent = () => {
       <Modal isOpen={isAiOpen} onClose={onAiClose} size="xl">
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>✨ Generate Post with AI</ModalHeader>
+          <ModalHeader>Generate Post with AI</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
             {aiVariations.length === 0 ? (
@@ -2370,7 +2370,7 @@ export const ComposeContent = () => {
                 </p>
 
                 <p style={{ marginTop: '12px', fontSize: '12px', color: '#999' }}>
-                  💡 Tip: Complete your Brand Profile for better AI-generated content
+                  Tip: Complete your Brand Profile for better AI-generated content
                 </p>
               </div>
             ) : (
