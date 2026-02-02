@@ -78,7 +78,8 @@
   "functions": {
     "api/post.js": {
       "maxDuration": 60,
-      "memory": 1024
+      "memory": 1024,
+      "maxBodyLength": 52428800
     },
     "api/scheduler.js": {
       "maxDuration": 60,
