@@ -196,9 +196,8 @@ module.exports = async function handler(req, res) {
  * Handles different response structures and metric names across platforms
  */
 function normalizeAnalytics(data, postId) {
-  // Ayrshare can return analytics in different formats
-  // Handle both direct analytics and array of platform analytics
-  const platformAnalytics = data.analytics || data.platforms || [];
+  // Ayrshare returns platforms as top-level keys (instagram, tiktok, etc.)
+  // Each platform has an "analytics" object inside it
 
   // Initialize aggregated totals
   const aggregated = {
@@ -215,41 +214,40 @@ function normalizeAnalytics(data, postId) {
   // Platform-specific analytics
   const byPlatform = {};
 
-  // If analytics is an array (multiple platforms)
-  if (Array.isArray(platformAnalytics)) {
-    platformAnalytics.forEach(platformData => {
-      const platform = (platformData.platform || '').toLowerCase();
-      if (!platform) return;
+  // List of possible social media platform keys
+  const platformKeys = ['instagram', 'tiktok', 'facebook', 'twitter', 'x', 'linkedin', 'youtube', 'pinterest', 'reddit'];
 
-      const normalized = normalizePlatformMetrics(platformData, platform);
-      byPlatform[platform] = normalized;
+  // Iterate through each platform in the response
+  Object.keys(data).forEach(key => {
+    const lowerKey = key.toLowerCase();
 
-      // Aggregate totals
-      aggregated.views += normalized.views || 0;
-      aggregated.likes += normalized.likes || 0;
-      aggregated.comments += normalized.comments || 0;
-      aggregated.shares += normalized.shares || 0;
-      aggregated.reach += normalized.reach || 0;
-      aggregated.clicks += normalized.clicks || 0;
-      aggregated.totalEngagements += normalized.totalEngagements || 0;
-    });
-  } else if (typeof platformAnalytics === 'object') {
-    // Single platform or object format
-    Object.keys(platformAnalytics).forEach(platform => {
-      const platformData = platformAnalytics[platform];
-      const normalized = normalizePlatformMetrics(platformData, platform.toLowerCase());
-      byPlatform[platform.toLowerCase()] = normalized;
+    // Skip non-platform keys (id, status, etc.)
+    if (!platformKeys.includes(lowerKey)) {
+      return;
+    }
 
-      // Aggregate totals
-      aggregated.views += normalized.views || 0;
-      aggregated.likes += normalized.likes || 0;
-      aggregated.comments += normalized.comments || 0;
-      aggregated.shares += normalized.shares || 0;
-      aggregated.reach += normalized.reach || 0;
-      aggregated.clicks += normalized.clicks || 0;
-      aggregated.totalEngagements += normalized.totalEngagements || 0;
-    });
-  }
+    const platformData = data[key];
+
+    // Extract analytics from platform data
+    // Ayrshare format: { instagram: { analytics: {...}, id: "...", postUrl: "..." } }
+    const analyticsData = platformData.analytics || platformData;
+
+    if (!analyticsData || typeof analyticsData !== 'object') {
+      return;
+    }
+
+    const normalized = normalizePlatformMetrics(analyticsData, lowerKey);
+    byPlatform[lowerKey] = normalized;
+
+    // Aggregate totals
+    aggregated.views += normalized.views || 0;
+    aggregated.likes += normalized.likes || 0;
+    aggregated.comments += normalized.comments || 0;
+    aggregated.shares += normalized.shares || 0;
+    aggregated.reach += normalized.reach || 0;
+    aggregated.clicks += normalized.clicks || 0;
+    aggregated.totalEngagements += normalized.totalEngagements || 0;
+  });
 
   // Calculate overall engagement rate
   if (aggregated.views > 0) {
@@ -286,70 +284,71 @@ function normalizePlatformMetrics(data, platform) {
   };
 
   // Platform-specific metric mapping
+  // Ayrshare uses camelCase: likeCount, commentsCount, viewsCount, etc.
   switch (platform) {
     case 'facebook':
-      normalized.views = data.impressions || data.views || 0;
-      normalized.likes = data.likes || data.reactions || 0;
-      normalized.comments = data.comments || 0;
-      normalized.shares = data.shares || 0;
-      normalized.reach = data.reach || null;
+      normalized.views = data.impressions || data.views || data.viewsCount || 0;
+      normalized.likes = data.likeCount || data.likes || data.reactions || 0;
+      normalized.comments = data.commentsCount || data.comments || 0;
+      normalized.shares = data.sharesCount || data.shares || 0;
+      normalized.reach = data.reachCount || data.reach || null;
       normalized.clicks = data.clicks || data.link_clicks || null;
       break;
 
     case 'instagram':
-      normalized.views = data.impressions || data.reach || 0;
-      normalized.likes = data.likes || 0;
-      normalized.comments = data.comments || 0;
-      normalized.shares = null; // Instagram doesn't have shares metric
-      normalized.reach = data.reach || null;
+      normalized.views = data.viewsCount || data.impressions || data.reach || 0;
+      normalized.likes = data.likeCount || data.likes || 0;
+      normalized.comments = data.commentsCount || data.comments || 0;
+      normalized.shares = data.sharesCount || data.shares || 0;
+      normalized.reach = data.reachCount || data.reach || null;
       normalized.clicks = data.profile_visits || null;
       break;
 
     case 'twitter':
     case 'x':
     case 'x/twitter':
-      normalized.views = data.impressions || data.views || 0;
-      normalized.likes = data.likes || data.favorites || 0;
-      normalized.comments = data.replies || data.comments || 0;
-      normalized.shares = data.retweets || 0;
-      normalized.reach = data.impressions || null; // Twitter uses impressions as reach
+      normalized.views = data.impressions || data.views || data.viewsCount || 0;
+      normalized.likes = data.likeCount || data.likes || data.favorites || 0;
+      normalized.comments = data.commentsCount || data.replies || data.comments || 0;
+      normalized.shares = data.retweetsCount || data.retweets || 0;
+      normalized.reach = data.impressions || null;
       normalized.clicks = data.url_clicks || data.clicks || null;
       break;
 
     case 'linkedin':
-      normalized.views = data.impressions || data.views || 0;
-      normalized.likes = data.likes || data.reactions || 0;
-      normalized.comments = data.comments || 0;
-      normalized.shares = data.shares || 0;
+      normalized.views = data.impressions || data.views || data.viewsCount || 0;
+      normalized.likes = data.likeCount || data.likes || data.reactions || 0;
+      normalized.comments = data.commentsCount || data.comments || 0;
+      normalized.shares = data.sharesCount || data.shares || 0;
       normalized.reach = data.impressions || null;
       normalized.clicks = data.clicks || null;
       break;
 
     case 'tiktok':
-      normalized.views = data.views || data.video_views || 0;
-      normalized.likes = data.likes || 0;
-      normalized.comments = data.comments || 0;
-      normalized.shares = data.shares || 0;
-      normalized.reach = data.views || null; // TikTok views = reach
+      normalized.views = data.videoViews || data.views || data.viewsCount || 0;
+      normalized.likes = data.likeCount || data.likes || 0;
+      normalized.comments = data.commentsCount || data.comments || 0;
+      normalized.shares = data.shareCount || data.shares || 0;
+      normalized.reach = data.reach || data.videoViews || null;
       normalized.clicks = null; // Not available
       break;
 
     case 'youtube':
-      normalized.views = data.views || 0;
-      normalized.likes = data.likes || 0;
-      normalized.comments = data.comments || 0;
-      normalized.shares = data.shares || 0;
+      normalized.views = data.viewsCount || data.views || 0;
+      normalized.likes = data.likeCount || data.likes || 0;
+      normalized.comments = data.commentsCount || data.comments || 0;
+      normalized.shares = data.sharesCount || data.shares || 0;
       normalized.reach = data.views || null;
       normalized.clicks = null;
       break;
 
     default:
-      // Generic fallback
-      normalized.views = data.impressions || data.views || 0;
-      normalized.likes = data.likes || 0;
-      normalized.comments = data.comments || 0;
-      normalized.shares = data.shares || 0;
-      normalized.reach = data.reach || null;
+      // Generic fallback - try both camelCase and regular naming
+      normalized.views = data.viewsCount || data.videoViews || data.impressions || data.views || 0;
+      normalized.likes = data.likeCount || data.likes || 0;
+      normalized.comments = data.commentsCount || data.comments || 0;
+      normalized.shares = data.sharesCount || data.shareCount || data.shares || 0;
+      normalized.reach = data.reachCount || data.reach || null;
       normalized.clicks = data.clicks || null;
   }
 
