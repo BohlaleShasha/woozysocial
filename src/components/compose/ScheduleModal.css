@@ -1,0 +1,500 @@
+/* Geist UI Schedule Modal Styles */
+
+.schedule-modal-geist {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  max-width: 900px !important;
+}
+
+.schedule-modal-header {
+  padding: 24px 24px 16px 24px;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', 'Droid Sans Mono', 'Source Code Pro', monospace;
+}
+
+.schedule-modal-subtitle {
+  font-size: 13px;
+  font-weight: 400;
+  color: #6b7280;
+  margin-top: 4px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+.schedule-modal-body {
+  padding: 24px;
+}
+
+.schedule-grid {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 32px;
+}
+
+/* Calendar Section */
+.calendar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.calendar-month {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+  letter-spacing: -0.01em;
+}
+
+.calendar-nav-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.calendar-nav-btn:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  color: #111827;
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.calendar-weekday {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 500;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 8px 0;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+}
+
+.calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.calendar-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+  position: relative;
+}
+
+.calendar-day:hover:not(.past):not(:disabled) {
+  background: #f9fafb;
+  border-color: #e5e7eb;
+}
+
+.calendar-day.today {
+  color: #7c3aed;
+  font-weight: 600;
+}
+
+.calendar-day.today::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #7c3aed;
+}
+
+.calendar-day.selected {
+  background: #111827;
+  color: #ffffff;
+  border-color: #111827;
+}
+
+.calendar-day.selected:hover {
+  background: #1f2937;
+  border-color: #1f2937;
+}
+
+.calendar-day.other-month {
+  color: #d1d5db;
+}
+
+.calendar-day.past {
+  color: #d1d5db;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.calendar-day:disabled {
+  cursor: not-allowed;
+}
+
+/* Time Selector */
+.time-selector {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.time-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+}
+
+.time-input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+  color: #111827;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+
+.time-input:hover {
+  border-color: #d1d5db;
+  background: #ffffff;
+}
+
+.time-input:focus {
+  outline: none;
+  border-color: #111827;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.05);
+}
+
+/* Best Times Section */
+.best-times-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+.best-times-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.best-times-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+}
+
+.best-times-source {
+  font-size: 11px;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+}
+
+.best-times-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.best-time-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.best-time-card:hover {
+  border-color: #111827;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+.best-time-card.top-pick {
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+  border-color: #7c3aed;
+}
+
+.best-time-card.top-pick:hover {
+  border-color: #6d28d9;
+  box-shadow: 0 2px 12px rgba(124, 58, 237, 0.2);
+}
+
+.best-time-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.best-time-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.best-time-rank {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+  min-width: 24px;
+}
+
+.best-time-card.top-pick .best-time-rank {
+  color: #7c3aed;
+}
+
+.best-time-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.best-time-day {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+.best-time-time {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+}
+
+.best-time-stats {
+  font-size: 11px;
+  font-weight: 500;
+  color: #6b7280;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+}
+
+.best-time-score {
+  width: 100%;
+}
+
+.score-bar-bg {
+  width: 100%;
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.score-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.best-time-card.top-pick .score-bar-fill {
+  background: linear-gradient(90deg, #7c3aed 0%, #6d28d9 100%);
+}
+
+/* Selected DateTime Display */
+.selected-datetime {
+  margin-top: 24px;
+  padding: 16px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.selected-datetime-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+}
+
+.selected-datetime-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+}
+
+/* Footer */
+.schedule-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #f3f4f6;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.btn-ghost {
+  background: transparent !important;
+  color: #6b7280 !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  padding: 10px 20px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif !important;
+  transition: all 0.15s ease !important;
+}
+
+.btn-ghost:hover {
+  background: #f9fafb !important;
+  border-color: #d1d5db !important;
+  color: #111827 !important;
+}
+
+.btn-primary {
+  background: #111827 !important;
+  color: #ffffff !important;
+  border: 1px solid #111827 !important;
+  border-radius: 8px !important;
+  padding: 10px 20px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif !important;
+  transition: all 0.15s ease !important;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #1f2937 !important;
+  border-color: #1f2937 !important;
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.2) !important;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+/* Dark Mode Support */
+[data-theme="dark"] .schedule-modal-geist,
+.dark .schedule-modal-geist {
+  background: #111827;
+  border-color: #374151;
+}
+
+[data-theme="dark"] .schedule-modal-header,
+.dark .schedule-modal-header {
+  color: #f9fafb;
+  border-color: #374151;
+}
+
+[data-theme="dark"] .schedule-modal-subtitle,
+.dark .schedule-modal-subtitle {
+  color: #9ca3af;
+}
+
+[data-theme="dark"] .calendar-day,
+.dark .calendar-day {
+  color: #d1d5db;
+}
+
+[data-theme="dark"] .calendar-day:hover:not(.past):not(:disabled),
+.dark .calendar-day:hover:not(.past):not(:disabled) {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+[data-theme="dark"] .calendar-day.selected,
+.dark .calendar-day.selected {
+  background: #f9fafb;
+  color: #111827;
+  border-color: #f9fafb;
+}
+
+[data-theme="dark"] .best-times-section,
+.dark .best-times-section {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+[data-theme="dark"] .best-time-card,
+.dark .best-time-card {
+  background: #111827;
+  border-color: #374151;
+}
+
+[data-theme="dark"] .best-time-day,
+.dark .best-time-day {
+  color: #f9fafb;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .schedule-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .best-times-section {
+    order: -1;
+  }
+
+  .schedule-modal-geist {
+    max-width: 100% !important;
+    margin: 16px;
+  }
+}

@@ -885,10 +885,12 @@ export const ComposeContent = () => {
     setTempScheduledDate(targetDate);
   };
 
-  const handleConfirmSchedule = async () => {
-    if (!tempScheduledDate || !user) return;
+  const handleConfirmSchedule = async (selectedDate) => {
+    const scheduleDate = selectedDate || tempScheduledDate;
+    if (!scheduleDate || !user) return;
 
     setIsLoading(true);
+    setTempScheduledDate(scheduleDate); // Update state for backward compatibility
     onClose();
 
     // Use JSON for requests without file uploads (better Vercel compatibility)
@@ -910,7 +912,7 @@ export const ComposeContent = () => {
         });
 
         formData.append("networks", JSON.stringify(networks));
-        formData.append("scheduledDate", tempScheduledDate.toISOString());
+        formData.append("scheduledDate", scheduleDate.toISOString());
 
         // Add post settings (Phase 4)
         formData.append("postSettings", JSON.stringify(postSettings));
@@ -935,7 +937,7 @@ export const ComposeContent = () => {
             workspaceId: activeWorkspace.id,
             mediaUrl: mediaPreviews.length > 0 ? mediaPreviews.map(p => p.dataUrl).filter(url => url.startsWith('http')) : null,
             networks: JSON.stringify(networks),
-            scheduledDate: tempScheduledDate.toISOString(),
+            scheduledDate: scheduleDate.toISOString(),
             postSettings: postSettings, // Phase 4
             // If editing a scheduled post, include the postId
             ...(isEditingScheduledPost && currentDraftId && { postId: currentDraftId })
@@ -961,7 +963,7 @@ export const ComposeContent = () => {
           title: isEditingScheduledPost ? "Post updated!" : "Post scheduled!",
           description: isEditingScheduledPost
             ? "Your changes have been saved and the post is awaiting approval"
-            : `Your post will be published on ${tempScheduledDate.toLocaleString()}`,
+            : `Your post will be published on ${scheduleDate.toLocaleString()}`,
           status: "success",
           duration: 4000,
           isClosable: true
