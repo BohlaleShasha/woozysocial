@@ -153,14 +153,14 @@
 }
 
 .calendar-day.selected {
-  background: #111827;
+  background: #7c3aed;
   color: #ffffff;
-  border-color: #111827;
+  border-color: #7c3aed;
 }
 
 .calendar-day.selected:hover {
-  background: #1f2937;
-  border-color: #1f2937;
+  background: #6d28d9;
+  border-color: #6d28d9;
 }
 
 .calendar-day.other-month {
@@ -426,9 +426,9 @@
 }
 
 .btn-primary {
-  background: #111827 !important;
+  background: #7c3aed !important;
   color: #ffffff !important;
-  border: 1px solid #111827 !important;
+  border: 1px solid #7c3aed !important;
   border-radius: 8px !important;
   padding: 10px 20px !important;
   font-size: 14px !important;
@@ -438,9 +438,9 @@
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #1f2937 !important;
-  border-color: #1f2937 !important;
-  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.2) !important;
+  background: #6d28d9 !important;
+  border-color: #6d28d9 !important;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.2) !important;
 }
 
 .btn-primary:disabled {

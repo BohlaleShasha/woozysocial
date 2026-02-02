@@ -889,6 +889,12 @@ export const ComposeContent = () => {
     const scheduleDate = selectedDate || tempScheduledDate;
     if (!scheduleDate || !user) return;
 
+    // Clear autosave timer immediately to prevent "draft save failed" error after form reset
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
+
     setIsLoading(true);
     setTempScheduledDate(scheduleDate); // Update state for backward compatibility
     onClose();
