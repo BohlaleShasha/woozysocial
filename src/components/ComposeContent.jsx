@@ -19,6 +19,7 @@ import { CommentThread } from "./comments/CommentThread";
 import { CommentInput } from "./comments/CommentInput";
 import { MediaUploadModal } from "./compose/MediaUploadModal";
 import { PostSettings } from "./compose/PostSettings";
+import { ScheduleModal } from "./compose/ScheduleModal";
 import { InstagramPreview } from "./compose/previews/InstagramPreview";
 import { TwitterPreview } from "./compose/previews/TwitterPreview";
 import { FacebookPreview } from "./compose/previews/FacebookPreview";
@@ -2337,159 +2338,15 @@ export const ComposeContent = () => {
         </div>
       )}
 
-      {/* Schedule Modal */}
-      <Modal isOpen={isOpen} onClose={handleCancelSchedule} size="xl">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Schedule Post</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '20px' }}>
-              {/* Left: Date/Time Picker */}
-              <div>
-                <DatePicker
-                  selected={tempScheduledDate}
-                  onChange={handleDateSelect}
-                  showTimeSelect
-                  timeIntervals={15}
-                  dateFormat="Pp"
-                  minDate={new Date()}
-                  inline
-                />
-                {tempScheduledDate && (
-                  <div style={{
-                    marginTop: '20px',
-                    padding: '15px',
-                    backgroundColor: '#f0f4ff',
-                    borderRadius: '8px',
-                    border: '1px solid #6465f1'
-                  }}>
-                    <strong>Selected Date & Time:</strong>
-                    <div style={{ marginTop: '8px', fontSize: '16px', color: '#6465f1' }}>
-                      {formatDateInTimezone(tempScheduledDate, activeWorkspace?.timezone || 'UTC')}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Right: Best Times Visualization */}
-              <div style={{
-                borderLeft: '1px solid #e5e7eb',
-                paddingLeft: '20px'
-              }}>
-                <div style={{
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  marginBottom: '12px',
-                  color: '#374151'
-                }}>
-                  Best Times to Post
-                </div>
-                <div style={{
-                  fontSize: '12px',
-                  color: '#6b7280',
-                  marginBottom: '16px'
-                }}>
-                  {hasRealData ? 'Based on your analytics' : 'Industry averages'}
-                </div>
-
-                {/* Top 5 Best Times as Clickable Cards */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {bestTimes.slice(0, 5).map((time, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() => handleQuickSelectBestTime(time)}
-                      style={{
-                        padding: '12px',
-                        backgroundColor: idx === 0 ? '#ddd6fe' : '#f3f4f6',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        border: '2px solid transparent',
-                        position: 'relative'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateX(4px)';
-                        e.currentTarget.style.borderColor = idx === 0 ? '#7c3aed' : '#d1d5db';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateX(0)';
-                        e.currentTarget.style.borderColor = 'transparent';
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{
-                          fontWeight: '600',
-                          color: idx === 0 ? '#7c3aed' : '#6b7280',
-                          fontSize: '12px',
-                          minWidth: '20px'
-                        }}>
-                          #{idx + 1}
-                        </span>
-                        <div style={{ flex: 1 }}>
-                          <div style={{
-                            fontSize: '13px',
-                            fontWeight: '600',
-                            color: '#1f2937'
-                          }}>
-                            {time.day} at {time.time}
-                          </div>
-                          {time.avgEngagement && (
-                            <div style={{
-                              fontSize: '11px',
-                              color: '#6b7280',
-                              marginTop: '2px'
-                            }}>
-                              Avg {time.avgEngagement} engagements
-                            </div>
-                          )}
-                        </div>
-                        <div style={{
-                          width: '40px',
-                          height: '6px',
-                          backgroundColor: '#e5e7eb',
-                          borderRadius: '3px',
-                          overflow: 'hidden'
-                        }}>
-                          <div style={{
-                            width: `${time.score}%`,
-                            height: '100%',
-                            backgroundColor: idx === 0 ? '#7c3aed' : '#10b981',
-                            transition: 'width 0.3s'
-                          }}></div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {bestTimes.length === 0 && (
-                  <div style={{
-                    padding: '20px',
-                    textAlign: 'center',
-                    color: '#9ca3af',
-                    fontSize: '13px'
-                  }}>
-                    Loading best times...
-                  </div>
-                )}
-              </div>
-            </div>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="ghost" onClick={handleCancelSchedule} mr={3}>
-              Cancel
-            </Button>
-            <Button
-              colorScheme="blue"
-              onClick={handleConfirmSchedule}
-              isDisabled={!tempScheduledDate}
-            >
-              Confirm Schedule
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+      {/* Schedule Modal - New Geist UI Design */}
+      <ScheduleModal
+        isOpen={isOpen}
+        onClose={handleCancelSchedule}
+        onConfirm={handleConfirmSchedule}
+        timezone={activeWorkspace?.timezone || 'UTC'}
+        bestTimes={bestTimes}
+        hasRealData={hasRealData}
+      />
 
       {/* AI Generation Modal */}
       <Modal isOpen={isAiOpen} onClose={onAiClose} size="xl">

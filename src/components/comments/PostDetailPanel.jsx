@@ -7,6 +7,7 @@ import { AnalyticsSection } from '../analytics/AnalyticsSection';
 import { useWorkspace } from '../../contexts/WorkspaceContext';
 import { useNavigate } from 'react-router-dom';
 import { DeleteConfirmationModal } from '../modals/DeleteConfirmationModal';
+import { useInvalidateQueries } from '../../hooks/useQueries';
 import { baseURL } from '../../utils/constants';
 import './PostDetailPanel.css';
 
@@ -42,6 +43,7 @@ export const PostDetailPanel = ({
 }) => {
   const { workspaceMembership, activeWorkspace } = useWorkspace();
   const navigate = useNavigate();
+  const { invalidatePosts } = useInvalidateQueries();
   const canApprove = ['owner', 'admin', 'client'].includes(workspaceMembership?.role);
   const canDelete = ['owner', 'admin'].includes(workspaceMembership?.role);
 
@@ -131,8 +133,8 @@ export const PostDetailPanel = ({
           onDelete(postToDelete.id);
         }
 
-        // Refresh the page or update the list
-        window.location.reload(); // Simple approach - could be improved with state management
+        // Invalidate cache to refresh the post list
+        invalidatePosts(activeWorkspace.id);
       } else {
         // Error from API - show detailed error and DON'T close modal
         const errorMsg = data.data?.message || data.error || 'Failed to delete post';

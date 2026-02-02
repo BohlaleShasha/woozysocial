@@ -6,7 +6,8 @@ const {
   sendSuccess,
   sendError,
   logError,
-  isValidUUID
+  isValidUUID,
+  invalidateWorkspaceCache
 } = require("../../_utils");
 
 const BASE_AYRSHARE = "https://api.ayrshare.com/api";
@@ -70,6 +71,10 @@ module.exports = async function handler(req, res) {
       );
 
       if (response.data && response.data.status === 'success') {
+        // Invalidate cache after successful comment deletion
+        await invalidateWorkspaceCache(workspaceId);
+        console.log('[DELETE COMMENT] Cache invalidated for workspace:', workspaceId);
+
         return sendSuccess(res, {
           success: true,
           commentId: commentId,

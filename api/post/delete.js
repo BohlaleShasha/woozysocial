@@ -8,7 +8,8 @@ const {
   sendError,
   logError,
   isValidUUID,
-  parseBody
+  parseBody,
+  invalidateWorkspaceCache
 } = require("../_utils");
 
 const BASE_AYRSHARE = "https://api.ayrshare.com/api";
@@ -174,6 +175,10 @@ module.exports = async function handler(req, res) {
     const success = ayrshareDeleted && (!deleteFromDatabase || databaseDeleted);
 
     if (success) {
+      // Invalidate cache after successful deletion
+      await invalidateWorkspaceCache(workspaceId);
+      console.log('[DELETE POST] Cache invalidated for workspace:', workspaceId);
+
       return sendSuccess(res, {
         success: true,
         message: "Post deleted successfully",

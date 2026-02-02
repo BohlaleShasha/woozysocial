@@ -140,12 +140,20 @@ module.exports = async function handler(req, res) {
 
     // Merge: Supabase posts (pending/not in Ayrshare) + Ayrshare history
     const ayrPostIds = new Set(ayrshareHistory.map(p => p.id));
-    const pendingPosts = supabasePosts.filter(p =>
-      p.approval_status === 'pending' ||
-      p.approval_status === 'rejected' ||
-      !p.ayr_post_id ||
-      !ayrPostIds.has(p.ayr_post_id)
-    );
+
+    // Include posts from database if:
+    // 1. Pending/rejected approval
+    // 2. No ayr_post_id yet (not sent to Ayrshare)
+    // 3. Not in Ayrshare history yet (may be recently posted)
+    // 4. Posted within last 24 hours (ensure recent activity shows even if Ayrshare is delayed)
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const pendingPosts = supabasePosts.filter(p => {
+      const isRecent = p.created_at && new Date(p.created_at) > oneDayAgo;
+      const notInAyrshare = !p.ayr_post_id || !ayrPostIds.has(p.ayr_post_id);
+      const needsAttention = p.approval_status === 'pending' || p.approval_status === 'rejected';
+
+      return needsAttention || notInAyrshare || isRecent;
+    });
 
     // Enrich Ayrshare posts with approval status from DB
     const enrichedAyrshare = ayrshareHistory.map(ayrPost => {
