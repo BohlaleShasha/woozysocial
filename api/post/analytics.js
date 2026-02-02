@@ -2,6 +2,7 @@ const axios = require("axios");
 const {
   setCors,
   getWorkspaceProfileKey,
+  getSupabase,
   ErrorCodes,
   sendSuccess,
   sendError,
@@ -58,12 +59,27 @@ module.exports = async function handler(req, res) {
 
     console.log('[ANALYTICS] Fetching analytics for post:', { postId, workspaceId });
 
+    // Get Supabase client
+    const supabase = getSupabase();
+
+    // Try to get post from database first
+    let post = null;
+    if (supabase) {
+      const { data } = await supabase
+        .from('posts')
+        .select('id, analytics, analytics_updated_at, platforms')
+        .eq('ayr_post_id', postId)
+        .eq('workspace_id', workspaceId)
+        .single();
+
+      post = data;
+    }
+
     // Fetch analytics from Ayrshare
     try {
       const response = await axios.get(
-        `${BASE_AYRSHARE}/analytics/post`,
+        `${BASE_AYRSHARE}/analytics/post/${postId}`,
         {
-          params: { id: postId },
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${process.env.AYRSHARE_API_KEY}`,
@@ -83,6 +99,17 @@ module.exports = async function handler(req, res) {
 
       console.log('[ANALYTICS] Raw Ayrshare response:', JSON.stringify(response.data, null, 2));
 
+      // Save raw analytics to database
+      if (supabase && post) {
+        await supabase
+          .from('posts')
+          .update({
+            analytics: response.data,
+            analytics_updated_at: new Date().toISOString()
+          })
+          .eq('id', post.id);
+      }
+
       // Normalize the analytics data
       const normalizedData = normalizeAnalytics(response.data, postId);
 
@@ -97,6 +124,13 @@ module.exports = async function handler(req, res) {
         data: responseData,
         message: ayrshareError.message
       });
+
+      // Try to fall back to cached analytics from database
+      if (post && post.analytics && Object.keys(post.analytics).length > 0) {
+        console.log('[ANALYTICS] Falling back to cached analytics from database');
+        const normalizedData = normalizeAnalytics(post.analytics, postId);
+        return sendSuccess(res, normalizedData);
+      }
 
       // Handle specific error cases
       if (statusCode === 404) {
