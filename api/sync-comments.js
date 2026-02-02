@@ -71,9 +71,10 @@ module.exports = async function handler(req, res) {
 
     // Fetch comments from Ayrshare
     let ayrshareComments = [];
+    let responsePlatform = 'unknown';
     try {
       const response = await axios.get(
-        `${BASE_AYRSHARE}/comments/${postId}`,
+        `${BASE_AYRSHARE}/comments/post/${postId}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -86,7 +87,8 @@ module.exports = async function handler(req, res) {
 
       if (response.data) {
         ayrshareComments = response.data.comments || response.data.data || [];
-        console.log(`[SYNC-COMMENTS] Fetched ${ayrshareComments.length} comments from Ayrshare`);
+        responsePlatform = response.data.platform || 'unknown';
+        console.log(`[SYNC-COMMENTS] Fetched ${ayrshareComments.length} comments from Ayrshare for platform ${responsePlatform}`);
       }
     } catch (ayrshareError) {
       if (ayrshareError.response?.status === 404) {
@@ -113,7 +115,7 @@ module.exports = async function handler(req, res) {
     for (const comment of ayrshareComments) {
       const commentId = comment.id || comment.comment_id;
       const commentText = comment.message || comment.text || comment.comment;
-      const platform = comment.platform || response.data?.platform || 'unknown';
+      const platform = comment.platform || responsePlatform;
       const authorUsername = comment.from?.name || comment.author_name || comment.username || 'Unknown';
       const authorProfileUrl = comment.from?.profile_url || comment.author_profile_url;
       const createdAt = comment.created_time || comment.timestamp || comment.created_at || new Date().toISOString();

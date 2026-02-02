@@ -107,7 +107,7 @@ module.exports = async function handler(req, res) {
       if (profileKey) {
         try {
           const response = await axios.get(
-            `${BASE_AYRSHARE}/comments/${postId}`,
+            `${BASE_AYRSHARE}/comments/post/${postId}`,
             {
               headers: {
                 "Content-Type": "application/json",
@@ -120,7 +120,8 @@ module.exports = async function handler(req, res) {
 
           if (response.data) {
             const ayrshareComments = response.data.comments || response.data.data || [];
-            console.log(`[COMMENTS] Fetched ${ayrshareComments.length} comments from Ayrshare`);
+            const responsePlatform = response.data.platform || 'unknown';
+            console.log(`[COMMENTS] Fetched ${ayrshareComments.length} comments from Ayrshare for platform ${responsePlatform}`);
 
             // TODO: Sync Ayrshare comments to database
             // For now, just return Ayrshare comments
