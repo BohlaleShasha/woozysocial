@@ -211,25 +211,39 @@ ${selectedPlatformGuidelines || 'Create versatile content optimized for engageme
 ═══════════════════════════════════════
 
 ═══ WRITING STYLE: HUMAN & AUTHENTIC ═══
-NEVER use these AI/corporate phrases:
-- "Excited to announce" / "Thrilled to share"
-- "In today's fast-paced world"
-- "Let's dive in" / "Here's the thing"
-- "Game-changer" / "Take it to the next level"
-- "Unlock" / "Leverage" / "Synergy"
-- "Journey" (unless literal travel)
-- "At the end of the day"
-- Starting with "So," or "Well,"
-- Excessive exclamation marks!!!
+BANNED WORDS AND PHRASES (never use):
+- "Excited to announce" / "Thrilled to share" / "Proud to"
+- "In today's fast-paced world" / "In this day and age"
+- "Let's dive in" / "Here's the thing" / "Let me explain"
+- "Game-changer" / "Take it to the next level" / "Next level"
+- "Unlock" / "Leverage" / "Synergy" / "Optimize" / "Maximize"
+- "Journey" / "Transform" / "Empower" / "Elevate"
+- "At the end of the day" / "Moving forward" / "Going forward"
+- "Actionable" / "Impactful" / "Robust" / "Seamless"
+- "Passionate about" / "Dedicated to" / "Committed to"
+- Starting with "So," or "Well," or "Look,"
+- "Don't miss out" / "Act now" / "Limited time"
+- Excessive punctuation!!! or ALL CAPS for emphasis
 
-INSTEAD, write like a real person:
-- Use casual contractions (I'm, you're, it's, don't)
-- Write how people actually talk
-- Be specific, not generic
-- Share real observations, not motivational fluff
-- Use simple words over fancy ones
-- Have a point of view - don't be neutral/generic
-- Sound like a friend texting, not a press release
+USE THESE NATURAL ALTERNATIVES:
+- Instead of "excited" -> just state the thing directly
+- Instead of "leverage" -> "use"
+- Instead of "optimize" -> "improve" or "fix"
+- Instead of "journey" -> "process" or just describe what happened
+- Instead of "transform" -> "change" or "switch"
+- Instead of "empower" -> "help" or "let"
+- Instead of "seamless" -> "easy" or "smooth"
+- Instead of "robust" -> "solid" or "strong"
+- Instead of "impactful" -> describe the actual impact
+
+WRITE LIKE A REAL PERSON:
+- Use contractions naturally (I'm, you're, it's, don't, can't, won't)
+- Write the way people actually text their friends
+- Be specific with details, not vague and generic
+- Share observations, not motivational platitudes
+- Pick simple words over impressive-sounding ones
+- Have an actual opinion - don't sit on the fence
+- Sound like you're talking to one person, not broadcasting
 ═══════════════════════════════════════
 
 ═══ YOUR TASK ═══
@@ -256,7 +270,7 @@ FORMAT: Number each variation 1., 2., 3. with the full post text ready to use.`;
     model: 'gpt-4o',  // Upgraded from gpt-4o-mini for better quality
     messages: [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: `Create 3 high-performing social media posts about: ${prompt}\n\nMake them ready to copy and paste immediately. No placeholders.` }
+      { role: 'user', content: `Create 3 social media posts about: ${prompt}\n\nWrite naturally like a real person would. Avoid corporate buzzwords. No placeholders - ready to post.` }
     ],
     temperature: 0.85,  // Slightly higher for more creativity
     max_tokens: 1500    // More tokens for detailed responses
