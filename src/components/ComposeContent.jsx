@@ -75,6 +75,7 @@ export const ComposeContent = () => {
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isOpen: isAiOpen, onOpen: onAiOpen, onClose: onAiClose } = useDisclosure();
+  const [mediaWarnings, setMediaWarnings] = useState([]);
   const [engagementScore, setEngagementScore] = useState(0);
   const [bestPostingTime, setBestPostingTime] = useState("2:00 PM");
   const [hasRealData, setHasRealData] = useState(false);
@@ -120,6 +121,66 @@ export const ComposeContent = () => {
       username: account?.username || profile?.business_name || 'your_username',
       profilePicture: account?.profilePicture || null
     };
+  };
+
+  // Helper to get video dimensions from a File
+  const getVideoDimensions = (file) => {
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.onloadedmetadata = () => {
+        URL.revokeObjectURL(video.src);
+        resolve({ width: video.videoWidth, height: video.videoHeight, duration: video.duration });
+      };
+      video.onerror = () => {
+        resolve({ width: 0, height: 0, duration: 0 });
+      };
+      video.src = URL.createObjectURL(file);
+    });
+  };
+
+  // Validate video for platform requirements
+  const validateVideoForPlatforms = async (file) => {
+    const warnings = [];
+    const { width, height, duration } = await getVideoDimensions(file);
+    const fileSizeMB = file.size / (1024 * 1024);
+
+    // Platform requirements
+    const requirements = {
+      tiktok: { minWidth: 360, minHeight: 360, maxWidth: 4096, maxHeight: 4096, maxDuration: 180, maxSizeMB: 287 },
+      instagram: { minWidth: 320, minHeight: 320, maxWidth: 1920, maxHeight: 1920, maxDuration: 90, maxSizeMB: 100 },
+      facebook: { minWidth: 120, minHeight: 120, maxDuration: 240, maxSizeMB: 4096 },
+      youtube: { minWidth: 426, minHeight: 240, maxDuration: 43200, maxSizeMB: 256000 },
+      pinterest: { minWidth: 360, minHeight: 360, maxDuration: 900, maxSizeMB: 2048, requiresThumbnail: true },
+      linkedin: { minWidth: 256, minHeight: 144, maxDuration: 600, maxSizeMB: 5120 },
+      twitter: { minWidth: 32, minHeight: 32, maxDuration: 140, maxSizeMB: 512 }
+    };
+
+    for (const [platform, req] of Object.entries(requirements)) {
+      const issues = [];
+
+      if (width < req.minWidth || height < req.minHeight) {
+        issues.push(`too small (${width}x${height}px, needs ${req.minWidth}x${req.minHeight}px min)`);
+      }
+      if (req.maxWidth && (width > req.maxWidth || height > req.maxHeight)) {
+        issues.push(`too large (${width}x${height}px, max ${req.maxWidth}x${req.maxHeight}px)`);
+      }
+      if (duration > req.maxDuration) {
+        issues.push(`too long (${Math.round(duration)}s, max ${req.maxDuration}s)`);
+      }
+      if (fileSizeMB > req.maxSizeMB) {
+        issues.push(`file too big (${fileSizeMB.toFixed(1)}MB, max ${req.maxSizeMB}MB)`);
+      }
+      if (req.requiresThumbnail) {
+        issues.push(`requires thumbnail image`);
+      }
+
+      if (issues.length > 0) {
+        warnings.push({ platform, issues, width, height, duration: Math.round(duration), sizeMB: fileSizeMB.toFixed(1) });
+      }
+    }
+
+    return { width, height, duration, fileSizeMB, warnings };
   };
 
   // Progress countdown effect - makes the timer feel realistic
@@ -645,6 +706,32 @@ export const ComposeContent = () => {
     setIsLoading(true);
 
     try {
+      // Validate video files
+      const videoFiles = files.filter(f => f.type.startsWith('video/'));
+      let allWarnings = [];
+
+      for (const videoFile of videoFiles) {
+        const validation = await validateVideoForPlatforms(videoFile);
+        if (validation.warnings.length > 0) {
+          allWarnings = [...allWarnings, ...validation.warnings];
+        }
+      }
+
+      // Store warnings for display
+      setMediaWarnings(allWarnings);
+
+      // Show warning toast if there are issues
+      if (allWarnings.length > 0) {
+        const affectedPlatforms = [...new Set(allWarnings.map(w => w.platform))];
+        toast({
+          title: "Video may not work on some platforms",
+          description: `Issues detected for: ${affectedPlatforms.join(', ')}. Check the warning below the media.`,
+          status: "warning",
+          duration: 5000,
+          isClosable: true
+        });
+      }
+
       // Get current files and previews
       const currentFiles = Array.isArray(post.media) ? post.media : [];
       const currentPreviews = mediaPreviews || [];
@@ -702,17 +789,25 @@ export const ComposeContent = () => {
     const mediaIndex = mediaPreviews.findIndex(p => p.id === mediaId);
     if (mediaIndex === -1) return;
 
-    setMediaPreviews(prev => prev.filter(p => p.id !== mediaId));
+    const newPreviews = mediaPreviews.filter(p => p.id !== mediaId);
+    setMediaPreviews(newPreviews);
     setPost(prev => ({
       ...prev,
       media: prev.media.filter((_, idx) => idx !== mediaIndex)
     }));
+
+    // Clear warnings if no videos left
+    const hasVideosLeft = newPreviews.some(p => p.type === 'video');
+    if (!hasVideosLeft) {
+      setMediaWarnings([]);
+    }
   };
 
   // Clear all media
   const handleClearAllMedia = () => {
     setPost({ ...post, media: [] });
     setMediaPreviews([]);
+    setMediaWarnings([]);
   };
 
   const handleNetworkToggle = useCallback((networkName, isLinked) => {
@@ -1616,6 +1711,24 @@ export const ComposeContent = () => {
                     <span style={{ fontSize: '12px', fontWeight: 600 }}>Add more</span>
                   </button>
                 </div>
+
+                {/* Video validation warnings */}
+                {mediaWarnings.length > 0 && (
+                  <div className="media-warnings">
+                    <div className="warning-header">
+                      <span className="warning-icon">⚠️</span>
+                      <span>Video may not work on these platforms:</span>
+                    </div>
+                    <ul className="warning-list">
+                      {mediaWarnings.map((warning, idx) => (
+                        <li key={idx} className="warning-item">
+                          <strong style={{ textTransform: 'capitalize' }}>{warning.platform}:</strong>{' '}
+                          {warning.issues.join(', ')}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
 
