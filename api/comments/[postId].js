@@ -107,7 +107,7 @@ module.exports = async function handler(req, res) {
       if (profileKey) {
         try {
           const response = await axios.get(
-            `${BASE_AYRSHARE}/comments/post/${postId}`,
+            `${BASE_AYRSHARE}/comments/${postId}`,
             {
               headers: {
                 "Content-Type": "application/json",
