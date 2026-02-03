@@ -78,7 +78,7 @@ async function sendToAyrshare(post, profileKey) {
   return response.data;
 }
 
-const VALID_ACTIONS = ['approve', 'reject', 'changes_requested'];
+const VALID_ACTIONS = ['approve', 'reject', 'changes_requested', 'mark_resolved'];
 
 module.exports = async function handler(req, res) {
   setCors(res);
@@ -180,7 +180,8 @@ module.exports = async function handler(req, res) {
       const statusMap = {
         'approve': 'approved',
         'reject': 'rejected',
-        'changes_requested': 'changes_requested'
+        'changes_requested': 'changes_requested',
+        'mark_resolved': 'pending' // Transitions back to pending for re-approval
       };
       const newStatus = statusMap[action];
 
@@ -331,7 +332,14 @@ module.exports = async function handler(req, res) {
       }
 
       // Add system comment if provided or create default one
-      const systemComment = comment || `Post ${action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'marked for changes'}`;
+      const systemComment = comment ||
+        `Post ${
+          action === 'approve' ? 'approved' :
+          action === 'reject' ? 'rejected' :
+          action === 'changes_requested' ? 'marked for changes' :
+          action === 'mark_resolved' ? 'changes resolved - ready for re-approval' :
+          action
+        }`;
 
       // Get user info for the comment
       const { data: userProfile } = await supabase
@@ -355,7 +363,8 @@ module.exports = async function handler(req, res) {
       const actionMessages = {
         'approve': 'approved',
         'reject': 'rejected',
-        'changes_requested': 'marked for changes'
+        'changes_requested': 'marked for changes',
+        'mark_resolved': 'marked as resolved and sent for re-approval'
       };
 
       // Send notification to post creator (non-blocking)

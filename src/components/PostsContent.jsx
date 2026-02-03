@@ -39,6 +39,7 @@ export const PostsContent = () => {
 
   // Map tab to status for posts query
   const statusMap = {
+    pending: "pending_approval", // NEW: For pending tab
     scheduled: "scheduled",
     history: "posted",
     failed: "failed"
@@ -53,7 +54,18 @@ export const PostsContent = () => {
     enabled: activeTab === "drafts"
   });
 
-  // Use React Query for posts (scheduled, history, failed) - only fetch when NOT on drafts tab
+  // Use React Query for pending approval posts - only fetch when on pending tab
+  const {
+    data: pendingPosts = [],
+    isLoading: pendingLoading,
+    refetch: refetchPending
+  } = usePosts(activeWorkspace?.id, user?.id, {
+    approvalStatus: ['pending', 'changes_requested'],
+    limit: 100,
+    enabled: activeTab === "pending"
+  });
+
+  // Use React Query for posts (scheduled, history, failed) - only fetch when NOT on drafts or pending tab
   const {
     data: postsData = [],
     isLoading: postsLoading,
@@ -61,18 +73,28 @@ export const PostsContent = () => {
   } = usePosts(activeWorkspace?.id, user?.id, {
     status: statusMap[activeTab],
     limit: 100,
-    enabled: activeTab !== "drafts"
+    enabled: activeTab !== "drafts" && activeTab !== "pending"
   });
 
   // Get current posts based on active tab
-  const posts = activeTab === "drafts" ? drafts : postsData;
-  const loading = activeTab === "drafts" ? draftsLoading : postsLoading;
+  const posts = activeTab === "drafts"
+    ? drafts
+    : activeTab === "pending"
+      ? pendingPosts
+      : postsData;
+  const loading = activeTab === "drafts"
+    ? draftsLoading
+    : activeTab === "pending"
+      ? pendingLoading
+      : postsLoading;
 
   // Refresh function
   const handleRefresh = () => {
     invalidatePosts(activeWorkspace?.id);
     if (activeTab === "drafts") {
       refetchDrafts();
+    } else if (activeTab === "pending") {
+      refetchPending();
     } else {
       refetchPosts();
     }
@@ -255,6 +277,12 @@ export const PostsContent = () => {
             Drafts
           </button>
           <button
+            className={`posts-tab ${activeTab === "pending" ? "active" : ""}`}
+            onClick={() => setActiveTab("pending")}
+          >
+            Pending
+          </button>
+          <button
             className={`posts-tab ${activeTab === "scheduled" ? "active" : ""}`}
             onClick={() => setActiveTab("scheduled")}
           >
@@ -306,20 +334,20 @@ export const PostsContent = () => {
             filteredPosts.map((post, idx) => (
               <div
                 key={post.id || idx}
-                className={`posts-table-row ${(activeTab === 'drafts' || activeTab === 'scheduled') ? 'clickable' : ''}`}
+                className={`posts-table-row ${(activeTab === 'drafts' || activeTab === 'scheduled' || activeTab === 'pending') ? 'clickable' : ''}`}
                 onClick={() => {
-                  if (activeTab === 'drafts' || activeTab === 'scheduled') {
+                  if (activeTab === 'drafts' || activeTab === 'scheduled' || activeTab === 'pending') {
                     // Normalize post structure for PostDetailPanel
                     const normalizedPost = {
                       ...post,
                       workspace_id: activeWorkspace.id,
                       // Add status if missing (for drafts)
-                      status: post.status || (activeTab === 'drafts' ? 'draft' : 'scheduled')
+                      status: post.status || (activeTab === 'drafts' ? 'draft' : activeTab === 'pending' ? 'pending_approval' : 'scheduled')
                     };
                     setSelectedPost(normalizedPost);
                   }
                 }}
-                style={{ cursor: (activeTab === 'drafts' || activeTab === 'scheduled') ? 'pointer' : 'default' }}
+                style={{ cursor: (activeTab === 'drafts' || activeTab === 'scheduled' || activeTab === 'pending') ? 'pointer' : 'default' }}
               >
                 <div className="posts-checkbox-col">
                   {activeTab === 'drafts' ? (
@@ -351,7 +379,24 @@ export const PostsContent = () => {
                   )}
                 </div>
                 <div className="posts-date-col">
-                  {formatTableDateTime(post.scheduleDate || post.scheduled_date || post.created_at || post.postDate)}
+                  <div>{formatTableDateTime(post.scheduleDate || post.scheduled_date || post.created_at || post.postDate)}</div>
+                  {activeTab === "pending" && post.approval_status && (
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        marginTop: '4px',
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        textTransform: 'uppercase',
+                        backgroundColor: post.approval_status === 'changes_requested' ? '#f59e0b' : '#afabf9',
+                        color: post.approval_status === 'changes_requested' ? '#FFFFFF' : '#114C5A'
+                      }}
+                    >
+                      {post.approval_status === 'changes_requested' ? 'Changes Requested' : 'Pending Approval'}
+                    </span>
+                  )}
                 </div>
                 <div className="posts-content-col">
                   <div className="post-content-preview">

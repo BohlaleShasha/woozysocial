@@ -8,6 +8,13 @@ import { SiX, SiBluesky } from 'react-icons/si';
 import { CommentThread } from '../comments/CommentThread';
 import { CommentInput } from '../comments/CommentInput';
 import { baseURL } from '../../utils/constants';
+import { useConnectedAccounts } from '../../hooks/useQueries';
+import { InstagramPreview } from '../compose/previews/InstagramPreview';
+import { TwitterPreview } from '../compose/previews/TwitterPreview';
+import { FacebookPreview } from '../compose/previews/FacebookPreview';
+import { LinkedInPreview } from '../compose/previews/LinkedInPreview';
+import { TikTokPreview } from '../compose/previews/TikTokPreview';
+import { ThreadsPreview } from '../compose/previews/ThreadsPreview';
 import './CalendarPostModal.css';
 
 const PLATFORM_ICONS = {
@@ -46,6 +53,38 @@ export const CalendarPostModal = ({ posts, selectedDate, currentPostIndex, onClo
 
   const currentPost = posts[currentIndex];
 
+  // Fetch connected accounts for preview data
+  const { data: connectedAccounts } = useConnectedAccounts(activeWorkspace?.id, user?.id);
+
+  // Helper to get account info for a specific platform
+  const getAccountInfo = (platform) => {
+    if (!connectedAccounts) return null;
+
+    const platformMap = {
+      'instagram': 'instagram',
+      'facebook': 'facebook',
+      'twitter': 'twitter',
+      'x/twitter': 'twitter',
+      'linkedin': 'linkedin',
+      'tiktok': 'tiktok',
+      'threads': 'threads'
+    };
+
+    const mappedPlatform = platformMap[platform.toLowerCase()] || platform.toLowerCase();
+    const account = connectedAccounts.find(
+      acc => acc.platform?.toLowerCase() === mappedPlatform
+    );
+
+    if (!account) return null;
+
+    return {
+      username: account.username || account.platform_username || 'user',
+      displayName: account.name || account.display_name || account.username || 'User',
+      profilePicture: account.profile_picture || account.profile_image_url,
+      verified: account.verified || false
+    };
+  };
+
   // Handle keyboard navigation
   useEffect(() => {
     const handleKeyPress = (e) => {
@@ -71,6 +110,85 @@ export const CalendarPostModal = ({ posts, selectedDate, currentPostIndex, onClo
       document.body.style.overflow = 'unset';
     };
   }, []);
+
+  // Render preview for a specific platform
+  const renderPreview = (platform) => {
+    if (!currentPost) return null;
+
+    const postData = {
+      text: currentPost.caption || currentPost.post || ''
+    };
+
+    const mediaPreviews = (currentPost.media_urls || [currentPost.media_url])
+      .filter(Boolean)
+      .map(url => ({
+        dataUrl: url,
+        type: url?.match(/\.(mp4|mov|webm|avi)$/i) ? 'video' : 'image'
+      }));
+
+    const accountInfo = getAccountInfo(platform);
+    const platformLower = platform.toLowerCase();
+
+    switch (platformLower) {
+      case 'instagram':
+        return (
+          <InstagramPreview
+            post={postData}
+            mediaPreviews={mediaPreviews}
+            accountInfo={accountInfo}
+          />
+        );
+
+      case 'facebook':
+        return (
+          <FacebookPreview
+            post={postData}
+            mediaPreviews={mediaPreviews}
+            accountInfo={accountInfo}
+          />
+        );
+
+      case 'twitter':
+      case 'x/twitter':
+        return (
+          <TwitterPreview
+            post={postData}
+            mediaPreviews={mediaPreviews}
+            accountInfo={accountInfo}
+          />
+        );
+
+      case 'linkedin':
+        return (
+          <LinkedInPreview
+            post={postData}
+            mediaPreviews={mediaPreviews}
+            accountInfo={accountInfo}
+          />
+        );
+
+      case 'tiktok':
+        return (
+          <TikTokPreview
+            post={postData}
+            mediaPreviews={mediaPreviews}
+            accountInfo={accountInfo}
+          />
+        );
+
+      case 'threads':
+        return (
+          <ThreadsPreview
+            post={postData}
+            mediaPreviews={mediaPreviews}
+            accountInfo={accountInfo}
+          />
+        );
+
+      default:
+        return null;
+    }
+  };
 
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A';
@@ -261,6 +379,26 @@ export const CalendarPostModal = ({ posts, selectedDate, currentPostIndex, onClo
           >
             {getStatusLabel(currentPost.status, currentPost.approval_status)}
           </div>
+
+          {/* Platform Previews */}
+          {currentPost.platforms && currentPost.platforms.length > 0 && (
+            <div className="modal-previews-section">
+              <label className="section-label">Platform Previews</label>
+              <div className="previews-grid">
+                {currentPost.platforms.map((platform) => (
+                  <div key={platform} className="preview-wrapper">
+                    <div className="preview-platform-label">
+                      {getPlatformIcon(platform)}
+                      <span>{platform}</span>
+                    </div>
+                    <div className="preview-container">
+                      {renderPreview(platform)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Media Preview */}
           {(currentPost.media_urls?.length > 0 || currentPost.media_url) && (

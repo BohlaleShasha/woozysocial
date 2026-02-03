@@ -69,6 +69,7 @@ export const ComposeContent = () => {
   const [selectedPreviewPlatform, setSelectedPreviewPlatform] = useState("instagram");
   const [currentDraftId, setCurrentDraftId] = useState(null);
   const [isEditingScheduledPost, setIsEditingScheduledPost] = useState(false); // Track if editing a scheduled post
+  const [approvalStatus, setApprovalStatus] = useState(null); // Track approval status
   const [lastSaved, setLastSaved] = useState(null);
   const autoSaveTimerRef = useRef(null);
   const isSavingRef = useRef(false); // Lock to prevent concurrent saves
@@ -303,6 +304,11 @@ export const ComposeContent = () => {
       setIsEditingScheduledPost(true);
     }
 
+    // Load approval status
+    if (draft.approval_status) {
+      setApprovalStatus(draft.approval_status);
+    }
+
     // Load caption
     if (draft.caption) {
       setPost(prev => ({ ...prev, text: draft.caption }));
@@ -444,35 +450,63 @@ export const ComposeContent = () => {
         }
       }
 
-      const res = await fetch(`${baseURL}/api/drafts/save`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          workspaceId: activeWorkspace.id,
-          userId: user.id,
-          draftId: currentDraftId || null,
-          caption: post.text,
-          mediaUrls: uploadedUrls,
-          platforms: selectedPlatforms,
-          scheduledDate: scheduledDate ? scheduledDate.toISOString() : null
-        })
-      });
+      // NEW: Check if editing a scheduled post
+      if (isEditingScheduledPost && currentDraftId) {
+        // Save to posts table (scheduled post) - AUTO-SAVE ONLY, no Ayrshare call
+        console.log('[Draft] Auto-saving scheduled post to posts table, id:', currentDraftId);
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "Failed to save draft");
+        const { error } = await supabase
+          .from('posts')
+          .update({
+            caption: post.text,
+            media_urls: uploadedUrls,
+            platforms: selectedPlatforms,
+            scheduled_at: scheduledDate ? scheduledDate.toISOString() : null,
+            post_settings: postSettings,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', currentDraftId)
+          .eq('workspace_id', activeWorkspace.id);
+
+        if (error) throw error;
+
+        setLastSaved(new Date());
+        console.log('[Draft] Scheduled post auto-saved successfully');
+
+        // Invalidate cache
+        invalidatePosts(activeWorkspace?.id);
+      } else {
+        // Original flow - save to post_drafts table
+        const res = await fetch(`${baseURL}/api/drafts/save`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workspaceId: activeWorkspace.id,
+            userId: user.id,
+            draftId: currentDraftId || null,
+            caption: post.text,
+            mediaUrls: uploadedUrls,
+            platforms: selectedPlatforms,
+            scheduledDate: scheduledDate ? scheduledDate.toISOString() : null
+          })
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || "Failed to save draft");
+        }
+
+        const json = await res.json();
+        if (json.data && !currentDraftId) {
+          setCurrentDraftId(json.data.id);
+        }
+
+        setLastSaved(new Date());
+        console.log("[Draft] Saved successfully, id:", json.data?.id || currentDraftId);
+
+        // Invalidate cache so Posts page shows the new/updated draft immediately
+        invalidatePosts(activeWorkspace?.id);
       }
-
-      const json = await res.json();
-      if (json.data && !currentDraftId) {
-        setCurrentDraftId(json.data.id);
-      }
-
-      setLastSaved(new Date());
-      console.log("[Draft] Saved successfully, id:", json.data?.id || currentDraftId);
-
-      // Invalidate cache so Posts page shows the new/updated draft immediately
-      invalidatePosts(activeWorkspace?.id);
     } catch (error) {
       console.error("Error saving draft:", error);
       // Show error toast so user knows draft didn't save
@@ -486,7 +520,7 @@ export const ComposeContent = () => {
     } finally {
       isSavingRef.current = false;
     }
-  }, [user, activeWorkspace?.id, post.text, mediaPreviews, networks, scheduledDate, currentDraftId, toast]);
+  }, [user, activeWorkspace?.id, post.text, mediaPreviews, networks, scheduledDate, currentDraftId, isEditingScheduledPost, postSettings, toast, supabase, invalidatePosts]);
 
   // Auto-save draft every 30 seconds when there's content
   useEffect(() => {
@@ -1270,6 +1304,199 @@ export const ComposeContent = () => {
     }
   };
 
+  // Handler for saving changes to scheduled post
+  const handleSaveScheduledPost = async () => {
+    if (!currentDraftId || !activeWorkspace?.id) {
+      toast({
+        title: "Error",
+        description: "Post ID or workspace not found",
+        status: "error",
+        duration: 3000,
+        isClosable: true
+      });
+      return;
+    }
+
+    // Validate required fields
+    const selectedPlatforms = Object.keys(networks).filter(k => networks[k]);
+    if (!post.text || selectedPlatforms.length === 0) {
+      toast({
+        title: "Missing required fields",
+        description: "Please add caption and select at least one platform",
+        status: "warning",
+        duration: 3000,
+        isClosable: true
+      });
+      return;
+    }
+
+    if (!scheduledDate) {
+      toast({
+        title: "Missing schedule date",
+        description: "Please select a date and time",
+        status: "warning",
+        duration: 3000,
+        isClosable: true
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    setPostingProgress({ step: 'saving', percent: 10, estimatedTime: 10 });
+
+    try {
+      // Upload media if needed
+      let uploadedUrls = mediaPreviews
+        .map(p => p.dataUrl)
+        .filter(url => url && url.startsWith('http'));
+
+      // Handle file uploads
+      const hasNewFiles = Array.isArray(post.media) && post.media.length > 0 && post.media[0] instanceof File;
+      if (hasNewFiles) {
+        setPostingProgress({ step: 'uploading', percent: 30, estimatedTime: 8 });
+
+        const MAX_VERCEL_SIZE = 4 * 1024 * 1024; // 4MB
+        const largeFiles = post.media.filter(f => f instanceof File && f.size > MAX_VERCEL_SIZE);
+        const smallFiles = post.media.filter(f => f instanceof File && f.size <= MAX_VERCEL_SIZE);
+
+        // Upload large files directly
+        if (largeFiles.length > 0) {
+          for (const file of largeFiles) {
+            const result = await uploadMediaDirect(file, user.id, activeWorkspace.id);
+            if (result.success && result.publicUrl) {
+              uploadedUrls.push(result.publicUrl);
+            }
+          }
+        }
+
+        // Upload small files via API
+        if (smallFiles.length > 0) {
+          const formData = new FormData();
+          formData.append("workspaceId", activeWorkspace.id);
+          formData.append("userId", user.id);
+          smallFiles.forEach((file) => {
+            formData.append("media", file);
+          });
+
+          const uploadRes = await fetch(`${baseURL}/api/drafts/upload-media`, {
+            method: "POST",
+            body: formData
+          });
+
+          if (uploadRes.ok) {
+            const uploadJson = await uploadRes.json();
+            uploadedUrls = [...uploadedUrls, ...(uploadJson.urls || [])];
+          }
+        }
+      }
+
+      // Call update endpoint
+      setPostingProgress({ step: 'updating', percent: 60, estimatedTime: 5 });
+
+      const response = await fetch(`${baseURL}/api/post/update-scheduled`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          postId: currentDraftId,
+          workspaceId: activeWorkspace.id,
+          caption: post.text,
+          mediaUrls: uploadedUrls,
+          platforms: selectedPlatforms,
+          scheduledDate: scheduledDate.toISOString(),
+          postSettings: postSettings
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update post');
+      }
+
+      setPostingProgress({ step: 'complete', percent: 100, estimatedTime: 0 });
+
+      toast({
+        title: "Post updated successfully!",
+        description: `Your post has been updated and will be published on ${scheduledDate.toLocaleString()}`,
+        status: "success",
+        duration: 5000,
+        isClosable: true
+      });
+
+      // Clear form and navigate
+      clearForm();
+      navigate('/schedule');
+
+    } catch (error) {
+      console.error('Error updating scheduled post:', error);
+
+      setPostingProgress({ step: 'idle', percent: 0, estimatedTime: 0 });
+
+      toast({
+        title: "Failed to update post",
+        description: error.message || "An error occurred while updating the post",
+        status: "error",
+        duration: 5000,
+        isClosable: true
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handler for marking changes as resolved
+  const handleMarkResolved = async () => {
+    if (!currentDraftId || !activeWorkspace?.id || !user?.id) {
+      toast({
+        title: "Error",
+        description: "Missing required information",
+        status: "error",
+        duration: 3000,
+        isClosable: true
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch(`${baseURL}/api/post/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          postId: currentDraftId,
+          workspaceId: activeWorkspace.id,
+          userId: user.id,
+          action: 'mark_resolved',
+          comment: 'Changes have been addressed and post is ready for re-approval'
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to mark as resolved');
+      }
+
+      toast({
+        title: "Changes marked as resolved",
+        description: "This post has been sent back for approval",
+        status: "success",
+        duration: 4000,
+        isClosable: true
+      });
+
+      // Navigate back to schedule page
+      navigate('/schedule');
+
+    } catch (error) {
+      console.error('Error marking as resolved:', error);
+      toast({
+        title: "Failed to mark as resolved",
+        description: error.message,
+        status: "error",
+        duration: 4000,
+        isClosable: true
+      });
+    }
+  };
+
   const handleSubmit = async () => {
     if (!user) {
       toast({
@@ -1869,22 +2096,62 @@ export const ComposeContent = () => {
                     Draft saved {new Date(lastSaved).toLocaleTimeString()}
                   </span>
                 )}
-                <button
-                  className="btn-schedule"
-                  onClick={onOpen}
-                  disabled={!canPost}
-                  style={{ opacity: !canPost ? 0.5 : 1, cursor: !canPost ? 'not-allowed' : 'pointer' }}
-                >
-                  Schedule Post
-                </button>
-                <button
-                  className="btn-post"
-                  onClick={handleSubmit}
-                  disabled={isLoading || !canPost}
-                  style={{ opacity: (!canPost || isLoading) ? 0.5 : 1, cursor: (!canPost || isLoading) ? 'not-allowed' : 'pointer' }}
-                >
-                  {isLoading ? "Posting..." : "Post Now"}
-                </button>
+                {isEditingScheduledPost ? (
+                  // When editing a scheduled post - show "Save Changes" button
+                  <>
+                    {approvalStatus === 'changes_requested' && (
+                      <button
+                        onClick={handleMarkResolved}
+                        className="btn-mark-resolved"
+                        style={{
+                          backgroundColor: '#3b82f6',
+                          color: 'white',
+                          padding: '12px 24px',
+                          borderRadius: '8px',
+                          fontWeight: '600',
+                          marginRight: '12px',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '14px'
+                        }}
+                      >
+                        ✓ Mark Changes as Resolved
+                      </button>
+                    )}
+                    <button
+                      className="btn-schedule"
+                      onClick={handleSaveScheduledPost}
+                      disabled={isLoading || !canPost}
+                      style={{
+                        opacity: (!canPost || isLoading) ? 0.5 : 1,
+                        cursor: (!canPost || isLoading) ? 'not-allowed' : 'pointer',
+                        backgroundColor: '#10b981'
+                      }}
+                    >
+                      {isLoading ? "Saving..." : "Save Changes"}
+                    </button>
+                  </>
+                ) : (
+                  // When creating new post - show normal buttons
+                  <>
+                    <button
+                      className="btn-schedule"
+                      onClick={onOpen}
+                      disabled={!canPost}
+                      style={{ opacity: !canPost ? 0.5 : 1, cursor: !canPost ? 'not-allowed' : 'pointer' }}
+                    >
+                      Schedule Post
+                    </button>
+                    <button
+                      className="btn-post"
+                      onClick={handleSubmit}
+                      disabled={isLoading || !canPost}
+                      style={{ opacity: (!canPost || isLoading) ? 0.5 : 1, cursor: (!canPost || isLoading) ? 'not-allowed' : 'pointer' }}
+                    >
+                      {isLoading ? "Posting..." : "Post Now"}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 

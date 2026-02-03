@@ -28,10 +28,10 @@ export function useConnectedAccounts(workspaceId, userId) {
 // ============================================
 
 export function usePosts(workspaceId, userId, options = {}) {
-  const { status, limit = 50, enabled = true } = options;
+  const { status, approvalStatus, limit = 50, enabled = true } = options;
 
   return useQuery({
-    queryKey: ["posts", workspaceId, status, limit],
+    queryKey: ["posts", workspaceId, status, approvalStatus, limit],
     queryFn: async () => {
       let query = supabase
         .from("posts")
@@ -42,11 +42,20 @@ export function usePosts(workspaceId, userId, options = {}) {
         query = query.eq("status", status);
       }
 
+      // NEW: Filter by approval status
+      if (approvalStatus) {
+        const statuses = Array.isArray(approvalStatus) ? approvalStatus : [approvalStatus];
+        query = query.in("approval_status", statuses);
+      }
+
       // Order by appropriate field based on status
       if (status === "scheduled") {
         query = query.order("scheduled_at", { ascending: true });
       } else if (status === "posted") {
         query = query.order("posted_at", { ascending: false });
+      } else if (approvalStatus) {
+        // For pending approvals, order by created_at (most recent first)
+        query = query.order("created_at", { ascending: false });
       } else {
         query = query.order("created_at", { ascending: false });
       }

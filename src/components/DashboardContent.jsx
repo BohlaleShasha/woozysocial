@@ -207,11 +207,31 @@ export const DashboardContent = () => {
       // Admin/owner → go to approvals page
       navigate('/approvals');
     } else if (approvalStatus === 'changes_requested') {
-      // Anyone → go to compose to edit
-      navigate(`/compose?editDraft=${post.id}`);
+      // Anyone → go to compose to edit - store data in sessionStorage
+      sessionStorage.setItem("loadDraft", JSON.stringify({
+        id: post.id,
+        caption: post.post || post.caption || post.content,
+        media_urls: post.mediaUrls || post.media_urls || (post.media_url ? [post.media_url] : []),
+        platforms: post.platforms || [],
+        scheduled_date: post.scheduleDate || post.scheduled_at || post.schedule_date,
+        workspace_id: activeWorkspace.id,
+        isEditingScheduledPost: true,
+        approval_status: 'changes_requested'
+      }));
+      navigate('/compose');
     } else if (approvalStatus === 'rejected') {
-      // Rejected → go to compose to revise
-      navigate(`/compose?editDraft=${post.id}`);
+      // Rejected → go to compose to revise - store data in sessionStorage
+      sessionStorage.setItem("loadDraft", JSON.stringify({
+        id: post.id,
+        caption: post.post || post.caption || post.content,
+        media_urls: post.mediaUrls || post.media_urls || (post.media_url ? [post.media_url] : []),
+        platforms: post.platforms || [],
+        scheduled_date: post.scheduleDate || post.scheduled_at || post.schedule_date,
+        workspace_id: activeWorkspace.id,
+        isEditingScheduledPost: true,
+        approval_status: 'rejected'
+      }));
+      navigate('/compose');
     }
     // Priority 2: Check post status
     else if (postStatus === 'scheduled') {
