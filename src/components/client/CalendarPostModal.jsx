@@ -52,9 +52,17 @@ export const CalendarPostModal = ({ posts, selectedDate, currentPostIndex, onClo
   const [submitting, setSubmitting] = useState(false);
 
   const currentPost = posts[currentIndex];
+  const [selectedPreviewPlatform, setSelectedPreviewPlatform] = useState(null);
 
   // Fetch connected accounts for preview data
   const { data: connectedAccounts } = useConnectedAccounts(activeWorkspace?.id, user?.id);
+
+  // Set initial preview platform when post changes
+  useEffect(() => {
+    if (currentPost?.platforms && currentPost.platforms.length > 0) {
+      setSelectedPreviewPlatform(currentPost.platforms[0]);
+    }
+  }, [currentPost]);
 
   // Helper to get account info for a specific platform
   const getAccountInfo = (platform) => {
@@ -380,56 +388,33 @@ export const CalendarPostModal = ({ posts, selectedDate, currentPostIndex, onClo
             {getStatusLabel(currentPost.status, currentPost.approval_status)}
           </div>
 
-          {/* Platform Previews */}
+          {/* Platform Preview */}
           {currentPost.platforms && currentPost.platforms.length > 0 && (
             <div className="modal-previews-section">
-              <label className="section-label">Platform Previews</label>
-              <div className="previews-grid">
-                {currentPost.platforms.map((platform) => (
-                  <div key={platform} className="preview-wrapper">
-                    <div className="preview-platform-label">
+              <label className="section-label">Platform Preview</label>
+
+              {/* Platform Switcher */}
+              {currentPost.platforms.length > 1 && (
+                <div className="platform-switcher">
+                  {currentPost.platforms.map((platform) => (
+                    <button
+                      key={platform}
+                      className={`platform-switch-btn ${selectedPreviewPlatform === platform ? 'active' : ''}`}
+                      onClick={() => setSelectedPreviewPlatform(platform)}
+                      type="button"
+                    >
                       {getPlatformIcon(platform)}
                       <span>{platform}</span>
-                    </div>
-                    <div className="preview-container">
-                      {renderPreview(platform)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+                    </button>
+                  ))}
+                </div>
+              )}
 
-          {/* Media Preview */}
-          {(currentPost.media_urls?.length > 0 || currentPost.media_url) && (
-            <div className="modal-media-section">
-              <div className="media-grid-modal">
-                {(currentPost.media_urls || [currentPost.media_url]).filter(Boolean).map((url, idx) => {
-                  const isVideo = url?.match(/\.(mp4|mov|webm|avi)$/i);
-
-                  if (isVideo) {
-                    return (
-                      <video
-                        key={idx}
-                        src={url}
-                        controls
-                        className="modal-video"
-                      />
-                    );
-                  }
-
-                  return (
-                    <img
-                      key={idx}
-                      src={url}
-                      alt={`Post media ${idx + 1}`}
-                      className="modal-image"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                      }}
-                    />
-                  );
-                })}
+              {/* Single Preview Container */}
+              <div className="single-preview-wrapper">
+                <div className="preview-container">
+                  {renderPreview(selectedPreviewPlatform || currentPost.platforms[0])}
+                </div>
               </div>
             </div>
           )}
