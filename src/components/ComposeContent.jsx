@@ -307,6 +307,9 @@ export const ComposeContent = () => {
     // Load approval status
     if (draft.approval_status) {
       setApprovalStatus(draft.approval_status);
+      console.log('[loadDraft] Loaded approval status:', draft.approval_status);
+    } else {
+      console.log('[loadDraft] No approval_status in draft:', draft);
     }
 
     // Load caption
@@ -355,7 +358,15 @@ export const ComposeContent = () => {
 
     // Load scheduled date
     if (draft.scheduled_date) {
-      setScheduledDate(new Date(draft.scheduled_date));
+      const schedDate = new Date(draft.scheduled_date);
+      setScheduledDate(schedDate);
+      console.log('[loadDraft] Loaded scheduled date:', schedDate);
+    }
+
+    // Load post settings
+    if (draft.post_settings) {
+      setPostSettings(draft.post_settings);
+      console.log('[loadDraft] Loaded post settings:', draft.post_settings);
     }
 
     if (showToast) {

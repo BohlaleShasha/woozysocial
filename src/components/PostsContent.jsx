@@ -240,9 +240,11 @@ export const PostsContent = () => {
       id: post.id,
       content: post.post || post.caption,
       caption: post.post || post.caption,
-      media_urls: post.mediaUrls || (post.media_url ? [post.media_url] : []),
+      media_urls: post.mediaUrls || post.media_urls || (post.media_url ? [post.media_url] : []),
       platforms: post.platforms || [],
       scheduled_date: post.scheduleDate || post.schedule_date || post.scheduled_at,
+      post_settings: post.post_settings || {},
+      approval_status: post.approval_status,
       workspace_id: activeWorkspace.id,
       isEditingScheduledPost: true // Flag to indicate this is editing a scheduled post
     }));

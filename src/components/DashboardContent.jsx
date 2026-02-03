@@ -214,6 +214,7 @@ export const DashboardContent = () => {
         media_urls: post.mediaUrls || post.media_urls || (post.media_url ? [post.media_url] : []),
         platforms: post.platforms || [],
         scheduled_date: post.scheduleDate || post.scheduled_at || post.schedule_date,
+        post_settings: post.post_settings || {},
         workspace_id: activeWorkspace.id,
         isEditingScheduledPost: true,
         approval_status: 'changes_requested'
@@ -227,6 +228,7 @@ export const DashboardContent = () => {
         media_urls: post.mediaUrls || post.media_urls || (post.media_url ? [post.media_url] : []),
         platforms: post.platforms || [],
         scheduled_date: post.scheduleDate || post.scheduled_at || post.schedule_date,
+        post_settings: post.post_settings || {},
         workspace_id: activeWorkspace.id,
         isEditingScheduledPost: true,
         approval_status: 'rejected'
