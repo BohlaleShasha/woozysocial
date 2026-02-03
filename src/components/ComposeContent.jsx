@@ -2108,39 +2108,56 @@ export const ComposeContent = () => {
                   </span>
                 )}
                 {isEditingScheduledPost ? (
-                  // When editing a scheduled post - show "Save Changes" button
+                  // When editing a scheduled post - show Re-schedule and ONE action button
                   <>
-                    {approvalStatus === 'changes_requested' && (
+                    {/* Left side: Re-schedule Post button */}
+                    <button
+                      className="btn-schedule"
+                      onClick={onOpen}
+                      disabled={!canPost}
+                      style={{
+                        opacity: !canPost ? 0.5 : 1,
+                        cursor: !canPost ? 'not-allowed' : 'pointer',
+                        marginRight: '12px'
+                      }}
+                    >
+                      Re-schedule Post
+                    </button>
+
+                    {/* Right side: ONE button that switches based on approval_status */}
+                    {approvalStatus === 'changes_requested' ? (
                       <button
                         onClick={handleMarkResolved}
                         className="btn-mark-resolved"
+                        disabled={isLoading}
                         style={{
                           backgroundColor: '#3b82f6',
                           color: 'white',
                           padding: '12px 24px',
                           borderRadius: '8px',
                           fontWeight: '600',
-                          marginRight: '12px',
                           border: 'none',
-                          cursor: 'pointer',
-                          fontSize: '14px'
+                          cursor: isLoading ? 'not-allowed' : 'pointer',
+                          fontSize: '14px',
+                          opacity: isLoading ? 0.5 : 1
                         }}
                       >
-                        ✓ Mark Changes as Resolved
+                        {isLoading ? "Saving..." : "✓ Mark Changes as Resolved"}
+                      </button>
+                    ) : (
+                      <button
+                        className="btn-schedule"
+                        onClick={handleSaveScheduledPost}
+                        disabled={isLoading || !canPost}
+                        style={{
+                          opacity: (!canPost || isLoading) ? 0.5 : 1,
+                          cursor: (!canPost || isLoading) ? 'not-allowed' : 'pointer',
+                          backgroundColor: '#10b981'
+                        }}
+                      >
+                        {isLoading ? "Saving..." : "Save Changes"}
                       </button>
                     )}
-                    <button
-                      className="btn-schedule"
-                      onClick={handleSaveScheduledPost}
-                      disabled={isLoading || !canPost}
-                      style={{
-                        opacity: (!canPost || isLoading) ? 0.5 : 1,
-                        cursor: (!canPost || isLoading) ? 'not-allowed' : 'pointer',
-                        backgroundColor: '#10b981'
-                      }}
-                    >
-                      {isLoading ? "Saving..." : "Save Changes"}
-                    </button>
                   </>
                 ) : (
                   // When creating new post - show normal buttons
