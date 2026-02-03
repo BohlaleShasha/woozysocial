@@ -253,7 +253,7 @@ export const ComposeContent = () => {
           const data = json.data || json;
           if (data.recommendations && data.recommendations.length > 0) {
             const best = data.recommendations[0];
-            setBestPostingTime(`${best.day} ${best.time}`);
+            setBestPostingTime(`${best?.day || ''} ${best?.time || ''}`);
             setBestTimes(data.recommendations.slice(0, 3));
             setHasRealData(data.source === 'personalized');
           } else {
@@ -286,7 +286,8 @@ export const ComposeContent = () => {
         throw new Error("Failed to convert data URL");
       }
       const blob = await res.blob();
-      const filename = `draft-media-${Date.now()}.${blob.type.split('/')[1]}`;
+      const ext = blob.type?.split('/')?.[1] || 'bin';
+      const filename = `draft-media-${Date.now()}.${ext}`;
       return new File([blob], filename, { type: blob.type });
     } catch (error) {
       console.error("Error converting data URL to file:", error);
@@ -319,9 +320,9 @@ export const ComposeContent = () => {
 
     // Load media previews
     if (draft.media_urls && draft.media_urls.length > 0) {
-      const previews = draft.media_urls.map((mediaUrl, index) => {
+      const previews = draft.media_urls.filter(Boolean).map((mediaUrl, index) => {
         // Determine media type
-        const url = mediaUrl.toLowerCase();
+        const url = (mediaUrl || '').toLowerCase();
         const type = (url.includes('video') || url.endsWith('.mp4') || url.endsWith('.mov')) ? 'video' : 'image';
 
         return {
@@ -737,7 +738,7 @@ export const ComposeContent = () => {
 
     const result = connectedAccounts.some(account => {
       // Handle both string array and object array formats
-      const accountName = typeof account === 'string' ? account : account.name;
+      const accountName = typeof account === 'string' ? account : account?.name;
       if (!accountName) return false;
 
       const normalized = accountName.toLowerCase();
@@ -981,32 +982,70 @@ export const ComposeContent = () => {
       let response;
 
       if (hasFileUpload) {
-        // Use FormData for file uploads
-        const formData = new FormData();
-        formData.append("text", post.text);
-        formData.append("userId", user.id);
-        formData.append("workspaceId", activeWorkspace.id);
+        // Check if any file exceeds 4MB (Vercel limit) - upload directly to Supabase
+        const VERCEL_LIMIT = 4 * 1024 * 1024; // 4MB
+        const hasLargeFile = post.media.some(file => file.size > VERCEL_LIMIT);
 
-        // Append each file with 'media' field name (busboy will collect into array)
-        post.media.forEach((file) => {
-          formData.append("media", file);
-        });
+        if (hasLargeFile) {
+          // Upload all files directly to Supabase (bypasses Vercel limit)
+          console.log('[handleConfirmSchedule] Large file detected, uploading directly to Supabase...');
+          const uploadedUrls = [];
 
-        formData.append("networks", JSON.stringify(networks));
-        formData.append("scheduledDate", scheduleDate.toISOString());
+          for (let i = 0; i < post.media.length; i++) {
+            const file = post.media[i];
+            console.log(`[uploadMediaDirect] Uploading file ${i + 1}/${post.media.length}: ${file.name}`);
 
-        // Add post settings (Phase 4)
-        formData.append("postSettings", JSON.stringify(postSettings));
+            const result = await uploadMediaDirect(file, user.id, activeWorkspace.id);
+            if (!result.success) {
+              throw new Error(`Failed to upload ${file.name}: ${result.error}`);
+            }
+            uploadedUrls.push(result.publicUrl);
+            console.log('[uploadMediaDirect] Success:', result.publicUrl);
+          }
 
-        // If editing a scheduled post, include the postId
-        if (isEditingScheduledPost && currentDraftId) {
-          formData.append("postId", currentDraftId);
+          // Send URLs to API (not files)
+          response = await fetch(`${baseURL}/api/post`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              text: post.text,
+              userId: user.id,
+              workspaceId: activeWorkspace.id,
+              mediaUrl: uploadedUrls,
+              networks: JSON.stringify(networks),
+              scheduledDate: scheduleDate.toISOString(),
+              postSettings: postSettings,
+              ...(isEditingScheduledPost && currentDraftId && { postId: currentDraftId })
+            })
+          });
+        } else {
+          // Small files - use FormData (original flow)
+          const formData = new FormData();
+          formData.append("text", post.text);
+          formData.append("userId", user.id);
+          formData.append("workspaceId", activeWorkspace.id);
+
+          // Append each file with 'media' field name (busboy will collect into array)
+          post.media.forEach((file) => {
+            formData.append("media", file);
+          });
+
+          formData.append("networks", JSON.stringify(networks));
+          formData.append("scheduledDate", scheduleDate.toISOString());
+
+          // Add post settings (Phase 4)
+          formData.append("postSettings", JSON.stringify(postSettings));
+
+          // If editing a scheduled post, include the postId
+          if (isEditingScheduledPost && currentDraftId) {
+            formData.append("postId", currentDraftId);
+          }
+
+          response = await fetch(`${baseURL}/api/post`, {
+            method: "POST",
+            body: formData
+          });
         }
-
-        response = await fetch(`${baseURL}/api/post`, {
-          method: "POST",
-          body: formData
-        });
       } else {
         // Use JSON for text-only or URL media posts
         response = await fetch(`${baseURL}/api/post`, {
@@ -1053,6 +1092,9 @@ export const ComposeContent = () => {
         // Invalidate cache so Schedule page shows the new post immediately
         invalidatePosts(activeWorkspace?.id);
 
+        // IMPORTANT: Clear currentDraftId BEFORE resetting form to prevent autosave errors
+        setCurrentDraftId(null);
+
         // Reset form completely
         setPost({ text: "", media: [] });
         setNetworks({
@@ -1073,7 +1115,6 @@ export const ComposeContent = () => {
         setMediaPreviews([]);
         setScheduledDate(null);
         setTempScheduledDate(null);
-        setCurrentDraftId(null);
         setLastSaved(null);
         setIsEditingScheduledPost(false);
       } else {
@@ -1875,6 +1916,8 @@ export const ComposeContent = () => {
           clearTimeout(autoSaveTimerRef.current);
           autoSaveTimerRef.current = null;
         }
+        // IMPORTANT: Clear currentDraftId BEFORE resetting form to prevent autosave errors
+        setCurrentDraftId(null);
         // Reset form completely
         setPost({ text: "", media: [] });
         setNetworks({
@@ -1894,7 +1937,6 @@ export const ComposeContent = () => {
         });
         setMediaPreviews([]);
         setScheduledDate(null);
-        setCurrentDraftId(null);
         setLastSaved(null);
         setIsEditingScheduledPost(false);
       } else {
