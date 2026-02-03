@@ -62,7 +62,7 @@ export const ThreadsPreview = ({ post, mediaPreviews = [], accountInfo }) => {
               </div>
 
               {/* Thread Text */}
-              {post.text && (
+              {post?.text && (
                 <div className="th-text">
                   {post.text}
                 </div>

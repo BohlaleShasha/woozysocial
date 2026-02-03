@@ -21,8 +21,8 @@ export const InstagramPreview = ({ post, mediaPreviews = [], accountInfo }) => {
     return text.substring(0, maxLength) + '...';
   };
 
-  const displayCaption = showFullCaption ? post.text : truncateCaption(post.text);
-  const needsMore = post.text && post.text.length > 125;
+  const displayCaption = showFullCaption ? post?.text : truncateCaption(post?.text);
+  const needsMore = post?.text && post.text.length > 125;
 
   return (
     <div className="instagram-preview-v2">
@@ -128,7 +128,7 @@ export const InstagramPreview = ({ post, mediaPreviews = [], accountInfo }) => {
           </div>
 
           {/* Caption */}
-          {post.text && (
+          {post?.text && (
             <div className="ig-caption">
               <span className="ig-caption-username">
                 {accountInfo?.username || 'your_username'}

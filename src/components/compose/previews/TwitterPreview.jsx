@@ -99,7 +99,7 @@ export const TwitterPreview = ({ post, mediaPreviews = [], accountInfo }) => {
           </div>
 
           {/* Tweet Text */}
-          {post.text && (
+          {post?.text && (
             <div className="tw-text">
               {post.text}
             </div>

@@ -144,7 +144,7 @@ export const TikTokPreview = ({ post, mediaPreviews = [], accountInfo }) => {
               @{accountInfo?.username || 'yourusername'}
             </span>
           </div>
-          {post.text && (
+          {post?.text && (
             <div className="tt-caption">
               {post.text}
             </div>

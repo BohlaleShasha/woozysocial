@@ -67,7 +67,7 @@ export const LinkedInPreview = ({ post, mediaPreviews = [], accountInfo }) => {
           </div>
 
           {/* Post Text */}
-          {post.text && (
+          {post?.text && (
             <div className="li-text">
               {post.text}
             </div>

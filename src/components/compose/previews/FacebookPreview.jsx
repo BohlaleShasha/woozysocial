@@ -127,7 +127,7 @@ export const FacebookPreview = ({ post, mediaPreviews = [], accountInfo }) => {
           </div>
 
           {/* Post Text */}
-          {post.text && (
+          {post?.text && (
             <div className="fb-text">
               {post.text}
             </div>

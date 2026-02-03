@@ -30,6 +30,8 @@ export const MediaCarousel = ({
 
   const currentMedia = media[currentIndex];
 
+  if (!currentMedia) return null;
+
   return (
     <div className={`media-carousel ${platform} ${className}`}>
       {/* Current media */}
