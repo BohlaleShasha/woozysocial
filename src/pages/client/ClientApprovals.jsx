@@ -5,7 +5,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { usePendingApprovals, useInvalidateQueries } from "../../hooks/useQueries";
 import { baseURL } from "../../utils/constants";
 import { useToast } from "@chakra-ui/react";
-import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaReddit, FaTelegram, FaPinterest, FaCheck, FaTimes, FaClock, FaEdit } from "react-icons/fa";
+import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaReddit, FaTelegram, FaPinterest, FaCheck, FaTimes, FaClock, FaEdit, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { FaTiktok, FaThreads } from "react-icons/fa6";
 import { SiX, SiBluesky } from "react-icons/si";
 import "./ClientApprovals.css";
@@ -20,6 +20,7 @@ export const ClientApprovals = () => {
   const [activeTab, setActiveTab] = useState("pending");
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [mediaIndex, setMediaIndex] = useState(0);
 
   // Use React Query for cached data fetching
   const {
@@ -54,6 +55,11 @@ export const ClientApprovals = () => {
       window.history.replaceState({}, document.title);
     }
   }, [location.state, posts, loading, activeTab]);
+
+  // Reset media carousel index when selected post changes
+  useEffect(() => {
+    setMediaIndex(0);
+  }, [selectedPost?.id]);
 
   // Auto-select first post when posts change (only if no deep-link)
   useEffect(() => {
@@ -260,50 +266,99 @@ export const ClientApprovals = () => {
                 </div>
               </div>
 
-              {/* Media Preview */}
-              {selectedPost.media_urls?.length > 0 && (
-                <div className="detail-media">
-                  {selectedPost.media_urls.map((url, index) => {
-                    // Check if it's a video
-                    const isVideo = url?.match(/\.(mp4|mov|webm|avi)$/i);
+              {/* Media Carousel */}
+              {selectedPost.media_urls?.length > 0 && (() => {
+                const urls = selectedPost.media_urls.filter(Boolean);
+                const currentUrl = urls[mediaIndex] || urls[0];
+                const isVideo = currentUrl?.match(/\.(mp4|mov|webm|avi)$/i);
+                const total = urls.length;
 
-                    if (isVideo) {
-                      return (
+                return (
+                  <div className="detail-media-carousel">
+                    <div className="carousel-frame">
+                      {isVideo ? (
                         <video
-                          key={index}
-                          src={url}
+                          key={currentUrl}
+                          src={currentUrl}
                           controls
-                          className="media-preview-video"
+                          className="carousel-media"
                           onError={(e) => {
                             e.target.style.display = 'none';
-                            e.target.nextSibling?.style && (e.target.nextSibling.style.display = 'flex');
+                            const fallback = e.target.nextSibling;
+                            if (fallback) fallback.style.display = 'flex';
                           }}
                         />
-                      );
-                    }
-
-                    return (
-                      <div key={index} className="media-preview-container">
+                      ) : (
                         <img
-                          src={url}
-                          alt={`Media ${index + 1}`}
+                          key={currentUrl}
+                          src={currentUrl}
+                          alt={`Media ${mediaIndex + 1}`}
+                          className="carousel-media"
                           onError={(e) => {
                             e.target.style.display = 'none';
-                            e.target.parentElement.classList.add('media-error');
+                            const fallback = e.target.nextSibling;
+                            if (fallback) fallback.style.display = 'flex';
                           }}
                         />
-                        <div className="media-fallback">
-                          <span className="media-fallback-icon">🖼️</span>
-                          <span className="media-fallback-text">Media attached</span>
-                          <a href={url} target="_blank" rel="noopener noreferrer" className="media-fallback-link">
-                            View media
-                          </a>
-                        </div>
+                      )}
+                      <div className="carousel-fallback">
+                        <span className="media-fallback-icon">🖼️</span>
+                        <span className="media-fallback-text">Media unavailable</span>
+                        <a href={currentUrl} target="_blank" rel="noopener noreferrer" className="media-fallback-link">
+                          View media
+                        </a>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+
+                      {/* Navigation arrows */}
+                      {total > 1 && (
+                        <>
+                          <button
+                            className="carousel-arrow carousel-arrow-left"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMediaIndex((prev) => (prev - 1 + total) % total);
+                            }}
+                            aria-label="Previous media"
+                          >
+                            <FaChevronLeft />
+                          </button>
+                          <button
+                            className="carousel-arrow carousel-arrow-right"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMediaIndex((prev) => (prev + 1) % total);
+                            }}
+                            aria-label="Next media"
+                          >
+                            <FaChevronRight />
+                          </button>
+                        </>
+                      )}
+
+                      {/* Counter badge */}
+                      {total > 1 && (
+                        <div className="carousel-counter">
+                          {mediaIndex + 1} / {total}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Dot indicators */}
+                    {total > 1 && (
+                      <div className="carousel-dots">
+                        {urls.map((_, i) => (
+                          <button
+                            key={i}
+                            className={`carousel-dot ${i === mediaIndex ? 'active' : ''}`}
+                            onClick={() => setMediaIndex(i)}
+                            aria-label={`Go to media ${i + 1}`}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Caption */}
               <div className="detail-caption">
