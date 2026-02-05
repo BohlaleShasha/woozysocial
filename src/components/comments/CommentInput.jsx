@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { baseURL } from '../../utils/constants';
 import { supabase } from '../../utils/supabaseClient';
@@ -11,14 +11,14 @@ const PRIORITY_OPTIONS = [
   { value: 'urgent', label: 'Urgent', icon: '🔴', color: '#ef4444' }
 ];
 
-export const CommentInput = ({
+export const CommentInput = forwardRef(({
   postId,
   draftId,
   workspaceId,
   onCommentAdded,
   placeholder = "Add a comment...",
   showPrioritySelector = true
-}) => {
+}, ref) => {
   const { user } = useAuth();
   const toast = useToast();
   const [comment, setComment] = useState('');
@@ -30,6 +30,15 @@ export const CommentInput = ({
   const [mentionPosition, setMentionPosition] = useState({ top: 0, left: 0 });
   const [cursorPosition, setCursorPosition] = useState(0);
   const textareaRef = useRef(null);
+
+  // Expose comment value and clear function to parent via ref
+  useImperativeHandle(ref, () => ({
+    getComment: () => comment,
+    clearComment: () => {
+      setComment('');
+      setPriority('normal');
+    }
+  }));
 
   // Fetch workspace members for @mentions
   useEffect(() => {
@@ -335,4 +344,4 @@ export const CommentInput = ({
       </div>
     </div>
   );
-};
+});

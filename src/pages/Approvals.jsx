@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useToast } from '@chakra-ui/react';
 import { useAuth } from '../contexts/AuthContext';
 import { useWorkspace } from '../contexts/WorkspaceContext';
 import RoleGuard from '../components/roles/RoleGuard';
@@ -41,6 +42,7 @@ export const Approvals = () => {
   const [submitting, setSubmitting] = useState(false);
   const [comments, setComments] = useState([]);
   const [loadingComments, setLoadingComments] = useState(false);
+  const toast = useToast();
 
   const fetchPosts = useCallback(async () => {
     if (!user?.id || !activeWorkspace?.id) return;
@@ -114,6 +116,18 @@ export const Approvals = () => {
 
   const handleApprovalAction = async (action) => {
     if (!selectedPost || !activeWorkspace?.id || !user?.id) return;
+
+    // Require comment for reject and changes_requested actions
+    if ((action === 'reject' || action === 'changes_requested') && !comment.trim()) {
+      toast({
+        title: 'Comment required',
+        description: `Please provide feedback when ${action === 'reject' ? 'rejecting' : 'requesting changes to'} a post.`,
+        status: 'warning',
+        duration: 3000,
+        isClosable: true
+      });
+      return;
+    }
 
     setSubmitting(true);
     try {

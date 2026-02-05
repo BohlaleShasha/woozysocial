@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaTiktok, FaEdit, FaTrash } from 'react-icons/fa';
 import { SiX } from 'react-icons/si';
+import { useToast } from '@chakra-ui/react';
 import { CommentThread } from './CommentThread';
 import { CommentInput } from './CommentInput';
 import { AnalyticsSection } from '../analytics/AnalyticsSection';
@@ -44,6 +45,8 @@ export const PostDetailPanel = ({
   const { workspaceMembership, activeWorkspace } = useWorkspace();
   const navigate = useNavigate();
   const { invalidatePosts } = useInvalidateQueries();
+  const toast = useToast();
+  const commentInputRef = useRef(null);
   const canApprove = ['owner', 'admin', 'client'].includes(workspaceMembership?.role);
   const canDelete = ['owner', 'admin'].includes(workspaceMembership?.role);
 
@@ -156,6 +159,31 @@ export const PostDetailPanel = ({
     }
   };
 
+  // Handle approval actions that require a comment (Request Changes, Reject)
+  const handleApprovalWithComment = (action) => {
+    const commentText = commentInputRef.current?.getComment?.() || '';
+
+    if (!commentText.trim()) {
+      toast({
+        title: 'Comment required',
+        description: `Please enter your feedback in the comment field before ${action === 'reject' ? 'rejecting' : 'requesting changes to'} a post.`,
+        status: 'warning',
+        duration: 3000,
+        isClosable: true
+      });
+      return;
+    }
+
+    // Clear the comment input after using the text
+    commentInputRef.current?.clearComment?.();
+
+    if (action === 'reject') {
+      onReject(post.id, commentText.trim());
+    } else {
+      onRequestChanges(post.id, commentText.trim());
+    }
+  };
+
   return (
     <>
       {/* Overlay - click to close */}
@@ -251,6 +279,7 @@ export const PostDetailPanel = ({
             enableRealtime={true}
           />
           <CommentInput
+            ref={commentInputRef}
             postId={post.status === 'draft' ? undefined : post.id}
             draftId={post.status === 'draft' ? post.id : undefined}
             workspaceId={post.workspace_id}
@@ -297,10 +326,10 @@ export const PostDetailPanel = ({
           post.approval_status === 'pending' || post.status === 'pending_approval'
         ) && (
           <div className="approval-actions">
-            <button className="btn-reject" onClick={() => onReject(post.id)}>
+            <button className="btn-reject" onClick={() => handleApprovalWithComment('reject')}>
               Reject
             </button>
-            <button className="btn-changes" onClick={() => onRequestChanges(post.id)}>
+            <button className="btn-changes" onClick={() => handleApprovalWithComment('changes_requested')}>
               Request Changes
             </button>
             <button className="btn-approve" onClick={() => onApprove(post.id)}>

@@ -107,13 +107,13 @@ export const ScheduleContent = () => {
     setSelectedPost(null);
   };
 
-  const handleReject = async (postId) => {
-    await handleApproval(postId, 'reject');
+  const handleReject = async (postId, commentText = '') => {
+    await handleApproval(postId, 'reject', commentText);
     setSelectedPost(null);
   };
 
-  const handleRequestChanges = async (postId) => {
-    await handleApproval(postId, 'changes_requested');
+  const handleRequestChanges = async (postId, commentText = '') => {
+    await handleApproval(postId, 'changes_requested', commentText);
     setSelectedPost(null);
   };
 
