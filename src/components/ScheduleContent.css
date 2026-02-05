@@ -102,19 +102,38 @@
 
 /* Week View */
 .week-view {
-  display: grid;
-  grid-template-columns: 100px repeat(7, 1fr);
-  overflow-x: auto;
+  display: flex;
+  flex-direction: column;
   height: calc(100vh - 250px);
   min-height: 700px;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   background: white;
+  overflow: hidden;
+}
+
+/* Sticky header row */
+.week-header-row {
+  display: grid;
+  grid-template-columns: 100px repeat(7, 1fr);
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #f9fafb;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+/* Scrollable body */
+.week-body {
+  display: grid;
+  grid-template-columns: 100px repeat(7, 1fr);
+  overflow-y: auto;
+  overflow-x: auto;
+  flex: 1;
 }
 
 .time-column {
-  grid-column: 1;
-  grid-row: 1;
   display: flex;
   flex-direction: column;
   border-right: 2px solid #e5e7eb;
@@ -126,7 +145,8 @@
 
 .time-header {
   height: 60px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 2px solid #e5e7eb;
+  background: #f9fafb;
 }
 
 .time-slot {
@@ -154,13 +174,17 @@
 
 .day-header {
   height: 60px;
-  border-bottom: 2px solid #e5e7eb;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   background: #f9fafb;
   gap: 4px;
+  border-right: 1px solid #e5e7eb;
+}
+
+.day-header:last-child {
+  border-right: none;
 }
 
 .day-name {

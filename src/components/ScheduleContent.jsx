@@ -382,52 +382,61 @@ export const ScheduleContent = () => {
 
     return (
       <div className="week-view">
-        <div className="time-column">
+        {/* Sticky header row */}
+        <div className="week-header-row">
           <div className="time-header"></div>
-          {timeSlots.map((hour) => (
-            <div
-              key={hour}
-              className="time-slot"
-              style={{ height: `${getSlotHeight(hour)}px` }}
-            >
-              {hour > 12 ? `${hour - 12}:00 PM` : `${hour}:00 AM`}
-            </div>
-          ))}
-        </div>
-
-        {weekDates.map((date, dayIndex) => (
-          <div key={dayIndex} className="day-column">
-            <div className="day-header">
+          {weekDates.map((date, dayIndex) => (
+            <div key={dayIndex} className="day-header">
               <div className="day-name">{dayNames[date.getDay()]}</div>
               <div className="day-date">
                 {date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
               </div>
             </div>
-            {timeSlots.map((hour) => {
-              const slotPosts = getPostsForSlot(date, hour);
-              const visiblePosts = slotPosts.slice(0, 2);
-              const remainingCount = slotPosts.length - 2;
+          ))}
+        </div>
 
-              return (
-                <div
-                  key={hour}
-                  className="schedule-cell"
-                  style={{ height: `${getSlotHeight(hour)}px` }}
-                >
-                  {visiblePosts.map(renderPostCard)}
-                  {remainingCount > 0 && (
-                    <div
-                      className="more-posts-indicator"
-                      title={`${remainingCount} more post${remainingCount !== 1 ? 's' : ''} at this time. Click to view all.`}
-                    >
-                      +{remainingCount} more
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+        {/* Scrollable body */}
+        <div className="week-body">
+          <div className="time-column">
+            {timeSlots.map((hour) => (
+              <div
+                key={hour}
+                className="time-slot"
+                style={{ height: `${getSlotHeight(hour)}px` }}
+              >
+                {hour > 12 ? `${hour - 12}:00 PM` : `${hour}:00 AM`}
+              </div>
+            ))}
           </div>
-        ))}
+
+          {weekDates.map((date, dayIndex) => (
+            <div key={dayIndex} className="day-column">
+              {timeSlots.map((hour) => {
+                const slotPosts = getPostsForSlot(date, hour);
+                const visiblePosts = slotPosts.slice(0, 2);
+                const remainingCount = slotPosts.length - 2;
+
+                return (
+                  <div
+                    key={hour}
+                    className="schedule-cell"
+                    style={{ height: `${getSlotHeight(hour)}px` }}
+                  >
+                    {visiblePosts.map(renderPostCard)}
+                    {remainingCount > 0 && (
+                      <div
+                        className="more-posts-indicator"
+                        title={`${remainingCount} more post${remainingCount !== 1 ? 's' : ''} at this time. Click to view all.`}
+                      >
+                        +{remainingCount} more
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
       </div>
     );
   };
