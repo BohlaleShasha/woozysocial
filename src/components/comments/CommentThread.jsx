@@ -11,6 +11,16 @@ const PRIORITY_CONFIG = {
   normal: { color: '#6b7280', label: 'Normal', icon: '⚪' }
 };
 
+const getSystemActionBadge = (commentText) => {
+  if (!commentText) return null;
+  const lower = commentText.toLowerCase();
+  if (lower.includes('post approved')) return { color: '#10b981', label: 'Approved', icon: '✅' };
+  if (lower.includes('post rejected')) return { color: '#ef4444', label: 'Rejected', icon: '❌' };
+  if (lower.includes('marked for changes') || lower.includes('change request')) return { color: '#f59e0b', label: 'Changes Requested', icon: '📝' };
+  if (lower.includes('changes have been addressed') || lower.includes('ready for re-approval')) return { color: '#6366f1', label: 'Resubmitted', icon: '🔄' };
+  return null;
+};
+
 export const CommentThread = ({
   postId,
   draftId,
@@ -145,12 +155,13 @@ export const CommentThread = ({
       {comments.map((comment) => {
         const priorityConfig = getPriorityConfig(comment.priority);
         const isOwnComment = comment.user_id === user?.id;
+        const systemBadge = comment.is_system ? getSystemActionBadge(comment.comment) : null;
 
         return (
           <div
             key={comment.id}
             className={`comment ${comment.is_system ? 'system-comment' : ''} ${isOwnComment ? 'own-comment' : ''}`}
-            style={{ borderLeft: `3px solid ${priorityConfig.color}` }}
+            style={{ borderLeft: `3px solid ${systemBadge?.color || priorityConfig.color}` }}
           >
             <div className="comment-header">
               <div className="comment-author-section">
@@ -175,6 +186,15 @@ export const CommentThread = ({
                     title={priorityConfig.label}
                   >
                     {priorityConfig.icon} {priorityConfig.label}
+                  </span>
+                )}
+                {systemBadge && (
+                  <span
+                    className="priority-badge system-action-badge"
+                    style={{ backgroundColor: systemBadge.color }}
+                    title={systemBadge.label}
+                  >
+                    {systemBadge.icon} {systemBadge.label}
                   </span>
                 )}
               </div>
