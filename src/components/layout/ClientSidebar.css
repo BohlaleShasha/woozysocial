@@ -29,9 +29,9 @@
   background-color: transparent;
   border: none;
   border-radius: 10px;
-  height: 220px;
-  width: 245px;
-  padding: 10px 20px;
+  height: 330px;
+  width: 100%;
+  padding: 10px 5px;
 }
 
 .client-logo-image {
