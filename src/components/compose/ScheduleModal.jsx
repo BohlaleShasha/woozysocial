@@ -10,22 +10,33 @@ export const ScheduleModal = ({
   onConfirm,
   timezone = 'UTC',
   bestTimes = [],
-  hasRealData = false
+  hasRealData = false,
+  initialDate = null
 }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState('09:00');
   const [calendarMonth, setCalendarMonth] = useState(new Date());
 
   useEffect(() => {
-    if (isOpen && !selectedDate) {
-      // Default to tomorrow at 9 AM
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(9, 0, 0, 0);
-      setSelectedDate(tomorrow);
-      setSelectedTime('09:00');
+    if (isOpen) {
+      if (initialDate) {
+        // Load the existing scheduled date into the modal
+        const date = new Date(initialDate);
+        setSelectedDate(date);
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = (Math.round(date.getMinutes() / 15) * 15 % 60).toString().padStart(2, '0');
+        setSelectedTime(`${hours}:${minutes}`);
+        setCalendarMonth(new Date(date.getFullYear(), date.getMonth(), 1));
+      } else if (!selectedDate) {
+        // Default to tomorrow at 9 AM for new posts
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(9, 0, 0, 0);
+        setSelectedDate(tomorrow);
+        setSelectedTime('09:00');
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, initialDate]);
 
   const handleDateClick = (date) => {
     const newDate = new Date(selectedDate || new Date());
@@ -75,8 +86,11 @@ export const ScheduleModal = ({
   };
 
   const handleCancel = () => {
-    setSelectedDate(null);
-    setSelectedTime('09:00');
+    // Only reset internal state if there's no initialDate (new post flow)
+    if (!initialDate) {
+      setSelectedDate(null);
+      setSelectedTime('09:00');
+    }
     onClose();
   };
 

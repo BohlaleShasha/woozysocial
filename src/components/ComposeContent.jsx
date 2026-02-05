@@ -1168,8 +1168,11 @@ export const ComposeContent = () => {
   };
 
   const handleCancelSchedule = () => {
-    setTempScheduledDate(null);
-    setScheduledDate(null);
+    // When editing a scheduled post, don't clear the dates - the post already has a schedule
+    if (!isEditingScheduledPost) {
+      setTempScheduledDate(null);
+      setScheduledDate(null);
+    }
     onClose();
   };
 
@@ -2911,6 +2914,7 @@ export const ComposeContent = () => {
         timezone={activeWorkspace?.timezone || 'UTC'}
         bestTimes={bestTimes}
         hasRealData={hasRealData}
+        initialDate={scheduledDate || tempScheduledDate}
       />
 
       {/* AI Generation Modal */}
