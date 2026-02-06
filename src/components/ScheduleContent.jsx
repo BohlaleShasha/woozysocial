@@ -3,7 +3,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useWorkspace } from "../contexts/WorkspaceContext";
 import { baseURL, hasFeature } from "../utils/constants";
 import { useUnifiedSchedule, useInvalidateQueries } from "../hooks/useQueries";
-import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaCheck, FaTimes, FaComment, FaClock } from "react-icons/fa";
+import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaCheck, FaTimes, FaComment, FaClock, FaExclamationTriangle } from "react-icons/fa";
 import { FaTiktok } from "react-icons/fa6";
 import { SiX } from "react-icons/si";
 import { formatTimeInTimezone, formatDateOnlyInTimezone } from "../utils/timezones";
@@ -24,6 +24,7 @@ const PLATFORM_ICONS = {
 
 const APPROVAL_STATUS = {
   pending: { label: 'Pending', color: '#f59e0b', icon: FaClock },
+  changes_requested: { label: 'Changes Requested', color: '#f59e0b', icon: FaExclamationTriangle },
   approved: { label: 'Approved', color: '#10b981', icon: FaCheck },
   rejected: { label: 'Rejected', color: '#ef4444', icon: FaTimes },
 };
@@ -497,6 +498,7 @@ export const ScheduleContent = () => {
   const approvalCounts = {
     all: posts.length,
     pending: posts.filter(p => p.approvalStatus === 'pending').length,
+    changes_requested: posts.filter(p => p.approvalStatus === 'changes_requested').length,
     approved: posts.filter(p => p.approvalStatus === 'approved').length,
     rejected: posts.filter(p => p.approvalStatus === 'rejected').length,
   };
@@ -568,6 +570,12 @@ export const ScheduleContent = () => {
             onClick={() => setApprovalFilter('pending')}
           >
             <FaClock size={12} /> Pending <span className="filter-count">{approvalCounts.pending}</span>
+          </button>
+          <button
+            className={`filter-tab changes_requested ${approvalFilter === 'changes_requested' ? 'active' : ''}`}
+            onClick={() => setApprovalFilter('changes_requested')}
+          >
+            <FaExclamationTriangle size={12} /> Changes Requested <span className="filter-count">{approvalCounts.changes_requested}</span>
           </button>
           <button
             className={`filter-tab approved ${approvalFilter === 'approved' ? 'active' : ''}`}

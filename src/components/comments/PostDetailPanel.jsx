@@ -25,6 +25,7 @@ const STATUS_COLORS = {
   draft: '#6b7280',
   scheduled: '#3b82f6',
   pending_approval: '#f59e0b',
+  changes_requested: '#f59e0b',
   approved: '#10b981',
   rejected: '#ef4444',
   posted: '#10b981',
@@ -83,6 +84,7 @@ export const PostDetailPanel = ({
       draft: 'Draft',
       scheduled: 'Scheduled',
       pending_approval: 'Pending Approval',
+      changes_requested: 'Changes Requested',
       approved: 'Approved',
       rejected: 'Rejected',
       posted: 'Posted',
@@ -339,7 +341,7 @@ export const PostDetailPanel = ({
 
         {/* Approval Actions */}
         {showApprovalActions && canApprove && (
-          post.approval_status === 'pending' || post.status === 'pending_approval'
+          post.approval_status === 'pending' || post.approval_status === 'changes_requested' || post.status === 'pending_approval'
         ) && (
           <div className="approval-actions">
             <button className="btn-reject" onClick={() => handleApprovalWithComment('reject')}>

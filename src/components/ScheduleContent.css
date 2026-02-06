@@ -395,11 +395,18 @@
   border-left-color: #ef4444;
 }
 
+.post-card.approval-changes_requested {
+  background: #fff7ed;
+  border-color: #fed7aa;
+  border-left-color: #f59e0b;
+}
+
 /* Dim past posts (posts before today) with white overlay and dark grey border */
 .post-card.past-post,
 .post-card.approval-pending.past-post,
 .post-card.approval-approved.past-post,
-.post-card.approval-rejected.past-post {
+.post-card.approval-rejected.past-post,
+.post-card.approval-changes_requested.past-post {
   border-color: #6b7280 !important;
   border-left-color: #4b5563 !important;
 }
@@ -507,6 +514,11 @@
 }
 
 .filter-tab.pending.active {
+  background: #f59e0b;
+  border-color: #f59e0b;
+}
+
+.filter-tab.changes_requested.active {
   background: #f59e0b;
   border-color: #f59e0b;
 }
