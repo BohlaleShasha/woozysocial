@@ -5,7 +5,7 @@ import { baseURL } from "../utils/constants";
 import { useDrafts, usePosts, useInvalidateQueries } from "../hooks/useQueries";
 import { supabase } from "../utils/supabaseClient";
 import { useNavigate } from "react-router-dom";
-import { FaSearch, FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaPinterest, FaTrash, FaSyncAlt } from "react-icons/fa";
+import { FaSearch, FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube, FaPinterest, FaTrash, FaSyncAlt, FaSortAmountDown, FaSortAmountUp } from "react-icons/fa";
 import { FaTiktok } from "react-icons/fa6";
 import { SiX, SiBluesky } from "react-icons/si";
 import { PostDetailPanel } from "./comments/PostDetailPanel";
@@ -25,6 +25,35 @@ const PLATFORM_ICONS = {
   bluesky: SiBluesky,
 };
 
+const SORT_OPTIONS = {
+  drafts: [
+    { id: "newest", label: "Newest", field: "created_at", dir: "desc" },
+    { id: "oldest", label: "Oldest", field: "created_at", dir: "asc" },
+  ],
+  pending: [
+    { id: "newest", label: "Newest", field: "created_at", dir: "desc" },
+    { id: "oldest", label: "Oldest", field: "created_at", dir: "asc" },
+    { id: "scheduled_newest", label: "Scheduled: Latest", field: "scheduled_at", dir: "desc" },
+    { id: "scheduled_oldest", label: "Scheduled: Earliest", field: "scheduled_at", dir: "asc" },
+  ],
+  scheduled: [
+    { id: "scheduled_oldest", label: "Upcoming first", field: "scheduled_at", dir: "asc" },
+    { id: "scheduled_newest", label: "Latest first", field: "scheduled_at", dir: "desc" },
+    { id: "newest", label: "Created: Newest", field: "created_at", dir: "desc" },
+    { id: "oldest", label: "Created: Oldest", field: "created_at", dir: "asc" },
+  ],
+  history: [
+    { id: "newest", label: "Newest", field: "posted_at", dir: "desc" },
+    { id: "oldest", label: "Oldest", field: "posted_at", dir: "asc" },
+    { id: "created_newest", label: "Created: Newest", field: "created_at", dir: "desc" },
+    { id: "created_oldest", label: "Created: Oldest", field: "created_at", dir: "asc" },
+  ],
+  failed: [
+    { id: "newest", label: "Newest", field: "created_at", dir: "desc" },
+    { id: "oldest", label: "Oldest", field: "created_at", dir: "asc" },
+  ],
+};
+
 export const PostsContent = () => {
   const { user } = useAuth();
   const { activeWorkspace } = useWorkspace();
@@ -32,6 +61,8 @@ export const PostsContent = () => {
   const [activeTab, setActiveTab] = useState("drafts");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPost, setSelectedPost] = useState(null);
+  const [sortBy, setSortBy] = useState(SORT_OPTIONS.drafts[0].id);
+  const [showSortMenu, setShowSortMenu] = useState(false);
   const { invalidatePosts } = useInvalidateQueries();
 
   // Map tab to status for posts query
@@ -111,6 +142,21 @@ export const PostsContent = () => {
            content.match(new RegExp(`#\\w*${query}\\w*`, 'i')) ||
            platforms.includes(query);
   });
+
+  // Sort posts client-side
+  const sortOptions = SORT_OPTIONS[activeTab] || SORT_OPTIONS.drafts;
+  const activeSortOption = sortOptions.find(o => o.id === sortBy) || sortOptions[0];
+  const sortedPosts = [...filteredPosts].sort((a, b) => {
+    const dateA = new Date(a[activeSortOption.field] || a.scheduled_at || a.created_at || 0);
+    const dateB = new Date(b[activeSortOption.field] || b.scheduled_at || b.created_at || 0);
+    return activeSortOption.dir === "desc" ? dateB - dateA : dateA - dateB;
+  });
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setSortBy(SORT_OPTIONS[tab][0].id);
+    setShowSortMenu(false);
+  };
 
   const getPlatformIcons = (platforms) => {
     if (!platforms || !Array.isArray(platforms)) return null;
@@ -271,43 +317,74 @@ export const PostsContent = () => {
         <div className="posts-tabs">
           <button
             className={`posts-tab ${activeTab === "drafts" ? "active" : ""}`}
-            onClick={() => setActiveTab("drafts")}
+            onClick={() => handleTabChange("drafts")}
           >
             Drafts
           </button>
           <button
             className={`posts-tab ${activeTab === "pending" ? "active" : ""}`}
-            onClick={() => setActiveTab("pending")}
+            onClick={() => handleTabChange("pending")}
           >
             Pending
           </button>
           <button
             className={`posts-tab ${activeTab === "scheduled" ? "active" : ""}`}
-            onClick={() => setActiveTab("scheduled")}
+            onClick={() => handleTabChange("scheduled")}
           >
             Scheduled
           </button>
           <button
             className={`posts-tab ${activeTab === "history" ? "active" : ""}`}
-            onClick={() => setActiveTab("history")}
+            onClick={() => handleTabChange("history")}
           >
             History
           </button>
           <button
             className={`posts-tab ${activeTab === "failed" ? "active" : ""}`}
-            onClick={() => setActiveTab("failed")}
+            onClick={() => handleTabChange("failed")}
           >
             Failed
           </button>
         </div>
-        <button
-          onClick={handleRefresh}
-          className="refresh-button"
-          disabled={loading}
-          title="Refresh posts"
-        >
-          <FaSyncAlt className={loading ? 'spinning' : ''} size={20} />
-        </button>
+        <div className="posts-tabs-actions">
+          <div className="posts-sort-wrapper">
+            <button
+              className="posts-sort-toggle"
+              onClick={() => setShowSortMenu(prev => !prev)}
+            >
+              {activeSortOption.dir === "desc" ? <FaSortAmountDown /> : <FaSortAmountUp />}
+              <span>{activeSortOption.label}</span>
+            </button>
+            {showSortMenu && (
+              <>
+                <div className="posts-sort-backdrop" onClick={() => setShowSortMenu(false)} />
+                <div className="posts-sort-menu">
+                  {sortOptions.map((option) => (
+                    <button
+                      key={option.id}
+                      className={`posts-sort-item ${sortBy === option.id ? "active" : ""}`}
+                      onClick={() => {
+                        setSortBy(option.id);
+                        setShowSortMenu(false);
+                      }}
+                    >
+                      {option.dir === "desc" ? <FaSortAmountDown /> : <FaSortAmountUp />}
+                      <span>{option.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+          <button
+            onClick={handleRefresh}
+            className="refresh-button"
+            disabled={loading}
+            title="Refresh posts"
+          >
+            <FaSyncAlt className={loading ? 'spinning' : ''} size={20} />
+          </button>
+        </div>
       </div>
 
       {/* Table */}
@@ -325,12 +402,12 @@ export const PostsContent = () => {
         <div className="posts-table-body">
           {loading ? (
             <LoadingContainer message={`Loading ${activeTab}...`} />
-          ) : filteredPosts.length === 0 ? (
+          ) : sortedPosts.length === 0 ? (
             <div className="posts-empty">
               {searchQuery ? "No posts match your search" : `No ${activeTab} posts yet`}
             </div>
           ) : (
-            filteredPosts.map((post, idx) => (
+            sortedPosts.map((post, idx) => (
               <div
                 key={post.id || idx}
                 className={`posts-table-row ${(activeTab === 'drafts' || activeTab === 'scheduled' || activeTab === 'pending') ? 'clickable' : ''}`}

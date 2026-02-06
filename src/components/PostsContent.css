@@ -90,6 +90,95 @@
   animation: spin 1s linear infinite;
 }
 
+/* Tabs Actions (sort + refresh) */
+.posts-tabs-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Sort Dropdown */
+.posts-sort-wrapper {
+  position: relative;
+}
+
+.posts-sort-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  font-family: "Inter", Helvetica, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.posts-sort-toggle:hover {
+  background: rgba(255, 255, 255, 0.3);
+  color: #fff;
+}
+
+.posts-sort-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 99;
+}
+
+.posts-sort-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 100;
+  min-width: 200px;
+  padding: 4px;
+  animation: postsSortIn 0.15s ease-out;
+}
+
+@keyframes postsSortIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.posts-sort-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  font-family: "Inter", Helvetica, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.posts-sort-item:hover {
+  background: #f3f4f6;
+}
+
+.posts-sort-item.active {
+  background: #eff6ff;
+  color: #afabf9;
+}
+
 /* Tabs Container */
 .posts-tabs-container {
   backdrop-filter: blur(25px) brightness(100%);
@@ -429,4 +518,26 @@
 .dark .posts-loading,
 .dark .posts-empty {
   color: #71717a !important;
+}
+
+[data-theme="dark"] .posts-sort-menu,
+.dark .posts-sort-menu {
+  background: #27272a !important;
+  border-color: #3f3f46 !important;
+}
+
+[data-theme="dark"] .posts-sort-item,
+.dark .posts-sort-item {
+  color: #d4d4d8 !important;
+}
+
+[data-theme="dark"] .posts-sort-item:hover,
+.dark .posts-sort-item:hover {
+  background: #3f3f46 !important;
+}
+
+[data-theme="dark"] .posts-sort-item.active,
+.dark .posts-sort-item.active {
+  background: #2e1065 !important;
+  color: #afabf9 !important;
 }
