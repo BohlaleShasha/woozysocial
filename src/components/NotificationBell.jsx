@@ -94,12 +94,12 @@ const NOTIFICATION_CONFIG = {
   // Comments
   new_comment: {
     icon: "💬",
-    route: "/approvals",
+    route: "/schedule",
     color: "#3b82f6"
   },
   comment_mention: {
     icon: "📣",
-    route: "/approvals",
+    route: "/schedule",
     color: "#8b5cf6"
   },
 
@@ -292,8 +292,8 @@ export const NotificationBell = () => {
         break;
       case 'new_comment':
       case 'comment_mention':
-        // Navigate to specific post if ID available
-        route = isClientRole ? '/client/approvals' : '/approvals';
+        // Main app → schedule page (opens PostDetailPanel), Client → approvals
+        route = isClientRole ? '/client/approvals' : '/schedule';
         if (postId) route += `?postId=${postId}`;
         break;
       default:

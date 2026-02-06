@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useWorkspace } from "../contexts/WorkspaceContext";
 import { baseURL, hasFeature } from "../utils/constants";
@@ -54,6 +55,10 @@ export const ScheduleContent = () => {
 
   // Check if subscription tier has approval workflows feature
   const hasApprovalWorkflows = hasFeature(subscriptionTier, 'approvalWorkflows');
+
+  // Read ?postId= URL param for deep-linking from notifications
+  const [searchParams, setSearchParams] = useSearchParams();
+  const postIdFromUrl = searchParams.get('postId');
 
   // Use React Query for unified schedule data
   const {
@@ -135,6 +140,31 @@ export const ScheduleContent = () => {
     // Navigate to compose - you'll need to import useNavigate from react-router-dom
     window.location.href = '/compose';
   };
+
+  // Auto-open PostDetailPanel when ?postId= is in URL (e.g., from notification click)
+  useEffect(() => {
+    if (!postIdFromUrl || loading || posts.length === 0 || !activeWorkspace) return;
+
+    // Find the matching post in loaded data
+    const matchingPost = posts.find(p => p.id === postIdFromUrl);
+    if (matchingPost) {
+      const normalizedPost = {
+        ...matchingPost,
+        id: matchingPost.id,
+        workspace_id: activeWorkspace.id,
+        caption: matchingPost.content || matchingPost.post,
+        media_urls: matchingPost.mediaUrls || [],
+        platforms: matchingPost.platforms || [],
+        scheduled_at: matchingPost.scheduleDate || matchingPost.schedule_date,
+        status: matchingPost.status || 'scheduled',
+        approval_status: matchingPost.approvalStatus
+      };
+      setSelectedPost(normalizedPost);
+    }
+
+    // Clear the postId from URL to avoid re-opening on navigation
+    setSearchParams({}, { replace: true });
+  }, [postIdFromUrl, loading, posts, activeWorkspace]);
 
   // Filter posts by approval status AND auto-remove rejected posts older than 7 days
   const filteredPosts = posts.filter(post => {
