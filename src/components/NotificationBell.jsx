@@ -270,14 +270,19 @@ export const NotificationBell = () => {
     let route = config.route;
 
     // Smart routing based on notification type and user role
+    // Get post_id from notification (could be in post_id field or metadata)
+    const postId = notification.post_id || notification.metadata?.post_id || notification.metadata?.postId;
+
     switch (notification.type) {
       case 'approval_request':
         route = isClientRole ? '/client/approvals' : '/approvals';
+        if (postId) route += `?postId=${postId}`;
         break;
       case 'post_approved':
       case 'post_rejected':
       case 'changes_requested':
         route = isClientRole ? '/client/approvals' : '/approvals';
+        if (postId) route += `?postId=${postId}`;
         break;
       case 'workspace_invite':
         // Use invite token from metadata if available
@@ -288,9 +293,8 @@ export const NotificationBell = () => {
       case 'new_comment':
       case 'comment_mention':
         // Navigate to specific post if ID available
-        if (notification.post_id) {
-          route = isClientRole ? '/client/approvals' : '/approvals';
-        }
+        route = isClientRole ? '/client/approvals' : '/approvals';
+        if (postId) route += `?postId=${postId}`;
         break;
       default:
         break;

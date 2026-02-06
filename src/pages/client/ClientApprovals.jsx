@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { useWorkspace } from "../../contexts/WorkspaceContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { usePendingApprovals, useInvalidateQueries } from "../../hooks/useQueries";
@@ -16,6 +16,7 @@ export const ClientApprovals = () => {
   const { user } = useAuth();
   const toast = useToast();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { invalidatePosts } = useInvalidateQueries();
   const [selectedPost, setSelectedPost] = useState(null);
   const [activeTab, setActiveTab] = useState("pending");
@@ -24,6 +25,11 @@ export const ClientApprovals = () => {
   const [mediaIndex, setMediaIndex] = useState(0);
   const [sortBy, setSortBy] = useState("scheduled_newest");
   const [showSortMenu, setShowSortMenu] = useState(false);
+  const [highlightedPostId, setHighlightedPostId] = useState(null);
+  const postRefs = useRef({});
+
+  // Get postId from URL query params
+  const urlPostId = searchParams.get('postId');
 
   // Use React Query for cached data fetching
   const {
@@ -66,10 +72,77 @@ export const ClientApprovals = () => {
 
   // Auto-select first post when posts change (only if no deep-link)
   useEffect(() => {
-    if (posts.length > 0 && !selectedPost && !location.state?.postId) {
+    if (posts.length > 0 && !selectedPost && !location.state?.postId && !urlPostId) {
       setSelectedPost(posts[0]);
     }
-  }, [posts, selectedPost, location.state?.postId]);
+  }, [posts, selectedPost, location.state?.postId, urlPostId]);
+
+  // Handle postId from URL query params (from notifications)
+  useEffect(() => {
+    const findAndSelectPost = async () => {
+      if (!urlPostId || !user?.id || !activeWorkspace?.id) return;
+
+      // Fetch all posts to find the one with this ID across all tabs
+      try {
+        const res = await fetch(
+          `${baseURL}/api/post/pending-approvals?workspaceId=${activeWorkspace.id}&userId=${user.id}`
+        );
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+        if (!data.success) return;
+
+        const responseData = data.data || data;
+        const grouped = responseData.grouped || {};
+
+        // Search through all status groups
+        let foundPost = null;
+        let foundTab = null;
+
+        for (const [status, statusPosts] of Object.entries(grouped)) {
+          const post = statusPosts?.find(p => p.id === urlPostId);
+          if (post) {
+            foundPost = post;
+            foundTab = status;
+            break;
+          }
+        }
+
+        if (foundPost && foundTab) {
+          // Switch to the correct tab
+          if (foundTab !== activeTab) {
+            setActiveTab(foundTab);
+          }
+
+          // Wait for tab to load, then select and highlight
+          setTimeout(() => {
+            setSelectedPost(foundPost);
+            setHighlightedPostId(foundPost.id);
+
+            // Scroll to the post
+            if (postRefs.current[foundPost.id]) {
+              postRefs.current[foundPost.id].scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+              });
+            }
+
+            // Remove highlight after animation
+            setTimeout(() => {
+              setHighlightedPostId(null);
+              // Clear the URL param
+              setSearchParams({});
+            }, 3000);
+          }, 300);
+        }
+      } catch (error) {
+        console.error('Error finding post:', error);
+      }
+    };
+
+    findAndSelectPost();
+  }, [urlPostId, user?.id, activeWorkspace?.id, activeTab, setSearchParams]);
 
   // Refresh function that invalidates cache
   const fetchPosts = () => {
@@ -264,7 +337,8 @@ export const ClientApprovals = () => {
             sortedPosts.map((post) => (
               <div
                 key={post.id}
-                className={`post-item ${selectedPost?.id === post.id ? "selected" : ""}`}
+                ref={(el) => postRefs.current[post.id] = el}
+                className={`post-item ${selectedPost?.id === post.id ? "selected" : ""} ${highlightedPostId === post.id ? "highlighted" : ""}`}
                 onClick={() => setSelectedPost(post)}
               >
                 <div className="post-item-content">

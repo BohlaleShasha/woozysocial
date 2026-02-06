@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useToast } from '@chakra-ui/react';
 import { useAuth } from '../contexts/AuthContext';
 import { useWorkspace } from '../contexts/WorkspaceContext';
@@ -34,6 +35,7 @@ const STATUS_COLORS = {
 export const Approvals = () => {
   const { user } = useAuth();
   const { activeWorkspace, workspaceMembership, canApprovePost } = useWorkspace();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('pending');
@@ -42,7 +44,12 @@ export const Approvals = () => {
   const [submitting, setSubmitting] = useState(false);
   const [comments, setComments] = useState([]);
   const [loadingComments, setLoadingComments] = useState(false);
+  const [highlightedPostId, setHighlightedPostId] = useState(null);
+  const postRefs = useRef({});
   const toast = useToast();
+
+  // Get postId from URL query params
+  const urlPostId = searchParams.get('postId');
 
   const fetchPosts = useCallback(async () => {
     if (!user?.id || !activeWorkspace?.id) return;
@@ -113,6 +120,71 @@ export const Approvals = () => {
       fetchComments(selectedPost.id);
     }
   }, [selectedPost?.id, fetchComments]);
+
+  // Handle postId from URL - find and highlight the specific post
+  useEffect(() => {
+    const findAndSelectPost = async () => {
+      if (!urlPostId || !user?.id || !activeWorkspace?.id) return;
+
+      // Fetch all posts to find the one with this ID
+      try {
+        const res = await fetch(
+          `${baseURL}/api/post/pending-approvals?workspaceId=${activeWorkspace.id}&userId=${user.id}`
+        );
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+        if (!data.success) return;
+
+        const responseData = data.data || data;
+        const grouped = responseData.grouped || {};
+
+        // Search through all status groups
+        let foundPost = null;
+        let foundStatus = null;
+
+        for (const [status, statusPosts] of Object.entries(grouped)) {
+          const post = statusPosts?.find(p => p.id === urlPostId);
+          if (post) {
+            foundPost = post;
+            foundStatus = status;
+            break;
+          }
+        }
+
+        if (foundPost && foundStatus) {
+          // Switch to the correct filter
+          setFilter(foundStatus);
+
+          // Wait for posts to load, then select and highlight
+          setTimeout(() => {
+            setSelectedPost(foundPost);
+            setHighlightedPostId(foundPost.id);
+
+            // Scroll to the post
+            if (postRefs.current[foundPost.id]) {
+              postRefs.current[foundPost.id].scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+              });
+            }
+
+            // Remove highlight after animation
+            setTimeout(() => {
+              setHighlightedPostId(null);
+              // Clear the URL param
+              setSearchParams({});
+            }, 3000);
+          }, 300);
+        }
+      } catch (error) {
+        console.error('Error finding post:', error);
+      }
+    };
+
+    findAndSelectPost();
+  }, [urlPostId, user?.id, activeWorkspace?.id, setSearchParams]);
 
   const handleApprovalAction = async (action) => {
     if (!selectedPost || !activeWorkspace?.id || !user?.id) return;
@@ -258,7 +330,8 @@ export const Approvals = () => {
             posts.map((post) => (
               <div
                 key={post.id}
-                className={`post-card ${selectedPost?.id === post.id ? 'selected' : ''}`}
+                ref={(el) => postRefs.current[post.id] = el}
+                className={`post-card ${selectedPost?.id === post.id ? 'selected' : ''} ${highlightedPostId === post.id ? 'highlighted' : ''}`}
                 onClick={() => setSelectedPost(post)}
               >
                 <div className="post-card-header">
