@@ -80,6 +80,10 @@
       "maxDuration": 60,
       "memory": 3008
     },
+    "api/post/approve.js": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
     "api/scheduler.js": {
       "maxDuration": 60,
       "memory": 1024
