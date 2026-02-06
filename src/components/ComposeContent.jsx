@@ -78,6 +78,8 @@ export const ComposeContent = () => {
   const [engagementScore, setEngagementScore] = useState(0);
   const [bestPostingTime, setBestPostingTime] = useState("2:00 PM");
   const [hasRealData, setHasRealData] = useState(false);
+  const [predictionRun, setPredictionRun] = useState(false);
+  const [isPredicting, setIsPredicting] = useState(false);
 
   // Analytics data for insights
   const [analyticsData, setAnalyticsData] = useState(null);
@@ -598,9 +600,12 @@ export const ComposeContent = () => {
     return () => window.removeEventListener('socialAccountsUpdated', handleAccountsUpdated);
   }, [activeWorkspace?.id, user?.id, invalidateAccounts]);
 
-  // Calculate engagement score based on post content - ENHANCED VERSION
-  useEffect(() => {
-    const calculateEngagementScore = () => {
+  // Calculate engagement score based on post content - MANUAL TRIGGER
+  const runPrediction = () => {
+    setIsPredicting(true);
+
+    // Simulate brief processing time for UX
+    setTimeout(() => {
       let score = 0;
       const text = post.text || "";
       const textLength = text.length;
@@ -717,10 +722,18 @@ export const ComposeContent = () => {
 
       // Cap at 100
       setEngagementScore(Math.min(score, 100));
-    };
+      setPredictionRun(true);
+      setIsPredicting(false);
+    }, 800); // Brief delay for UX
+  };
 
-    calculateEngagementScore();
-  }, [post.text, mediaPreviews, networks]);
+  // Reset prediction when content changes significantly
+  useEffect(() => {
+    if (predictionRun) {
+      setPredictionRun(false);
+      setEngagementScore(0);
+    }
+  }, [post.text, mediaPreviews.length, Object.keys(networks).filter(k => networks[k]).length]);
 
   // Map Ayrshare platform names to our internal names
   const platformNameMap = {
@@ -2633,99 +2646,144 @@ export const ComposeContent = () => {
               <h3 className="prediction-title">Performance Prediction</h3>
             </div>
             <div className="prediction-container">
-              {/* Engagement Score Circle */}
-              <div className="engagement-score">
-                <svg width="120" height="120" viewBox="0 0 120 120">
-                  <circle
-                    cx="60"
-                    cy="60"
-                    r="50"
-                    fill="none"
-                    stroke="#e5e7eb"
-                    strokeWidth="10"
-                  />
-                  <circle
-                    cx="60"
-                    cy="60"
-                    r="50"
-                    fill="none"
-                    stroke={getScoreColor()}
-                    strokeWidth="10"
-                    strokeDasharray="314"
-                    strokeDashoffset={getStrokeOffset()}
-                    transform="rotate(-90 60 60)"
-                    strokeLinecap="round"
-                    style={{ transition: 'stroke-dashoffset 0.3s ease, stroke 0.3s ease' }}
-                  />
-                  <text
-                    x="60"
-                    y="70"
-                    textAnchor="middle"
-                    fontSize="36"
-                    fontWeight="bold"
-                    fill={getScoreColor()}
+              {/* Show Run Prediction Button when not yet run */}
+              {!predictionRun ? (
+                <div className="prediction-prompt">
+                  <div className="prediction-prompt-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <p className="prediction-prompt-text">
+                    Analyze your post content to get engagement predictions and optimization tips
+                  </p>
+                  <button
+                    className="btn-run-prediction"
+                    onClick={runPrediction}
+                    disabled={isPredicting || (!post.text && mediaPreviews.length === 0)}
                   >
-                    {engagementScore}
-                  </text>
-                </svg>
-                <p className="score-label">Engagement Score</p>
-              </div>
-
-              {/* Data Source Indicator */}
-              <div className="data-source-indicator" style={{
-                padding: '8px 12px',
-                backgroundColor: hasRealData ? 'var(--success-bg, #d1fae5)' : 'var(--warning-bg, #fef3c7)',
-                borderRadius: '6px',
-                marginBottom: '12px',
-                fontSize: '11px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}>
-                <span>{hasRealData ? '✓' : 'ℹ'}</span>
-                <span style={{ color: hasRealData ? 'var(--success-text, #065f46)' : 'var(--warning-text, #92400e)' }}>
-                  {hasRealData
-                    ? `Personalized data from your ${analyticsData?.summary?.totalPosts || 0} posts`
-                    : 'Industry averages (post 10+ times for personalized insights)'}
-                </span>
-              </div>
-
-              {/* Timezone Indicator */}
-              {activeWorkspace?.timezone && (
-                <div style={{
-                  fontSize: '10px',
-                  color: 'var(--text-tertiary, #6b7280)',
-                  marginBottom: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}>
-                  <span>🌍</span>
-                  <span>Times shown in: {activeWorkspace.timezone}</span>
+                    {isPredicting ? (
+                      <>
+                        <span className="prediction-spinner"></span>
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polygon points="5 3 19 12 5 21 5 3" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        Run Prediction
+                      </>
+                    )}
+                  </button>
+                  {(!post.text && mediaPreviews.length === 0) && (
+                    <p className="prediction-hint">Add some content first</p>
+                  )}
                 </div>
-              )}
-
-              {/* Prediction Details */}
-              <div className="prediction-details">
-                <div className="prediction-item">
-                  <span className="prediction-icon">🕐</span>
-                  <div className="prediction-info">
-                    <span className="prediction-label">Best time to post:</span>
-                    <span className="prediction-value">{getBestPostingTime()}</span>
+              ) : (
+                <>
+                  {/* Engagement Score Circle */}
+                  <div className="engagement-score">
+                    <svg width="120" height="120" viewBox="0 0 120 120">
+                      <circle
+                        cx="60"
+                        cy="60"
+                        r="50"
+                        fill="none"
+                        stroke="#e5e7eb"
+                        strokeWidth="10"
+                      />
+                      <circle
+                        cx="60"
+                        cy="60"
+                        r="50"
+                        fill="none"
+                        stroke={getScoreColor()}
+                        strokeWidth="10"
+                        strokeDasharray="314"
+                        strokeDashoffset={getStrokeOffset()}
+                        transform="rotate(-90 60 60)"
+                        strokeLinecap="round"
+                        style={{ transition: 'stroke-dashoffset 0.3s ease, stroke 0.3s ease' }}
+                      />
+                      <text
+                        x="60"
+                        y="70"
+                        textAnchor="middle"
+                        fontSize="36"
+                        fontWeight="bold"
+                        fill={getScoreColor()}
+                      >
+                        {engagementScore}
+                      </text>
+                    </svg>
+                    <p className="score-label">Engagement Score</p>
                   </div>
-                </div>
 
-                <div className="prediction-item">
-                  <span className="prediction-icon">#</span>
-                  <div className="prediction-info">
-                    <span className="prediction-label">Hashtags:</span>
-                    <span className="prediction-value">{getHashtagCount()} / 5-10</span>
+                  {/* Re-run Button */}
+                  <button
+                    className="btn-rerun-prediction"
+                    onClick={runPrediction}
+                    disabled={isPredicting}
+                  >
+                    {isPredicting ? 'Analyzing...' : 'Re-analyze'}
+                  </button>
+
+                  {/* Data Source Indicator */}
+                  <div className="data-source-indicator" style={{
+                    padding: '8px 12px',
+                    backgroundColor: hasRealData ? 'var(--success-bg, #d1fae5)' : 'var(--warning-bg, #fef3c7)',
+                    borderRadius: '6px',
+                    marginBottom: '12px',
+                    fontSize: '11px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <span>{hasRealData ? '✓' : 'ℹ'}</span>
+                    <span style={{ color: hasRealData ? 'var(--success-text, #065f46)' : 'var(--warning-text, #92400e)' }}>
+                      {hasRealData
+                        ? `Personalized data from your ${analyticsData?.summary?.totalPosts || 0} posts`
+                        : 'Industry averages (post 10+ times for personalized insights)'}
+                    </span>
                   </div>
-                </div>
-              </div>
 
-              {/* Analytics Insights */}
-              {analyticsData?.summary && (
+                  {/* Timezone Indicator */}
+                  {activeWorkspace?.timezone && (
+                    <div style={{
+                      fontSize: '10px',
+                      color: 'var(--text-tertiary, #6b7280)',
+                      marginBottom: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      <span>🌍</span>
+                      <span>Times shown in: {activeWorkspace.timezone}</span>
+                    </div>
+                  )}
+
+                  {/* Prediction Details */}
+                  <div className="prediction-details">
+                    <div className="prediction-item">
+                      <span className="prediction-icon">🕐</span>
+                      <div className="prediction-info">
+                        <span className="prediction-label">Best time to post:</span>
+                        <span className="prediction-value">{getBestPostingTime()}</span>
+                      </div>
+                    </div>
+
+                    <div className="prediction-item">
+                      <span className="prediction-icon">#</span>
+                      <div className="prediction-info">
+                        <span className="prediction-label">Hashtags:</span>
+                        <span className="prediction-value">{getHashtagCount()} / 5-10</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Analytics Insights */}
+                  {analyticsData?.summary && (
                 <div className="analytics-insights">
                   <h4 style={{ margin: '16px 0 12px', fontSize: '14px', fontWeight: '600', color: 'var(--text-secondary, #374151)' }}>
                     📊 Last 7 Days
@@ -2844,6 +2902,8 @@ export const ComposeContent = () => {
                     </div>
                   )}
                 </div>
+              )}
+                </>
               )}
 
               {/* Quick Actions */}
