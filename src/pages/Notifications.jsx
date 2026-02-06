@@ -116,12 +116,12 @@ const NOTIFICATION_CONFIG = {
   // Social Inbox
   inbox_message: {
     icon: "📩",
-    route: "/social-inbox",
+    route: "/social-inbox?tab=messages",
     color: "#3b82f6"
   },
   inbox_mention: {
     icon: "📢",
-    route: "/social-inbox",
+    route: "/social-inbox?tab=messages",
     color: "#8b5cf6"
   },
 

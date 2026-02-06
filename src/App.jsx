@@ -43,12 +43,11 @@ const PostsContent = lazyRetry(() => import("./components/PostsContent").then(m 
 const BrandProfileContent = lazyRetry(() => import("./components/BrandProfileContent").then(m => ({ default: m.BrandProfileContent })));
 const ScheduleContent = lazyRetry(() => import("./components/ScheduleContent").then(m => ({ default: m.ScheduleContent })));
 const AssetsContent = lazyRetry(() => import("./components/AssetsContent").then(m => ({ default: m.AssetsContent })));
-const SocialInboxContent = lazyRetry(() => import("./components/SocialInboxContent").then(m => ({ default: m.SocialInboxContent })));
+const UnifiedInboxContent = lazyRetry(() => import("./components/inbox/UnifiedInboxContent").then(m => ({ default: m.UnifiedInboxContent })));
 const TeamContent = lazyRetry(() => import("./components/TeamContent").then(m => ({ default: m.TeamContent })));
 const AgencyTeamContent = lazyRetry(() => import("./components/AgencyTeamContent").then(m => ({ default: m.AgencyTeamContent })));
 const SettingsContent = lazyRetry(() => import("./components/SettingsContent").then(m => ({ default: m.SettingsContent })));
 const ProfileSettings = lazyRetry(() => import("./components/ProfileSettings").then(m => ({ default: m.ProfileSettings })));
-const EngagementContent = lazyRetry(() => import("./components/EngagementContent").then(m => ({ default: m.EngagementContent })));
 const Approvals = lazyRetry(() => import("./pages/Approvals").then(m => ({ default: m.Approvals })));
 const Pricing = lazyRetry(() => import("./pages/Pricing"));
 const Notifications = lazyRetry(() => import("./pages/Notifications").then(m => ({ default: m.Notifications })));
@@ -60,7 +59,7 @@ const ClientApproved = lazyRetry(() => import("./pages/client/ClientApproved").t
 const ClientCalendar = lazyRetry(() => import("./pages/client/ClientCalendar").then(m => ({ default: m.ClientCalendar })));
 const ClientAnalytics = lazyRetry(() => import("./pages/client/ClientAnalytics").then(m => ({ default: m.ClientAnalytics })));
 const ClientBrandProfile = lazyRetry(() => import("./pages/client/ClientBrandProfile").then(m => ({ default: m.ClientBrandProfile })));
-const ClientSocialInbox = lazyRetry(() => import("./pages/client/ClientSocialInbox").then(m => ({ default: m.ClientSocialInbox })));
+const ClientInbox = lazyRetry(() => import("./pages/client/ClientInbox").then(m => ({ default: m.ClientInbox })));
 const ClientTeam = lazyRetry(() => import("./pages/client/ClientTeam").then(m => ({ default: m.ClientTeam })));
 const ClientProfileSettings = lazyRetry(() => import("./pages/client/ClientProfileSettings").then(m => ({ default: m.ClientProfileSettings })));
 
@@ -128,7 +127,7 @@ function App() {
                         <Route path="/calendar" element={<ClientCalendar />} />
                         <Route path="/team" element={<ClientTeam />} />
                         <Route path="/brand-profile" element={<ClientBrandProfile />} />
-                        <Route path="/social-inbox" element={<ClientSocialInbox />} />
+                        <Route path="/social-inbox" element={<ClientInbox />} />
                         <Route path="/analytics" element={<ClientAnalytics />} />
                         <Route path="/profile-settings" element={<ClientProfileSettings />} />
                         <Route path="/notifications" element={<Notifications />} />
@@ -158,8 +157,8 @@ function App() {
                             <Route path="/schedule" element={<ScheduleContent />} />
                             <Route path="/posts" element={<PostsContent />} />
                             <Route path="/assets" element={<AssetsContent />} />
-                            <Route path="/engagement" element={<EngagementContent />} />
-                            <Route path="/social-inbox" element={<SocialInboxContent />} />
+                            <Route path="/engagement" element={<Navigate to="/social-inbox?tab=comments" replace />} />
+                            <Route path="/social-inbox" element={<UnifiedInboxContent />} />
                             <Route path="/team" element={<TeamContent />} />
                             <Route path="/agency-team" element={<AgencyTeamContent />} />
                             <Route path="/approvals" element={<Approvals />} />

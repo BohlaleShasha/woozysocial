@@ -1,25 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
 import { FaFacebookF, FaInstagram } from "react-icons/fa";
 import { SiX } from "react-icons/si";
-import { useWorkspace } from "../contexts/WorkspaceContext";
-import { useAuth } from "../contexts/AuthContext";
-import { useInbox } from "../hooks/useInbox";
-import { LoadingContainer } from "./ui/LoadingSpinner";
-import "./SocialInboxContent.css";
+import { LoadingContainer } from "../ui/LoadingSpinner";
 
-// Only DM-supported platforms
 const PLATFORM_ICONS = {
   facebook: { icon: FaFacebookF, color: "#1877F2", name: "Facebook Messenger" },
   instagram: { icon: FaInstagram, color: "#E4405F", name: "Instagram DM" },
   twitter: { icon: SiX, color: "#000000", name: "X Direct Messages" }
 };
 
-export const SocialInboxContent = () => {
-  const { activeWorkspace } = useWorkspace();
-  const { user } = useAuth();
-  const workspaceId = activeWorkspace?.id;
-
-  // Use the inbox hook
+export const MessagesPanel = ({ inboxData }) => {
   const {
     conversations,
     currentConversation,
@@ -29,35 +19,29 @@ export const SocialInboxContent = () => {
     sending,
     error,
     platformStats,
-    totalUnread,
     selectedPlatform,
     selectConversation,
     sendMessage,
-    refresh,
     filterByPlatform,
     clearError
-  } = useInbox(workspaceId);
+  } = inboxData;
 
-  // Local state
   const [messageFilter, setMessageFilter] = useState("all");
   const [replyText, setReplyText] = useState("");
   const messagesEndRef = useRef(null);
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
 
-  // Filter conversations locally
   const filteredConversations = conversations.filter(conv => {
     if (messageFilter === "unread") return conv.unread_count > 0;
     if (messageFilter === "replied") return conv.last_message_sender === "user";
     return true;
   });
 
-  // Handle sending a reply
   const handleSendReply = async () => {
     if (!replyText.trim() || sending) return;
 
@@ -69,7 +53,6 @@ export const SocialInboxContent = () => {
     }
   };
 
-  // Handle key press in reply textarea
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -77,7 +60,6 @@ export const SocialInboxContent = () => {
     }
   };
 
-  // Format timestamp
   const formatTime = (timestamp) => {
     if (!timestamp) return "";
     const date = new Date(timestamp);
@@ -94,94 +76,50 @@ export const SocialInboxContent = () => {
     return date.toLocaleDateString();
   };
 
-  // Format message time
   const formatMessageTime = (timestamp) => {
     if (!timestamp) return "";
     const date = new Date(timestamp);
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
-  // Render empty state when no workspace
-  if (!workspaceId) {
-    return (
-      <div className="social-inbox-container">
-        <div className="inbox-empty-state">
-          <div className="empty-icon">📭</div>
-          <h2>No Workspace Selected</h2>
-          <p>Please select or create a workspace to view your inbox.</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="social-inbox-container">
-      {/* Header */}
-      <div className="inbox-header">
-        <div>
-          <h1 className="inbox-title">Social Inbox</h1>
-          <p className="inbox-subtitle">
-            Manage direct messages from Facebook, Instagram, and X
-          </p>
-        </div>
-        <div className="inbox-header-actions">
-          <button
-            className="refresh-btn"
-            onClick={() => refresh()}
-            disabled={loading}
-          >
-            {loading ? "Syncing..." : "Refresh"}
-          </button>
-          <div className="inbox-stats">
-            <div className="stat-badge">
-              <span className="stat-number">{conversations.length}</span>
-              <span className="stat-label">Total</span>
-            </div>
-            <div className="stat-badge unread">
-              <span className="stat-number">{totalUnread}</span>
-              <span className="stat-label">Unread</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Error Banner */}
+    <>
       {error && (
-        <div className="inbox-error-banner">
+        <div className="mp-error-banner">
           <span>{error}</span>
           <button onClick={clearError}>Dismiss</button>
         </div>
       )}
 
-      <div className="inbox-content">
+      <div className="unified-inbox-grid">
         {/* Left Sidebar */}
-        <div className="inbox-sidebar">
+        <div className="mp-sidebar">
           {/* Platform Filter */}
-          <div className="platform-filter-section">
-            <h3 className="filter-title">Platforms</h3>
-            <div className="platform-filters">
+          <div className="mp-platform-section">
+            <h3 className="mp-filter-title">Platforms</h3>
+            <div className="mp-platform-filters">
               <button
-                className={`platform-filter-btn ${selectedPlatform === "all" ? "active" : ""}`}
+                className={`mp-platform-btn ${selectedPlatform === "all" ? "active" : ""}`}
                 onClick={() => filterByPlatform("all")}
               >
-                <span className="filter-icon">💬</span>
-                <span className="filter-name">All Platforms</span>
-                <span className="filter-count">{conversations.length}</span>
+                <span className="mp-filter-icon">💬</span>
+                <span className="mp-filter-name">All Platforms</span>
+                <span className="mp-filter-count">{conversations.length}</span>
               </button>
               {Object.entries(PLATFORM_ICONS).map(([key, { icon: Icon, color, name }]) => {
                 const stats = platformStats[key] || { total: 0, unread: 0 };
                 return (
                   <button
                     key={key}
-                    className={`platform-filter-btn ${selectedPlatform === key ? "active" : ""}`}
+                    className={`mp-platform-btn ${selectedPlatform === key ? "active" : ""}`}
                     onClick={() => filterByPlatform(key)}
                   >
-                    <Icon className="filter-icon" style={{ color }} />
-                    <span className="filter-name">{name}</span>
-                    <span className="filter-count">
+                    <Icon className="mp-filter-icon" style={{ color }} />
+                    <span className="mp-filter-name">{name}</span>
+                    <span className="mp-filter-count">
                       {stats.total}
                       {stats.unread > 0 && (
-                        <span className="unread-badge">{stats.unread}</span>
+                        <span className="mp-unread-badge">{stats.unread}</span>
                       )}
                     </span>
                   </button>
@@ -191,22 +129,22 @@ export const SocialInboxContent = () => {
           </div>
 
           {/* Message Filter */}
-          <div className="message-filter-section">
-            <div className="filter-tabs">
+          <div className="mp-message-filter">
+            <div className="mp-filter-tabs">
               <button
-                className={`filter-tab ${messageFilter === "all" ? "active" : ""}`}
+                className={`mp-filter-tab ${messageFilter === "all" ? "active" : ""}`}
                 onClick={() => setMessageFilter("all")}
               >
                 All
               </button>
               <button
-                className={`filter-tab ${messageFilter === "unread" ? "active" : ""}`}
+                className={`mp-filter-tab ${messageFilter === "unread" ? "active" : ""}`}
                 onClick={() => setMessageFilter("unread")}
               >
                 Unread
               </button>
               <button
-                className={`filter-tab ${messageFilter === "replied" ? "active" : ""}`}
+                className={`mp-filter-tab ${messageFilter === "replied" ? "active" : ""}`}
                 onClick={() => setMessageFilter("replied")}
               >
                 Replied
@@ -215,13 +153,13 @@ export const SocialInboxContent = () => {
           </div>
 
           {/* Conversations List */}
-          <div className="conversations-list">
+          <div className="mp-conversations-list">
             {loading && conversations.length === 0 ? (
               <LoadingContainer message="Loading conversations..." size="sm" />
             ) : filteredConversations.length === 0 ? (
-              <div className="empty-conversations">
+              <div className="mp-empty-conversations">
                 <p>No conversations found</p>
-                <span className="empty-hint">
+                <span className="mp-empty-hint">
                   {selectedPlatform !== "all"
                     ? `No ${PLATFORM_ICONS[selectedPlatform]?.name} messages yet`
                     : "Messages will appear here when you receive them"}
@@ -236,46 +174,46 @@ export const SocialInboxContent = () => {
                 return (
                   <div
                     key={conversation.id}
-                    className={`conversation-item ${
+                    className={`mp-conversation-item ${
                       currentConversation?.id === conversation.id ? "active" : ""
                     } ${conversation.unread_count > 0 ? "unread" : ""}`}
                     onClick={() => selectConversation(conversation)}
                   >
-                    <div className="conversation-avatar">
+                    <div className="mp-avatar">
                       {conversation.correspondent_avatar ? (
                         <img
                           src={conversation.correspondent_avatar}
                           alt={conversation.correspondent_name}
-                          className="avatar-img"
+                          className="mp-avatar-img"
                         />
                       ) : (
-                        <span className="avatar-placeholder">
+                        <span className="mp-avatar-placeholder">
                           {conversation.correspondent_name?.[0]?.toUpperCase() || "?"}
                         </span>
                       )}
                       <Icon
-                        className="platform-badge"
+                        className="mp-avatar-badge"
                         style={{ color: platformData.color }}
                       />
                     </div>
-                    <div className="conversation-details">
-                      <div className="conversation-header">
-                        <span className="conversation-sender">
+                    <div className="mp-conversation-details">
+                      <div className="mp-conversation-header">
+                        <span className="mp-sender">
                           {conversation.correspondent_name || "Unknown"}
                         </span>
-                        <span className="conversation-time">
+                        <span className="mp-time">
                           {formatTime(conversation.last_message_at)}
                         </span>
                       </div>
-                      <p className="conversation-preview">
+                      <p className="mp-preview">
                         {conversation.last_message_sender === "user" && (
-                          <span className="you-prefix">You: </span>
+                          <span className="mp-you-prefix">You: </span>
                         )}
                         {conversation.last_message_text || "No messages yet"}
                       </p>
                     </div>
                     {conversation.unread_count > 0 && (
-                      <div className="unread-indicator">
+                      <div className="mp-unread-indicator">
                         {conversation.unread_count}
                       </div>
                     )}
@@ -287,13 +225,12 @@ export const SocialInboxContent = () => {
         </div>
 
         {/* Right Side - Message Thread */}
-        <div className="inbox-messages">
+        <div className="mp-messages">
           {currentConversation ? (
             <>
-              {/* Message Header */}
-              <div className="message-thread-header">
-                <div className="thread-user-info">
-                  <div className="thread-avatar">
+              <div className="mp-thread-header">
+                <div className="mp-thread-user-info">
+                  <div className="mp-thread-avatar">
                     {currentConversation.correspondent_avatar ? (
                       <img
                         src={currentConversation.correspondent_avatar}
@@ -306,10 +243,10 @@ export const SocialInboxContent = () => {
                     )}
                   </div>
                   <div>
-                    <h3 className="thread-user-name">
+                    <h3 className="mp-thread-name">
                       {currentConversation.correspondent_name || "Unknown"}
                     </h3>
-                    <p className="thread-platform">
+                    <p className="mp-thread-platform">
                       {React.createElement(
                         PLATFORM_ICONS[currentConversation.platform]?.icon || "span",
                         {
@@ -322,7 +259,7 @@ export const SocialInboxContent = () => {
                       )}
                       {PLATFORM_ICONS[currentConversation.platform]?.name}
                       {currentConversation.correspondent_username && (
-                        <span className="username">
+                        <span className="mp-username">
                           @{currentConversation.correspondent_username}
                         </span>
                       )}
@@ -330,38 +267,37 @@ export const SocialInboxContent = () => {
                   </div>
                 </div>
                 {!currentConversation.can_reply && (
-                  <div className="reply-warning">
+                  <div className="mp-reply-warning">
                     Instagram 7-day window expired
                   </div>
                 )}
               </div>
 
-              {/* Messages */}
-              <div className="message-thread">
+              <div className="mp-thread">
                 {messagesLoading ? (
                   <LoadingContainer message="Loading messages..." size="sm" />
                 ) : messages.length === 0 ? (
-                  <div className="no-messages">
+                  <div className="mp-no-messages">
                     <p>No messages in this conversation</p>
                   </div>
                 ) : (
                   messages.map((message) => (
                     <div
                       key={message.id}
-                      className={`message-bubble ${
+                      className={`mp-bubble ${
                         message.sender_type === "user" ? "outgoing" : "incoming"
                       }`}
                     >
-                      <div className="message-content">
-                        <p className="message-text">{message.message_text}</p>
+                      <div className="mp-bubble-content">
+                        <p className="mp-bubble-text">{message.message_text}</p>
                         {message.media_urls?.length > 0 && (
-                          <div className="message-media">
+                          <div className="mp-media">
                             {message.media_urls.map((url, idx) => (
                               <img key={idx} src={url} alt="Attachment" />
                             ))}
                           </div>
                         )}
-                        <span className="message-time">
+                        <span className="mp-bubble-time">
                           {formatMessageTime(message.sent_at)}
                         </span>
                       </div>
@@ -371,12 +307,11 @@ export const SocialInboxContent = () => {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Reply Input */}
-              <div className="message-reply-section">
+              <div className="mp-reply-section">
                 {currentConversation.can_reply !== false ? (
                   <>
                     <textarea
-                      className="reply-textarea"
+                      className="mp-reply-textarea"
                       placeholder="Type your reply..."
                       rows="3"
                       value={replyText}
@@ -384,10 +319,10 @@ export const SocialInboxContent = () => {
                       onKeyPress={handleKeyPress}
                       disabled={sending}
                     />
-                    <div className="reply-actions">
-                      <span className="reply-hint">Press Enter to send</span>
+                    <div className="mp-reply-actions">
+                      <span className="mp-reply-hint">Press Enter to send</span>
                       <button
-                        className="reply-btn"
+                        className="mp-send-btn"
                         onClick={handleSendReply}
                         disabled={!replyText.trim() || sending}
                       >
@@ -396,7 +331,7 @@ export const SocialInboxContent = () => {
                     </div>
                   </>
                 ) : (
-                  <div className="reply-disabled">
+                  <div className="mp-reply-disabled">
                     <p>
                       Cannot reply - Instagram conversations expire after 7 days
                       of inactivity from the contact.
@@ -406,7 +341,7 @@ export const SocialInboxContent = () => {
               </div>
             </>
           ) : (
-            <div className="empty-message-state">
+            <div className="unified-empty-state">
               <div className="empty-icon">💬</div>
               <p className="empty-text">Select a conversation to view messages</p>
               <p className="empty-subtext">
@@ -416,6 +351,6 @@ export const SocialInboxContent = () => {
           )}
         </div>
       </div>
-    </div>
+    </>
   );
 };

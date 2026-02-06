@@ -30,7 +30,6 @@ export const TopHeader = () => {
     { name: "Schedule", path: "/schedule", tab: "schedule" },
     { name: "Posts", path: "/posts", tab: "posts" },
     { name: "Assets", path: "/assets", tab: "assets" },
-    { name: "Engagement", path: "/engagement", tab: "engagement" },
     { name: "Social Inbox", path: "/social-inbox", tab: "social-inbox" },
     { name: "Team", path: "/team", tab: "team" },
     { name: "Approvals", path: "/approvals", tab: "approvals" },

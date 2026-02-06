@@ -206,7 +206,6 @@ describe('Sidebar Menu Items', () => {
     { name: 'Compose', path: '/compose', tabName: 'compose' },
     { name: 'Schedule', path: '/schedule', tabName: 'schedule' },
     { name: 'Posts', path: '/posts', tabName: 'posts' },
-    { name: 'Engagement', path: '/engagement', tabName: 'engagement' },
     { name: 'Social Inbox', path: '/social-inbox', tabName: 'social-inbox' },
     { name: 'Team', path: '/team', tabName: 'team', requiresSubscriptionOrTeam: true },
     { name: 'Approvals', path: '/approvals', tabName: 'approvals', requiresSubscriptionOrTeam: true },
@@ -214,7 +213,7 @@ describe('Sidebar Menu Items', () => {
   ]
 
   it('should have correct number of menu items', () => {
-    expect(menuItems.length).toBe(10)
+    expect(menuItems.length).toBe(9)
   })
 
   it('should have Dashboard as first item', () => {
