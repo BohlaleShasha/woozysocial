@@ -410,20 +410,20 @@ export const PostsContent = () => {
             sortedPosts.map((post, idx) => (
               <div
                 key={post.id || idx}
-                className={`posts-table-row ${(activeTab === 'drafts' || activeTab === 'scheduled' || activeTab === 'pending') ? 'clickable' : ''}`}
+                className={`posts-table-row ${(activeTab === 'drafts' || activeTab === 'scheduled' || activeTab === 'pending' || activeTab === 'history') ? 'clickable' : ''}`}
                 onClick={() => {
-                  if (activeTab === 'drafts' || activeTab === 'scheduled' || activeTab === 'pending') {
+                  if (activeTab === 'drafts' || activeTab === 'scheduled' || activeTab === 'pending' || activeTab === 'history') {
                     // Normalize post structure for PostDetailPanel
                     const normalizedPost = {
                       ...post,
                       workspace_id: activeWorkspace.id,
                       // Add status if missing (for drafts)
-                      status: post.status || (activeTab === 'drafts' ? 'draft' : activeTab === 'pending' ? 'pending_approval' : 'scheduled')
+                      status: post.status || (activeTab === 'drafts' ? 'draft' : activeTab === 'pending' ? 'pending_approval' : activeTab === 'history' ? 'posted' : 'scheduled')
                     };
                     setSelectedPost(normalizedPost);
                   }
                 }}
-                style={{ cursor: (activeTab === 'drafts' || activeTab === 'scheduled' || activeTab === 'pending') ? 'pointer' : 'default' }}
+                style={{ cursor: (activeTab === 'drafts' || activeTab === 'scheduled' || activeTab === 'pending' || activeTab === 'history') ? 'pointer' : 'default' }}
               >
                 <div className="posts-checkbox-col">
                   {activeTab === 'drafts' ? (
