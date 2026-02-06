@@ -40,33 +40,51 @@ export const CommentInput = forwardRef(({
     }
   }));
 
+  // Close mention dropdown when clicking outside
+  useEffect(() => {
+    if (!showMentions) return;
+    const handleClickOutside = () => setShowMentions(false);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showMentions]);
+
   // Fetch workspace members for @mentions
   useEffect(() => {
     const fetchMembers = async () => {
       if (!workspaceId) return;
 
-      const { data, error } = await supabase
-        .from('workspace_members')
-        .select(`
-          user_id,
-          user_profiles (
-            id,
-            full_name,
-            email,
-            avatar_url
-          )
-        `)
-        .eq('workspace_id', workspaceId);
+      try {
+        const { data, error } = await supabase
+          .from('workspace_members')
+          .select(`
+            user_id,
+            user_profiles (
+              id,
+              full_name,
+              email,
+              avatar_url
+            )
+          `)
+          .eq('workspace_id', workspaceId);
 
-      if (!error && data) {
-        setWorkspaceMembers(
-          data.map(m => ({
-            id: m.user_profiles.id,
-            full_name: m.user_profiles.full_name,
-            email: m.user_profiles.email,
-            avatar_url: m.user_profiles.avatar_url
-          }))
-        );
+        if (error) {
+          console.error('Error fetching workspace members:', error);
+          return;
+        }
+
+        if (data) {
+          const members = data
+            .filter(m => m.user_profiles)
+            .map(m => ({
+              id: m.user_profiles.id,
+              full_name: m.user_profiles.full_name,
+              email: m.user_profiles.email,
+              avatar_url: m.user_profiles.avatar_url
+            }));
+          setWorkspaceMembers(members);
+        }
+      } catch (err) {
+        console.error('Failed to fetch workspace members for mentions:', err);
       }
     };
 
@@ -93,13 +111,14 @@ export const CommentInput = forwardRef(({
         setMentionSearch(textAfterAt.toLowerCase());
         setShowMentions(true);
 
-        // Calculate dropdown position
+        // Calculate dropdown position using fixed positioning
         const textarea = textareaRef.current;
         if (textarea) {
+          const rect = textarea.getBoundingClientRect();
           const coords = getCaretCoordinates(textarea, cursorPos);
           setMentionPosition({
-            top: coords.top + 20,
-            left: coords.left
+            top: rect.top + coords.top + 24,
+            left: rect.left + Math.min(coords.left, rect.width - 260)
           });
         }
       } else {
