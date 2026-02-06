@@ -48,40 +48,45 @@ export const CommentInput = forwardRef(({
     return () => document.removeEventListener('click', handleClickOutside);
   }, [showMentions]);
 
-  // Fetch workspace members for @mentions
+  // Fetch workspace members for @mentions (two-step: members then profiles)
   useEffect(() => {
     const fetchMembers = async () => {
       if (!workspaceId) return;
 
       try {
-        const { data, error } = await supabase
+        // Step 1: Get member user_ids
+        const { data: membersData, error: membersError } = await supabase
           .from('workspace_members')
-          .select(`
-            user_id,
-            user_profiles (
-              id,
-              full_name,
-              email,
-              avatar_url
-            )
-          `)
+          .select('user_id')
           .eq('workspace_id', workspaceId);
 
-        if (error) {
-          console.error('Error fetching workspace members:', error);
+        if (membersError || !membersData || membersData.length === 0) {
+          if (membersError) console.error('Error fetching workspace members:', membersError);
           return;
         }
 
-        if (data) {
-          const members = data
-            .filter(m => m.user_profiles)
-            .map(m => ({
-              id: m.user_profiles.id,
-              full_name: m.user_profiles.full_name,
-              email: m.user_profiles.email,
-              avatar_url: m.user_profiles.avatar_url
-            }));
-          setWorkspaceMembers(members);
+        const userIds = membersData.map(m => m.user_id);
+
+        // Step 2: Get profiles for those user_ids
+        const { data: profiles, error: profilesError } = await supabase
+          .from('user_profiles')
+          .select('id, full_name, email, avatar_url')
+          .in('id', userIds);
+
+        if (profilesError) {
+          console.error('Error fetching user profiles:', profilesError);
+          return;
+        }
+
+        if (profiles) {
+          setWorkspaceMembers(
+            profiles.map(p => ({
+              id: p.id,
+              full_name: p.full_name,
+              email: p.email,
+              avatar_url: p.avatar_url
+            }))
+          );
         }
       } catch (err) {
         console.error('Failed to fetch workspace members for mentions:', err);
