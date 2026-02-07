@@ -203,28 +203,35 @@ export const PostDetailPanel = ({
       <div className="panel-overlay" onClick={onClose} />
 
       <div className="post-detail-panel">
+        {/* Side navigation arrows */}
+        {dayPosts.length > 1 && onNavigatePost && (
+          <>
+            <button
+              className="panel-side-arrow panel-side-arrow-left"
+              onClick={() => onNavigatePost(currentIndex - 1)}
+              disabled={currentIndex === 0}
+              title="Previous post (←)"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M12 4L6 10L12 16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            <button
+              className="panel-side-arrow panel-side-arrow-right"
+              onClick={() => onNavigatePost(currentIndex + 1)}
+              disabled={currentIndex === dayPosts.length - 1}
+              title="Next post (→)"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M8 4L14 10L8 16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </>
+        )}
         <div className="panel-header">
           <h3>Post Details</h3>
           {dayPosts.length > 1 && onNavigatePost && (
-            <div className="panel-nav-arrows">
-              <button
-                className="panel-nav-btn"
-                onClick={() => onNavigatePost(currentIndex - 1)}
-                disabled={currentIndex === 0}
-                title="Previous post (←)"
-              >
-                ←
-              </button>
-              <span className="panel-nav-count">{currentIndex + 1} / {dayPosts.length}</span>
-              <button
-                className="panel-nav-btn"
-                onClick={() => onNavigatePost(currentIndex + 1)}
-                disabled={currentIndex === dayPosts.length - 1}
-                title="Next post (→)"
-              >
-                →
-              </button>
-            </div>
+            <span className="panel-nav-count">{currentIndex + 1} / {dayPosts.length}</span>
           )}
           <button className="close-panel" onClick={onClose} title="Close (Esc)">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
