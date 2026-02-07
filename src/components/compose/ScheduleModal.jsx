@@ -331,18 +331,28 @@ export const ScheduleModal = ({
               <div className="hourly-graph-bars">
                 {hourlyGraph.data.map(({ hour, score, label }) => {
                   const currentHour = parseInt(selectedTime.split(':')[0]);
+                  const isActive = hour === currentHour;
+                  const isPeak = hour === hourlyGraph.peakHour;
                   return (
                     <div
                       key={hour}
-                      className={`hourly-bar-col ${hour === currentHour ? 'active' : ''} ${hour === hourlyGraph.peakHour ? 'peak' : ''}`}
+                      className={`hourly-bar-col ${isActive ? 'active' : ''} ${isPeak ? 'peak' : ''}`}
                       onClick={() => handleBarClick(hour)}
-                      title={`${label} - Score: ${score}`}
                     >
+                      {isActive && (
+                        <span className="hourly-bar-tooltip">{label}</span>
+                      )}
                       <div className="hourly-bar" style={{ height: `${score}%` }} />
-                      {hour % 3 === 0 && <span className="hourly-label">{formatShortHour(hour)}</span>}
                     </div>
                   );
                 })}
+              </div>
+              <div className="hourly-graph-labels">
+                <span>12a</span>
+                <span>6a</span>
+                <span>12p</span>
+                <span>6p</span>
+                <span>11p</span>
               </div>
             </div>
           )}

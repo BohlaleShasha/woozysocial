@@ -232,23 +232,23 @@
 
 /* Hourly Engagement Bar Graph */
 .hourly-graph {
-  margin-top: 8px;
-  padding: 14px;
+  margin-top: 12px;
+  padding: 16px 16px 10px;
   background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
-  border: 1px solid #7c3aed;
-  border-radius: 10px;
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  border-radius: 12px;
   animation: slideDown 0.2s ease-out;
 }
 
 .hourly-graph-header {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 10px;
+  gap: 8px;
+  margin-bottom: 14px;
 }
 
 .hourly-graph-title {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: #5b21b6;
   flex: 1;
@@ -262,20 +262,23 @@
   font-size: 18px;
   line-height: 1;
   cursor: pointer;
-  padding: 0 2px;
-  opacity: 0.6;
+  padding: 2px 4px;
+  opacity: 0.5;
   transition: opacity 0.15s;
+  border-radius: 4px;
 }
 
 .hourly-graph-close:hover {
   opacity: 1;
+  background: rgba(124, 58, 237, 0.1);
 }
 
 .hourly-graph-bars {
   display: flex;
   align-items: flex-end;
-  gap: 2px;
-  height: 80px;
+  gap: 3px;
+  height: 100px;
+  padding: 0 2px;
 }
 
 .hourly-bar-col {
@@ -286,35 +289,69 @@
   cursor: pointer;
   height: 100%;
   justify-content: flex-end;
+  position: relative;
 }
 
 .hourly-bar {
   width: 100%;
-  min-height: 2px;
-  background: #c4b5fd;
-  border-radius: 2px 2px 0 0;
+  min-height: 3px;
+  background: rgba(196, 181, 253, 0.6);
+  border-radius: 3px 3px 0 0;
   transition: all 0.15s ease;
 }
 
 .hourly-bar-col:hover .hourly-bar {
   background: #8b5cf6;
+  transform: scaleY(1.05);
+  transform-origin: bottom;
 }
 
 .hourly-bar-col.active .hourly-bar {
   background: #7c3aed;
-  box-shadow: 0 0 6px rgba(124, 58, 237, 0.4);
+  box-shadow: 0 0 8px rgba(124, 58, 237, 0.5);
 }
 
 .hourly-bar-col.peak .hourly-bar {
   background: #7c3aed;
 }
 
-.hourly-label {
-  font-size: 8px;
-  color: #6b7280;
-  margin-top: 4px;
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+.hourly-bar-col.peak:not(.active) .hourly-bar {
+  background: linear-gradient(180deg, #7c3aed 0%, #a78bfa 100%);
+}
+
+/* Tooltip on active bar */
+.hourly-bar-tooltip {
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #7c3aed;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
   white-space: nowrap;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Static time labels below bars */
+.hourly-graph-labels {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 2px 0;
+  border-top: 1px solid rgba(124, 58, 237, 0.15);
+  margin-top: 2px;
+}
+
+.hourly-graph-labels span {
+  font-size: 10px;
+  font-weight: 500;
+  color: #7c3aed;
+  opacity: 0.6;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
 }
 
 /* Best Time Recommendation Popup (legacy) */
@@ -481,8 +518,8 @@
 /* Dark Mode - Hourly Graph */
 [data-theme="dark"] .hourly-graph,
 .dark .hourly-graph {
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(109, 40, 217, 0.15) 100%);
-  border-color: #7c3aed;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.12) 0%, rgba(109, 40, 217, 0.12) 100%);
+  border-color: rgba(124, 58, 237, 0.3);
 }
 
 [data-theme="dark"] .hourly-graph-title,
@@ -497,7 +534,7 @@
 
 [data-theme="dark"] .hourly-bar,
 .dark .hourly-bar {
-  background: rgba(196, 181, 253, 0.4);
+  background: rgba(196, 181, 253, 0.3);
 }
 
 [data-theme="dark"] .hourly-bar-col:hover .hourly-bar,
@@ -515,9 +552,14 @@
   background: #7c3aed;
 }
 
-[data-theme="dark"] .hourly-label,
-.dark .hourly-label {
-  color: #9ca3af;
+[data-theme="dark"] .hourly-graph-labels,
+.dark .hourly-graph-labels {
+  border-top-color: rgba(124, 58, 237, 0.2);
+}
+
+[data-theme="dark"] .hourly-graph-labels span,
+.dark .hourly-graph-labels span {
+  color: #c4b5fd;
 }
 
 /* Dark Mode - Best Time Popup */
