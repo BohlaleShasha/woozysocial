@@ -28,7 +28,7 @@ export const ScheduleModal = ({
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState('09:00');
   const [calendarMonth, setCalendarMonth] = useState(new Date());
-  const [bestTimePopup, setBestTimePopup] = useState(null);
+  const [hourlyGraph, setHourlyGraph] = useState(null); // { dayName, data, peakHour, hasToggle }
   const [popupSource, setPopupSource] = useState('industry'); // 'industry' or 'yours'
 
   useEffect(() => {
@@ -61,12 +61,37 @@ export const ScheduleModal = ({
     return lookup;
   }, [bestTimes]);
 
-  // Get recommendation for a day, respecting the toggle
-  const getRecommendation = (dayName, source) => {
-    if (source === 'yours' && apiTimeByDay[dayName]) {
-      return { ...apiTimeByDay[dayName], label: 'your data' };
-    }
-    return { ...INDUSTRY_DEFAULTS[dayName], label: 'industry average' };
+  // Parse "10:00 AM" → 10, "2:00 PM" → 14
+  const parse12hTo24h = (timeStr) => {
+    const hour = parseInt(timeStr.split(':')[0]);
+    const isPM = timeStr.includes('PM');
+    if (isPM) return hour === 12 ? 12 : hour + 12;
+    return hour === 12 ? 0 : hour;
+  };
+
+  // Format hour number to "12 AM", "1 PM", etc.
+  const formatShortHour = (hour) => {
+    const period = hour >= 12 ? 'p' : 'a';
+    const h = hour % 12 || 12;
+    return `${h}${period}`;
+  };
+
+  // Generate bell-curve hourly data around a peak time
+  const generateHourlyData = (dayName, source) => {
+    const rec = source === 'yours' && apiTimeByDay[dayName]
+      ? apiTimeByDay[dayName] : INDUSTRY_DEFAULTS[dayName];
+    const peakHour = parse12hTo24h(rec.time);
+    const peakScore = rec.score;
+
+    const data = Array.from({ length: 24 }, (_, hour) => {
+      const distance = Math.min(Math.abs(hour - peakHour), 24 - Math.abs(hour - peakHour));
+      const score = Math.max(12, Math.round(peakScore * Math.exp(-0.12 * distance * distance)));
+      const h12 = hour % 12 || 12;
+      const ampm = hour < 12 ? 'AM' : 'PM';
+      return { hour, score, label: `${h12}:00 ${ampm}` };
+    });
+
+    return { data, peakHour };
   };
 
   const handleDateClick = (date) => {
@@ -79,53 +104,37 @@ export const ScheduleModal = ({
     const dayName = DAY_NAMES_FULL[date.getDay()];
     const hasApiData = !!apiTimeByDay[dayName];
     const source = hasApiData && hasRealData ? popupSource : 'industry';
-    const rec = getRecommendation(dayName, source);
+    const { data, peakHour } = generateHourlyData(dayName, source);
 
-    setBestTimePopup({
+    setHourlyGraph({
       dayName,
-      time: rec.time,
-      score: rec.score,
-      label: rec.label,
+      data,
+      peakHour,
       hasToggle: hasApiData && hasRealData
     });
   };
 
-  // Toggle between industry and user data in popup
+  // Toggle between industry and user data
   const togglePopupSource = () => {
     const newSource = popupSource === 'industry' ? 'yours' : 'industry';
     setPopupSource(newSource);
 
-    if (bestTimePopup) {
-      const rec = getRecommendation(bestTimePopup.dayName, newSource);
-      setBestTimePopup(prev => ({
-        ...prev,
-        time: rec.time,
-        score: rec.score,
-        label: rec.label
-      }));
+    if (hourlyGraph) {
+      const { data, peakHour } = generateHourlyData(hourlyGraph.dayName, newSource);
+      setHourlyGraph(prev => ({ ...prev, data, peakHour }));
     }
   };
 
-  // Apply the recommended time from the popup
-  const applyRecommendedTime = () => {
-    if (!bestTimePopup) return;
-
-    const timeStr = bestTimePopup.time;
-    const timeHour = parseInt(timeStr.split(':')[0]);
-    const isPM = timeStr.includes('PM');
-    const is12Hour = timeHour === 12;
-    let hour24 = isPM ? (is12Hour ? 12 : timeHour + 12) : (is12Hour ? 0 : timeHour);
-
-    const time24 = `${hour24.toString().padStart(2, '0')}:00`;
+  // Click a bar to select that hour
+  const handleBarClick = (hour) => {
+    const time24 = `${hour.toString().padStart(2, '0')}:00`;
     setSelectedTime(time24);
 
     if (selectedDate) {
       const newDate = new Date(selectedDate);
-      newDate.setHours(hour24, 0, 0, 0);
+      newDate.setHours(hour, 0, 0, 0);
       setSelectedDate(newDate);
     }
-
-    setBestTimePopup(null);
   };
 
   const handleTimeChange = (e) => {
@@ -149,7 +158,7 @@ export const ScheduleModal = ({
       setSelectedDate(null);
       setSelectedTime('09:00');
     }
-    setBestTimePopup(null);
+    setHourlyGraph(null);
     onClose();
   };
 
@@ -290,45 +299,50 @@ export const ScheduleModal = ({
             ))}
           </div>
 
-          {/* Best time recommendation popup */}
-          {bestTimePopup && (
-            <div className="best-time-popup">
-              <div className="best-time-popup-content">
-                <div className="best-time-popup-header">
-                  <span className="best-time-popup-title">Best time for {bestTimePopup.dayName}s</span>
-                  {bestTimePopup.hasToggle && (
-                    <div className="best-time-popup-toggle">
-                      <button
-                        className={`toggle-btn ${popupSource === 'industry' ? 'active' : ''}`}
-                        onClick={() => popupSource !== 'industry' && togglePopupSource()}
-                      >
-                        Industry
-                      </button>
-                      <button
-                        className={`toggle-btn ${popupSource === 'yours' ? 'active' : ''}`}
-                        onClick={() => popupSource !== 'yours' && togglePopupSource()}
-                      >
-                        Your Data
-                      </button>
-                    </div>
-                  )}
-                  <button
-                    className="best-time-popup-close"
-                    onClick={() => setBestTimePopup(null)}
-                    aria-label="Dismiss"
-                  >
-                    &times;
-                  </button>
-                </div>
-                <div className="best-time-popup-body">
-                  <div className="best-time-popup-time">{bestTimePopup.time}</div>
-                  {!bestTimePopup.hasToggle && (
-                    <span className="best-time-popup-source">Based on {bestTimePopup.label}</span>
-                  )}
-                </div>
-                <button className="best-time-popup-apply" onClick={applyRecommendedTime}>
-                  Use {bestTimePopup.time}
+          {/* Hourly engagement bar graph */}
+          {hourlyGraph && (
+            <div className="hourly-graph">
+              <div className="hourly-graph-header">
+                <span className="hourly-graph-title">Best hours for {hourlyGraph.dayName}s</span>
+                {hourlyGraph.hasToggle && (
+                  <div className="best-time-popup-toggle">
+                    <button
+                      className={`toggle-btn ${popupSource === 'industry' ? 'active' : ''}`}
+                      onClick={() => popupSource !== 'industry' && togglePopupSource()}
+                    >
+                      Industry
+                    </button>
+                    <button
+                      className={`toggle-btn ${popupSource === 'yours' ? 'active' : ''}`}
+                      onClick={() => popupSource !== 'yours' && togglePopupSource()}
+                    >
+                      Your Data
+                    </button>
+                  </div>
+                )}
+                <button
+                  className="hourly-graph-close"
+                  onClick={() => setHourlyGraph(null)}
+                  aria-label="Dismiss"
+                >
+                  &times;
                 </button>
+              </div>
+              <div className="hourly-graph-bars">
+                {hourlyGraph.data.map(({ hour, score, label }) => {
+                  const currentHour = parseInt(selectedTime.split(':')[0]);
+                  return (
+                    <div
+                      key={hour}
+                      className={`hourly-bar-col ${hour === currentHour ? 'active' : ''} ${hour === hourlyGraph.peakHour ? 'peak' : ''}`}
+                      onClick={() => handleBarClick(hour)}
+                      title={`${label} - Score: ${score}`}
+                    >
+                      <div className="hourly-bar" style={{ height: `${score}%` }} />
+                      {hour % 3 === 0 && <span className="hourly-label">{formatShortHour(hour)}</span>}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

@@ -230,7 +230,94 @@
   background: #1f2937;
 }
 
-/* Best Time Recommendation Popup */
+/* Hourly Engagement Bar Graph */
+.hourly-graph {
+  margin-top: 8px;
+  padding: 14px;
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+  border: 1px solid #7c3aed;
+  border-radius: 10px;
+  animation: slideDown 0.2s ease-out;
+}
+
+.hourly-graph-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.hourly-graph-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #5b21b6;
+  flex: 1;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+.hourly-graph-close {
+  background: none;
+  border: none;
+  color: #7c3aed;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.hourly-graph-close:hover {
+  opacity: 1;
+}
+
+.hourly-graph-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 80px;
+}
+
+.hourly-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.hourly-bar {
+  width: 100%;
+  min-height: 2px;
+  background: #c4b5fd;
+  border-radius: 2px 2px 0 0;
+  transition: all 0.15s ease;
+}
+
+.hourly-bar-col:hover .hourly-bar {
+  background: #8b5cf6;
+}
+
+.hourly-bar-col.active .hourly-bar {
+  background: #7c3aed;
+  box-shadow: 0 0 6px rgba(124, 58, 237, 0.4);
+}
+
+.hourly-bar-col.peak .hourly-bar {
+  background: #7c3aed;
+}
+
+.hourly-label {
+  font-size: 8px;
+  color: #6b7280;
+  margin-top: 4px;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+  white-space: nowrap;
+}
+
+/* Best Time Recommendation Popup (legacy) */
 .best-time-popup {
   margin-top: 8px;
   animation: slideDown 0.2s ease-out;
@@ -389,6 +476,48 @@
   background: #7c3aed;
   color: #ffffff;
   font-weight: 600;
+}
+
+/* Dark Mode - Hourly Graph */
+[data-theme="dark"] .hourly-graph,
+.dark .hourly-graph {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(109, 40, 217, 0.15) 100%);
+  border-color: #7c3aed;
+}
+
+[data-theme="dark"] .hourly-graph-title,
+.dark .hourly-graph-title {
+  color: #c4b5fd;
+}
+
+[data-theme="dark"] .hourly-graph-close,
+.dark .hourly-graph-close {
+  color: #c4b5fd;
+}
+
+[data-theme="dark"] .hourly-bar,
+.dark .hourly-bar {
+  background: rgba(196, 181, 253, 0.4);
+}
+
+[data-theme="dark"] .hourly-bar-col:hover .hourly-bar,
+.dark .hourly-bar-col:hover .hourly-bar {
+  background: #8b5cf6;
+}
+
+[data-theme="dark"] .hourly-bar-col.active .hourly-bar,
+.dark .hourly-bar-col.active .hourly-bar {
+  background: #7c3aed;
+}
+
+[data-theme="dark"] .hourly-bar-col.peak .hourly-bar,
+.dark .hourly-bar-col.peak .hourly-bar {
+  background: #7c3aed;
+}
+
+[data-theme="dark"] .hourly-label,
+.dark .hourly-label {
+  color: #9ca3af;
 }
 
 /* Dark Mode - Best Time Popup */
