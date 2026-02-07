@@ -66,6 +66,47 @@
   color: #111827;
 }
 
+/* Arrow Navigation */
+.panel-nav-arrows {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-nav-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #374151;
+}
+
+.panel-nav-btn:hover:not(:disabled) {
+  background: #7c3aed;
+  color: white;
+  border-color: #7c3aed;
+}
+
+.panel-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.panel-nav-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  min-width: 40px;
+  text-align: center;
+}
+
 .panel-content {
   flex: 1;
   overflow-y: auto;
@@ -287,4 +328,87 @@
   .post-detail-panel {
     width: 100%;
   }
+}
+
+/* Dark Mode */
+[data-theme="dark"] .post-detail-panel,
+.dark .post-detail-panel {
+  background: #1f2937;
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .panel-header,
+.dark .panel-header {
+  border-bottom-color: #374151;
+}
+
+[data-theme="dark"] .panel-header h3,
+.dark .panel-header h3 {
+  color: #ffffff;
+}
+
+[data-theme="dark"] .close-panel,
+.dark .close-panel {
+  color: #9ca3af;
+}
+
+[data-theme="dark"] .close-panel:hover,
+.dark .close-panel:hover {
+  color: #ffffff;
+}
+
+[data-theme="dark"] .panel-nav-btn,
+.dark .panel-nav-btn {
+  background: #374151;
+  border-color: #4b5563;
+  color: #e5e7eb;
+}
+
+[data-theme="dark"] .panel-nav-btn:hover:not(:disabled),
+.dark .panel-nav-btn:hover:not(:disabled) {
+  background: #7c3aed;
+  border-color: #7c3aed;
+  color: white;
+}
+
+[data-theme="dark"] .panel-nav-count,
+.dark .panel-nav-count {
+  color: #9ca3af;
+}
+
+[data-theme="dark"] .detail-section label,
+.dark .detail-section label {
+  color: #9ca3af;
+}
+
+[data-theme="dark"] .post-caption,
+.dark .post-caption {
+  background: #374151;
+  color: #e5e7eb;
+}
+
+[data-theme="dark"] .platform-chip,
+.dark .platform-chip {
+  background: #374151;
+  color: #e5e7eb;
+}
+
+[data-theme="dark"] .comments-section,
+.dark .comments-section {
+  border-top-color: #374151;
+}
+
+[data-theme="dark"] .edit-actions,
+.dark .edit-actions {
+  border-top-color: #374151;
+}
+
+[data-theme="dark"] .approval-actions,
+.dark .approval-actions {
+  border-top-color: #374151;
+}
+
+[data-theme="dark"] .status-badge,
+.dark .status-badge {
+  color: white;
 }

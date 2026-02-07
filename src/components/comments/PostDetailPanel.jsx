@@ -41,7 +41,10 @@ export const PostDetailPanel = ({
   showApprovalActions = false,
   onEditDraft,
   onEditScheduledPost,
-  onDelete
+  onDelete,
+  dayPosts = [],
+  currentIndex = 0,
+  onNavigatePost
 }) => {
   const { workspaceMembership, activeWorkspace } = useWorkspace();
   const navigate = useNavigate();
@@ -55,17 +58,25 @@ export const PostDetailPanel = ({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Close on Escape key
+  // Close on Escape key + arrow key navigation
   useEffect(() => {
-    const handleEscape = (e) => {
+    const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         onClose();
       }
+      if (onNavigatePost && dayPosts.length > 1) {
+        if (e.key === 'ArrowLeft' && currentIndex > 0) {
+          onNavigatePost(currentIndex - 1);
+        }
+        if (e.key === 'ArrowRight' && currentIndex < dayPosts.length - 1) {
+          onNavigatePost(currentIndex + 1);
+        }
+      }
     };
 
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [onClose]);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, onNavigatePost, dayPosts.length, currentIndex]);
 
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A';
@@ -194,6 +205,27 @@ export const PostDetailPanel = ({
       <div className="post-detail-panel">
         <div className="panel-header">
           <h3>Post Details</h3>
+          {dayPosts.length > 1 && onNavigatePost && (
+            <div className="panel-nav-arrows">
+              <button
+                className="panel-nav-btn"
+                onClick={() => onNavigatePost(currentIndex - 1)}
+                disabled={currentIndex === 0}
+                title="Previous post (←)"
+              >
+                ←
+              </button>
+              <span className="panel-nav-count">{currentIndex + 1} / {dayPosts.length}</span>
+              <button
+                className="panel-nav-btn"
+                onClick={() => onNavigatePost(currentIndex + 1)}
+                disabled={currentIndex === dayPosts.length - 1}
+                title="Next post (→)"
+              >
+                →
+              </button>
+            </div>
+          )}
           <button className="close-panel" onClick={onClose} title="Close (Esc)">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
               <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
