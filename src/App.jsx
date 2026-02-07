@@ -127,6 +127,7 @@ function App() {
                         <Route path="/calendar" element={<ClientCalendar />} />
                         <Route path="/team" element={<ClientTeam />} />
                         <Route path="/brand-profile" element={<ClientBrandProfile />} />
+                        <Route path="/assets" element={<AssetsContent />} />
                         <Route path="/social-inbox" element={<ClientInbox />} />
                         <Route path="/analytics" element={<ClientAnalytics />} />
                         <Route path="/profile-settings" element={<ClientProfileSettings />} />

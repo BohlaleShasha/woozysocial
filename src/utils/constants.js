@@ -282,7 +282,7 @@ export const ROLE_CONFIG = {
       canManageConnectedAccounts: true,
       canAccessSocialInbox: true
     },
-    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'analytics', 'social-inbox', 'team', 'approvals', 'settings']
+    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'assets', 'analytics', 'social-inbox', 'team', 'approvals', 'settings']
   },
 
   [TEAM_ROLES.ADMIN]: {
@@ -305,7 +305,7 @@ export const ROLE_CONFIG = {
       canManageConnectedAccounts: true,
       canAccessSocialInbox: true
     },
-    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'analytics', 'social-inbox', 'team', 'approvals', 'settings']
+    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'assets', 'analytics', 'social-inbox', 'team', 'approvals', 'settings']
   },
 
   [TEAM_ROLES.EDITOR]: {
@@ -328,7 +328,7 @@ export const ROLE_CONFIG = {
       canManageConnectedAccounts: false,
       canAccessSocialInbox: true
     },
-    tabs: ['dashboard', 'compose', 'schedule', 'posts', 'analytics', 'social-inbox', 'team'] // Can view team but not manage
+    tabs: ['dashboard', 'compose', 'schedule', 'posts', 'assets', 'analytics', 'social-inbox', 'team'] // Can view team but not manage
   },
 
   [TEAM_ROLES.CLIENT]: {
@@ -351,7 +351,7 @@ export const ROLE_CONFIG = {
       canManageConnectedAccounts: false,
       canAccessSocialInbox: false
     },
-    tabs: ['client/dashboard', 'client/approvals', 'client/approved', 'client/calendar', 'client/notifications'] // Client portal only
+    tabs: ['client/dashboard', 'client/approvals', 'client/approved', 'client/calendar', 'client/assets', 'client/notifications'] // Client portal only
   },
 
   [TEAM_ROLES.VIEW_ONLY]: {
