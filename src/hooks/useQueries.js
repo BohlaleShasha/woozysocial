@@ -374,6 +374,62 @@ export function useDashboardStats(workspaceId, userId) {
 }
 
 // ============================================
+// MEDIA / ASSETS
+// ============================================
+
+export function useRecentMedia(workspaceId, userId) {
+  return useQuery({
+    queryKey: ["recentMedia", workspaceId],
+    queryFn: async () => {
+      const res = await fetch(
+        `${baseURL}/api/media/recent?workspaceId=${workspaceId}&userId=${userId}`
+      );
+      if (!res.ok) throw new Error("Failed to fetch recent media");
+      const data = await res.json();
+      return data.data?.media || [];
+    },
+    enabled: !!(workspaceId && userId),
+    staleTime: 1000 * 60, // 1 minute
+  });
+}
+
+export function useAssetLibrary(workspaceId, userId, filters = {}) {
+  const { type, search, limit = 50, offset = 0 } = filters;
+
+  return useQuery({
+    queryKey: ["assetLibrary", workspaceId, type, search, limit, offset],
+    queryFn: async () => {
+      const params = new URLSearchParams({ workspaceId, userId });
+      if (type) params.append("type", type);
+      if (search) params.append("search", search);
+      if (limit) params.append("limit", String(limit));
+      if (offset) params.append("offset", String(offset));
+
+      const res = await fetch(`${baseURL}/api/media/assets?${params}`);
+      if (!res.ok) throw new Error("Failed to fetch asset library");
+      const data = await res.json();
+      return data.data || { assets: [], total: 0 };
+    },
+    enabled: !!(workspaceId && userId),
+    staleTime: 1000 * 30, // 30 seconds
+  });
+}
+
+export function useAssetUsage(workspaceId) {
+  return useQuery({
+    queryKey: ["assetUsage", workspaceId],
+    queryFn: async () => {
+      const res = await fetch(`${baseURL}/api/media/assets/usage?workspaceId=${workspaceId}`);
+      if (!res.ok) throw new Error("Failed to fetch asset usage");
+      const data = await res.json();
+      return data.data || { used: 0, limit: 0, assetCount: 0 };
+    },
+    enabled: !!workspaceId,
+    staleTime: 1000 * 60, // 1 minute
+  });
+}
+
+// ============================================
 // CACHE INVALIDATION HELPERS
 // ============================================
 
@@ -416,6 +472,19 @@ export function useInvalidateQueries() {
       queryClient.invalidateQueries({ queryKey: ["notifications", userId] });
     },
 
+    // Invalidate media caches
+    invalidateRecentMedia: (workspaceId) => {
+      queryClient.invalidateQueries({ queryKey: ["recentMedia", workspaceId] });
+    },
+
+    invalidateAssetLibrary: (workspaceId) => {
+      queryClient.invalidateQueries({ queryKey: ["assetLibrary", workspaceId] });
+    },
+
+    invalidateAssetUsage: (workspaceId) => {
+      queryClient.invalidateQueries({ queryKey: ["assetUsage", workspaceId] });
+    },
+
     // Invalidate everything for a workspace
     invalidateAll: (workspaceId) => {
       queryClient.invalidateQueries({ queryKey: ["posts", workspaceId] });
@@ -431,6 +500,10 @@ export function useInvalidateQueries() {
       queryClient.invalidateQueries({ queryKey: ["clientDashboardStats", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["clientApprovedPosts", workspaceId] });
       queryClient.invalidateQueries({ queryKey: ["clientCalendarPosts", workspaceId] });
+      // Media caches
+      queryClient.invalidateQueries({ queryKey: ["recentMedia", workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["assetLibrary", workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ["assetUsage", workspaceId] });
     },
   };
 }

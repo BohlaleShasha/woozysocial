@@ -1,0 +1,124 @@
+.asset-tag-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tag-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: #f3f0ff;
+  color: #7c3aed;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.tag-pill-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  color: #7c3aed;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.tag-pill-remove:hover {
+  opacity: 1;
+}
+
+.tag-editor-input-area {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tag-input-icon {
+  color: #9ca3af;
+}
+
+.tag-editor-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: #374151;
+  padding: 4px 0;
+  background: transparent;
+}
+
+.tag-editor-input::placeholder {
+  color: #9ca3af;
+}
+
+.tag-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.tag-suggestion-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: #374151;
+  transition: background 0.15s;
+}
+
+.tag-suggestion-item:hover {
+  background: #f3f0ff;
+  color: #7c3aed;
+}
+
+/* Dark mode */
+[data-theme="dark"] .tag-pill {
+  background: rgba(124, 58, 237, 0.2);
+  color: #a78bfa;
+}
+
+[data-theme="dark"] .tag-pill-remove {
+  color: #a78bfa;
+}
+
+[data-theme="dark"] .tag-editor-input {
+  color: #e5e7eb;
+}
+
+[data-theme="dark"] .tag-suggestions {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+[data-theme="dark"] .tag-suggestion-item {
+  color: #e5e7eb;
+}
+
+[data-theme="dark"] .tag-suggestion-item:hover {
+  background: rgba(124, 58, 237, 0.2);
+  color: #a78bfa;
+}

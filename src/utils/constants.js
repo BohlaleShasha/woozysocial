@@ -46,7 +46,8 @@ export const TIER_CONFIG = {
       analytics: false,
       socialInbox: false
     },
-    tabs: ['pricing', 'settings'] // Very restricted
+    tabs: ['pricing', 'settings'], // Very restricted
+    assetStorageCap: 0 // No asset storage for free tier
   },
 
   [SUBSCRIPTION_TIERS.SOLO]: {
@@ -75,7 +76,8 @@ export const TIER_CONFIG = {
       analytics: true,
       socialInbox: true
     },
-    tabs: ['dashboard', 'compose', 'schedule', 'posts', 'assets', 'analytics', 'social-inbox', 'settings']
+    tabs: ['dashboard', 'compose', 'schedule', 'posts', 'assets', 'analytics', 'social-inbox', 'settings'],
+    assetStorageCap: 500 * 1024 * 1024 // 500 MB
   },
 
   [SUBSCRIPTION_TIERS.PRO]: {
@@ -104,7 +106,8 @@ export const TIER_CONFIG = {
       analytics: true,
       socialInbox: true
     },
-    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'assets', 'analytics', 'social-inbox', 'team', 'settings']
+    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'assets', 'analytics', 'social-inbox', 'team', 'settings'],
+    assetStorageCap: 2 * 1024 * 1024 * 1024 // 2 GB
   },
 
   [SUBSCRIPTION_TIERS.PRO_PLUS]: {
@@ -134,7 +137,8 @@ export const TIER_CONFIG = {
       analytics: true,
       socialInbox: true
     },
-    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'assets', 'analytics', 'social-inbox', 'team', 'approvals', 'settings']
+    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'assets', 'analytics', 'social-inbox', 'team', 'approvals', 'settings'],
+    assetStorageCap: 5 * 1024 * 1024 * 1024 // 5 GB
   },
 
   [SUBSCRIPTION_TIERS.AGENCY]: {
@@ -166,7 +170,8 @@ export const TIER_CONFIG = {
       whiteLabel: true, // Future feature
       prioritySupport: true // Future feature
     },
-    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'assets', 'analytics', 'social-inbox', 'team', 'agency-team', 'approvals', 'settings']
+    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'assets', 'analytics', 'social-inbox', 'team', 'agency-team', 'approvals', 'settings'],
+    assetStorageCap: 10 * 1024 * 1024 * 1024 // 10 GB
   }
 };
 

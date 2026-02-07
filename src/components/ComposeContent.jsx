@@ -795,73 +795,95 @@ export const ComposeContent = () => {
   };
 
   // Handle media confirmation from modal
-  const handleMediaConfirm = async (files) => {
-    if (!files || files.length === 0) return;
+  // Accepts { files: File[], urls: MediaUrlItem[] } from the tabbed MediaUploadModal
+  // Backward compat: also accepts a plain File[] array (legacy)
+  const handleMediaConfirm = async (result) => {
+    // Backward compatibility: if result is an array, treat as files
+    const files = Array.isArray(result) ? result : (result.files || []);
+    const urls = Array.isArray(result) ? [] : (result.urls || []);
+
+    if (files.length === 0 && urls.length === 0) return;
 
     setIsLoading(true);
 
     try {
-      // Validate video files
-      const videoFiles = files.filter(f => f.type.startsWith('video/'));
-      let allWarnings = [];
-
-      for (const videoFile of videoFiles) {
-        const validation = await validateVideoForPlatforms(videoFile);
-        if (validation.warnings.length > 0) {
-          allWarnings = [...allWarnings, ...validation.warnings];
-        }
-      }
-
-      // Store warnings for display
-      setMediaWarnings(allWarnings);
-
-      // Show warning toast if there are issues
-      if (allWarnings.length > 0) {
-        const affectedPlatforms = [...new Set(allWarnings.map(w => w.platform))];
-        toast({
-          title: "Video may not work on some platforms",
-          description: `Issues detected for: ${affectedPlatforms.join(', ')}. Check the warning below the media.`,
-          status: "warning",
-          duration: 5000,
-          isClosable: true
-        });
-      }
-
-      // Get current files and previews
       const currentFiles = Array.isArray(post.media) ? post.media : [];
       const currentPreviews = mediaPreviews || [];
 
-      // Generate previews for new files only
-      const baseIndex = currentPreviews.length;
-      const previewPromises = files.map((file, index) => {
-        return new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            resolve({
-              id: `${Date.now()}-${index}`,
-              file,
-              dataUrl: reader.result,
-              type: file.type.split('/')[0], // 'image' or 'video'
-              order: baseIndex + index
-            });
-          };
-          reader.readAsDataURL(file);
+      let newFilePreviews = [];
+      let newUrlPreviews = [];
+
+      // Process File objects (from Upload tab)
+      if (files.length > 0) {
+        // Validate video files
+        const videoFiles = files.filter(f => f.type.startsWith('video/'));
+        let allWarnings = [];
+
+        for (const videoFile of videoFiles) {
+          const validation = await validateVideoForPlatforms(videoFile);
+          if (validation.warnings.length > 0) {
+            allWarnings = [...allWarnings, ...validation.warnings];
+          }
+        }
+
+        setMediaWarnings(allWarnings);
+
+        if (allWarnings.length > 0) {
+          const affectedPlatforms = [...new Set(allWarnings.map(w => w.platform))];
+          toast({
+            title: "Video may not work on some platforms",
+            description: `Issues detected for: ${affectedPlatforms.join(', ')}. Check the warning below the media.`,
+            status: "warning",
+            duration: 5000,
+            isClosable: true
+          });
+        }
+
+        const baseIndex = currentPreviews.length;
+        const previewPromises = files.map((file, index) => {
+          return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              resolve({
+                id: `${Date.now()}-${index}`,
+                file,
+                dataUrl: reader.result,
+                type: file.type.split('/')[0],
+                order: baseIndex + index
+              });
+            };
+            reader.readAsDataURL(file);
+          });
         });
-      });
 
-      const newPreviews = await Promise.all(previewPromises);
+        newFilePreviews = await Promise.all(previewPromises);
+      }
 
-      // Merge new files with existing ones
+      // Process URL-based media (from Recent/Library tabs)
+      // These are already-uploaded URLs — they go into mediaPreviews with the HTTP URL as dataUrl
+      // The submit logic already extracts HTTP URLs from mediaPreviews
+      if (urls.length > 0) {
+        const baseIndex = currentPreviews.length + newFilePreviews.length;
+        newUrlPreviews = urls.map((item, index) => ({
+          id: `url-${Date.now()}-${index}`,
+          dataUrl: item.url, // HTTP URL — submit logic will pick this up
+          type: item.type || 'image',
+          order: baseIndex + index
+        }));
+      }
+
+      // Merge everything
       const allFiles = [...currentFiles, ...files];
-      const allPreviews = [...currentPreviews, ...newPreviews];
+      const allPreviews = [...currentPreviews, ...newFilePreviews, ...newUrlPreviews];
 
       setPost({ ...post, media: allFiles });
       setMediaPreviews(allPreviews);
       setIsMediaModalOpen(false);
 
+      const totalCount = allFiles.length + newUrlPreviews.length;
       toast({
         title: "Media added",
-        description: `${allFiles.length} file(s) ready to upload`,
+        description: `${totalCount} file(s) ready`,
         status: "success",
         duration: 2000,
         isClosable: true
@@ -3091,6 +3113,8 @@ export const ComposeContent = () => {
         maxFiles={10}
         maxFileSize={50 * 1024 * 1024}
         maxTotalSize={200 * 1024 * 1024}
+        workspaceId={activeWorkspace?.id}
+        userId={user?.id}
       />
 
       {/* Scheduled Date Display */}
