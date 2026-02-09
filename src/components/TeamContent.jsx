@@ -390,7 +390,7 @@ export const TeamContent = () => {
                                   <label className="toggle-label">
                                     <input
                                       type="checkbox"
-                                      checked={member.permissions?.canApprovePosts || false}
+                                      checked={member.permissions?.can_approve_posts || false}
                                       onChange={(e) => handleTogglePermission(member.user_id, 'canApprovePosts', e.target.checked)}
                                     />
                                     <span className="toggle-switch"></span>
@@ -399,7 +399,7 @@ export const TeamContent = () => {
                                   <label className="toggle-label">
                                     <input
                                       type="checkbox"
-                                      checked={member.permissions?.canManageTeam || false}
+                                      checked={member.permissions?.can_manage_team || false}
                                       onChange={(e) => handleTogglePermission(member.user_id, 'canManageTeam', e.target.checked)}
                                     />
                                     <span className="toggle-switch"></span>
