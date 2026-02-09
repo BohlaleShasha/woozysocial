@@ -170,7 +170,7 @@ export const TIER_CONFIG = {
       whiteLabel: true, // Future feature
       prioritySupport: true // Future feature
     },
-    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'assets', 'analytics', 'social-inbox', 'team', 'agency-team', 'approvals', 'settings'],
+    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'assets', 'analytics', 'social-inbox', 'team', 'approvals', 'settings'],
     assetStorageCap: 10 * 1024 * 1024 * 1024 // 10 GB
   }
 };
@@ -254,13 +254,28 @@ export const canInviteTeamMember = (tier, currentMemberCount) => {
 
 export const TEAM_ROLES = {
   OWNER: 'owner',
-  ADMIN: 'admin',
-  EDITOR: 'editor',
-  CLIENT: 'client',
-  VIEW_ONLY: 'view_only'
+  MEMBER: 'member',
+  VIEWER: 'viewer'
 };
 
-// Role configuration with permissions
+// Legacy role mapping (for backward compatibility)
+export const LEGACY_ROLE_MAP = {
+  admin: 'member',
+  editor: 'member',
+  client: 'viewer',
+  view_only: 'viewer'
+};
+
+// Normalize legacy roles to new 3-role model
+export const normalizeRole = (role) => {
+  if (!role) return 'viewer';
+  return LEGACY_ROLE_MAP[role] || role;
+};
+
+// Role configuration with base permissions
+// NOTE: canApprovePosts and canManageTeam are now DB toggles —
+// use WorkspaceContext's hasRolePermission() which checks the toggle,
+// NOT these static defaults (except for owner who always has both).
 export const ROLE_CONFIG = {
   [TEAM_ROLES.OWNER]: {
     name: 'Owner',
@@ -285,38 +300,15 @@ export const ROLE_CONFIG = {
     tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'assets', 'analytics', 'social-inbox', 'team', 'approvals', 'settings']
   },
 
-  [TEAM_ROLES.ADMIN]: {
-    name: 'Admin',
-    displayName: 'Admin',
-    description: 'Manage team and settings, full posting access',
-    permissions: {
-      canManageTeam: true,
-      canManageSettings: true,
-      canDeletePosts: true,
-      canApprovePosts: true,
-      canCreatePosts: true,
-      canEditOwnPosts: true,
-      canEditAllPosts: true,
-      canDeleteOwnPosts: true,
-      canDeleteAllPosts: true,
-      canDeleteWorkspace: false, // Only owner can delete workspace
-      canTransferOwnership: false,
-      canViewAnalytics: true,
-      canManageConnectedAccounts: true,
-      canAccessSocialInbox: true
-    },
-    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'assets', 'analytics', 'social-inbox', 'team', 'approvals', 'settings']
-  },
-
-  [TEAM_ROLES.EDITOR]: {
-    name: 'Editor',
-    displayName: 'Editor',
+  [TEAM_ROLES.MEMBER]: {
+    name: 'Member',
+    displayName: 'Member',
     description: 'Create and manage own posts',
     permissions: {
-      canManageTeam: false,
+      canManageTeam: false,    // DB toggle overrides this
       canManageSettings: false,
-      canDeletePosts: false, // Can only delete own posts
-      canApprovePosts: false,
+      canDeletePosts: false,
+      canApprovePosts: false,  // DB toggle overrides this
       canCreatePosts: true,
       canEditOwnPosts: true,
       canEditAllPosts: false,
@@ -328,18 +320,19 @@ export const ROLE_CONFIG = {
       canManageConnectedAccounts: false,
       canAccessSocialInbox: true
     },
-    tabs: ['dashboard', 'compose', 'schedule', 'posts', 'assets', 'analytics', 'social-inbox', 'team'] // Can view team but not manage
+    // Approvals tab added dynamically when can_approve_posts is true
+    tabs: ['dashboard', 'brand-profile', 'compose', 'schedule', 'posts', 'assets', 'analytics', 'social-inbox', 'team']
   },
 
-  [TEAM_ROLES.CLIENT]: {
-    name: 'Client',
-    displayName: 'Client',
-    description: 'Approve posts and view content',
+  [TEAM_ROLES.VIEWER]: {
+    name: 'Viewer',
+    displayName: 'Viewer',
+    description: 'Client portal — view content and optionally approve posts',
     permissions: {
       canManageTeam: false,
       canManageSettings: false,
       canDeletePosts: false,
-      canApprovePosts: true, // Primary permission
+      canApprovePosts: false,  // DB toggle overrides this
       canCreatePosts: false,
       canEditOwnPosts: false,
       canEditAllPosts: false,
@@ -351,58 +344,37 @@ export const ROLE_CONFIG = {
       canManageConnectedAccounts: false,
       canAccessSocialInbox: false
     },
-    tabs: ['client/dashboard', 'client/approvals', 'client/approved', 'client/calendar', 'client/assets', 'client/notifications'] // Client portal only
-  },
-
-  [TEAM_ROLES.VIEW_ONLY]: {
-    name: 'View Only',
-    displayName: 'View Only',
-    description: 'Read-only access to workspace',
-    permissions: {
-      canManageTeam: false,
-      canManageSettings: false,
-      canDeletePosts: false,
-      canApprovePosts: false,
-      canCreatePosts: false,
-      canEditOwnPosts: false,
-      canEditAllPosts: false,
-      canDeleteOwnPosts: false,
-      canDeleteAllPosts: false,
-      canDeleteWorkspace: false,
-      canTransferOwnership: false,
-      canViewAnalytics: true,
-      canManageConnectedAccounts: false,
-      canAccessSocialInbox: false
-    },
-    tabs: ['dashboard', 'schedule', 'posts', 'analytics', 'social-inbox'] // Read-only tabs
+    // Base client portal tabs (approvals tabs added dynamically when can_approve_posts)
+    tabs: ['client/dashboard', 'client/calendar', 'client/assets', 'client/notifications']
   }
 };
 
-// Helper function to get role configuration
+// Helper function to get role configuration (handles legacy roles)
 export const getRoleConfig = (role) => {
-  return ROLE_CONFIG[role] || ROLE_CONFIG[TEAM_ROLES.VIEW_ONLY];
+  const normalized = normalizeRole(role);
+  return ROLE_CONFIG[normalized] || ROLE_CONFIG[TEAM_ROLES.VIEWER];
 };
 
-// Helper function to check if a role has a specific permission
+// Helper function to check if a role has a specific permission (static only — use WorkspaceContext for toggle-based)
 export const hasPermission = (role, permissionName) => {
   const config = getRoleConfig(role);
   return config.permissions[permissionName] === true;
 };
 
-// Helper function to check if a role can access a tab
+// Helper function to check if a role can access a tab (static only — use WorkspaceContext canAccessTab for dynamic)
 export const hasRoleTabAccess = (role, tabName) => {
   const config = getRoleConfig(role);
   return config.tabs.includes(tabName);
 };
 
-// Helper function to check if role is client-only
+// Helper function to check if role is viewer (client portal)
 export const isClientRole = (role) => {
-  return role === TEAM_ROLES.CLIENT || role === TEAM_ROLES.VIEW_ONLY;
+  return normalizeRole(role) === TEAM_ROLES.VIEWER;
 };
 
-// Helper function to check if role is admin-level
+// Helper function to check if role is owner
 export const isAdminRole = (role) => {
-  return role === TEAM_ROLES.OWNER || role === TEAM_ROLES.ADMIN;
+  return normalizeRole(role) === TEAM_ROLES.OWNER;
 };
 
 // Helper function to check if user can perform action on a post

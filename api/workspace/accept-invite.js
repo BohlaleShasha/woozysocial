@@ -14,7 +14,9 @@ const {
   sendMemberJoinedNotification
 } = require("../notifications/helpers");
 
-// Role-based permission defaults
+const { normalizeRole } = require("../_utils-access-control");
+
+// Role-based permission defaults (3-role model)
 const ROLE_PERMISSIONS = {
   owner: {
     can_manage_team: true,
@@ -22,29 +24,17 @@ const ROLE_PERMISSIONS = {
     can_delete_posts: true,
     can_approve_posts: true
   },
-  admin: {
-    can_manage_team: true,
-    can_manage_settings: true,
-    can_delete_posts: true,
-    can_approve_posts: true
-  },
-  editor: {
+  member: {
     can_manage_team: false,
     can_manage_settings: false,
     can_delete_posts: true,
     can_approve_posts: false
   },
-  view_only: {
+  viewer: {
     can_manage_team: false,
     can_manage_settings: false,
     can_delete_posts: false,
     can_approve_posts: false
-  },
-  client: {
-    can_manage_team: false,
-    can_manage_settings: false,
-    can_delete_posts: false,
-    can_approve_posts: true
   }
 };
 
@@ -184,13 +174,14 @@ module.exports = async function handler(req, res) {
     }
 
     // Add user to workspace with role-based permissions
-    const permissions = ROLE_PERMISSIONS[invitation.role] || ROLE_PERMISSIONS.editor;
+    const normalizedRole = normalizeRole(invitation.role);
+    const permissions = ROLE_PERMISSIONS[normalizedRole] || ROLE_PERMISSIONS.member;
     const { error: memberError } = await supabase
       .from('workspace_members')
       .insert({
         workspace_id: invitation.workspace_id,
         user_id: userId,
-        role: invitation.role,
+        role: normalizedRole,
         can_manage_team: permissions.can_manage_team,
         can_manage_settings: permissions.can_manage_settings,
         can_delete_posts: permissions.can_delete_posts,
@@ -230,12 +221,12 @@ module.exports = async function handler(req, res) {
       }).catch(err => logError('workspace.accept-invite.notifyInviter', err));
     }
 
-    // Notify workspace admins/owners
+    // Notify workspace owners and team managers
     const { data: admins } = await supabase
       .from('workspace_members')
       .select('user_id')
       .eq('workspace_id', invitation.workspace_id)
-      .in('role', ['owner', 'admin']);
+      .or('role.eq.owner,can_manage_team.eq.true');
 
     if (admins && admins.length > 0) {
       sendMemberJoinedNotification(supabase, {

@@ -1,28 +1,22 @@
 import React, { useState } from "react";
 import "./InviteMemberModal.css";
 
-// Team member roles only - Clients are invited separately
 const ROLES = [
   {
-    value: "admin",
-    label: "Admin",
-    description: "Full access - can invite, remove members, and manage all posts"
+    value: "member",
+    label: "Member",
+    description: "Can create, edit, and schedule posts"
   },
   {
-    value: "editor",
-    label: "Editor",
-    description: "Can create, edit, and delete posts"
-  },
-  {
-    value: "view_only",
-    label: "View Only",
-    description: "Read-only access - can view posts and team members"
+    value: "viewer",
+    label: "Viewer",
+    description: "Client portal — view content and calendar"
   }
 ];
 
 export const InviteMemberModal = ({ isOpen, onClose, onInvite, currentUserEmail }) => {
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState("editor");
+  const [role, setRole] = useState("member");
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -59,7 +53,7 @@ export const InviteMemberModal = ({ isOpen, onClose, onInvite, currentUserEmail 
       await onInvite({ email: email.trim().toLowerCase(), role });
       // Reset form
       setEmail("");
-      setRole("editor");
+      setRole("member");
       onClose();
     } catch (error) {
       setErrors({ submit: error.message || "Failed to send invitation" });
@@ -70,7 +64,7 @@ export const InviteMemberModal = ({ isOpen, onClose, onInvite, currentUserEmail 
 
   const handleCancel = () => {
     setEmail("");
-    setRole("editor");
+    setRole("member");
     setErrors({});
     onClose();
   };
@@ -121,6 +115,10 @@ export const InviteMemberModal = ({ isOpen, onClose, onInvite, currentUserEmail 
               {ROLES.find(r => r.value === role)?.description}
             </div>
           </div>
+
+          <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '-4px' }}>
+            You can set approval and team management permissions after they accept.
+          </p>
 
           {errors.submit && (
             <div className="submit-error">{errors.submit}</div>

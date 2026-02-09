@@ -20,7 +20,7 @@ const {
   canInviteTeamMember
 } = require("../_utils-access-control");
 
-const VALID_ROLES = ['admin', 'editor', 'view_only', 'client'];
+const VALID_ROLES = ['member', 'viewer'];
 
 module.exports = async function handler(req, res) {
   setCors(res);
@@ -67,7 +67,7 @@ module.exports = async function handler(req, res) {
       return sendError(res, "Invalid email format", ErrorCodes.VALIDATION_ERROR);
     }
 
-    const inviteRole = role && VALID_ROLES.includes(role) ? role : 'editor';
+    const inviteRole = role && VALID_ROLES.includes(role) ? role : 'member';
 
     // Verify workspace membership
     const membershipCheck = await verifyWorkspaceMembership(supabase, userId, workspaceId);

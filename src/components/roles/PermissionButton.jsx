@@ -8,7 +8,7 @@ import { Button, Tooltip } from '@chakra-ui/react';
  * Automatically disables and shows tooltip when permission is denied.
  *
  * @param {string} permission - Permission name required (e.g., 'canManageTeam')
- * @param {string[]} allowedRoles - Array of roles allowed (e.g., ['owner', 'admin'])
+ * @param {string[]} allowedRoles - Array of roles allowed (e.g., ['owner', 'member'])
  * @param {Function} onClick - Click handler
  * @param {string} deniedMessage - Tooltip message when permission is denied
  * @param {ReactNode} children - Button content

@@ -9,9 +9,11 @@ const {
 } = require("../../_utils");
 const { sendRoleChangedNotification } = require("../../notifications/helpers");
 
-const VALID_ROLES = ['editor', 'admin', 'view_only', 'client'];
+const { normalizeRole } = require("../../_utils-access-control");
 
-// Role-based permission defaults
+const VALID_ROLES = ['member', 'viewer'];
+
+// Role-based permission defaults (3-role model)
 const ROLE_PERMISSIONS = {
   owner: {
     can_manage_team: true,
@@ -19,29 +21,17 @@ const ROLE_PERMISSIONS = {
     can_delete_posts: true,
     can_approve_posts: true
   },
-  admin: {
-    can_manage_team: true,
-    can_manage_settings: true,
-    can_delete_posts: true,
-    can_approve_posts: true
-  },
-  editor: {
+  member: {
     can_manage_team: false,
     can_manage_settings: false,
     can_delete_posts: true,
     can_approve_posts: false
   },
-  view_only: {
+  viewer: {
     can_manage_team: false,
     can_manage_settings: false,
     can_delete_posts: false,
     can_approve_posts: false
-  },
-  client: {
-    can_manage_team: false,
-    can_manage_settings: false,
-    can_delete_posts: false,
-    can_approve_posts: true
   }
 };
 

@@ -142,7 +142,7 @@ module.exports = async function handler(req, res) {
         // For actual approval actions, only admins and clients
         const permissionCheck = checkPermission(member, 'canApprovePosts');
         if (!permissionCheck.success) {
-          return sendError(res, "Only admins and clients can approve posts", ErrorCodes.FORBIDDEN);
+          return sendError(res, "You don't have permission to approve posts", ErrorCodes.FORBIDDEN);
         }
       }
 
@@ -162,25 +162,24 @@ module.exports = async function handler(req, res) {
 
       const tier = ownerProfile?.subscription_tier || 'free';
 
-      // If the current user is a client, they can approve (they ARE the client, so approval workflow is valid)
-      // This is the most reliable check - if a client has access to approve, workflows must be enabled
-      const userIsClient = member.role === 'client';
+      // If the current user has can_approve_posts toggle, they can approve
+      const userCanApprove = member.can_approve_posts === true || member.role === 'owner';
 
-      // Also check if workspace has other clients
-      const { data: clients } = await supabase
+      // Also check if workspace has viewers (who may need approval workflows)
+      const { data: viewers } = await supabase
         .from('workspace_members')
         .select('id')
         .eq('workspace_id', workspaceId)
-        .in('role', ['client', 'view_only'])
+        .eq('role', 'viewer')
         .limit(1);
 
-      const hasClients = clients && clients.length > 0;
+      const hasViewers = viewers && viewers.length > 0;
 
       // Allow approval if:
-      // 1. User is a client (if they're a client with approval access, workflows are valid)
+      // 1. User has can_approve_posts toggle (or is owner)
       // 2. OR tier has the approvalWorkflows feature
-      // 3. OR workspace has clients (clients viewing means approval was required)
-      if (!userIsClient && !hasFeature(tier, 'approvalWorkflows') && !hasClients) {
+      // 3. OR workspace has viewers (viewers viewing means approval was required)
+      if (!userCanApprove && !hasFeature(tier, 'approvalWorkflows') && !hasViewers) {
         return sendError(
           res,
           "Approval workflows are not available on your subscription tier. Please upgrade to Pro Plus or Agency to access this feature.",

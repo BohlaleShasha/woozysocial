@@ -17,11 +17,9 @@ export const TopHeader = () => {
   const [isManagingSubscription, setIsManagingSubscription] = useState(false);
   const profileRef = useRef(null);
 
-  // Allow owners, admins, and clients to connect social accounts
-  // This allows clients to link their own social media accounts directly
+  // Allow owners and members to connect social accounts
   const canManageSocialAccounts = workspaceMembership?.role === 'owner' ||
-                                   workspaceMembership?.role === 'admin' ||
-                                   workspaceMembership?.role === 'client';
+                                   workspaceMembership?.role === 'member';
 
   const menuItems = [
     { name: "Dashboard", path: "/dashboard", tab: "dashboard" },

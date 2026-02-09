@@ -7,24 +7,14 @@ import "./AddAgencyTeamMemberModal.css";
 
 const ROLES = [
   {
-    value: "admin",
-    label: "Admin",
-    description: "Full access - can invite, remove members, and manage all posts"
+    value: "member",
+    label: "Member",
+    description: "Can create, edit, and manage posts"
   },
   {
-    value: "editor",
-    label: "Editor",
-    description: "Can create, edit, and delete posts"
-  },
-  {
-    value: "view_only",
-    label: "View Only",
+    value: "viewer",
+    label: "Viewer",
     description: "Read-only access - can view posts and team members"
-  },
-  {
-    value: "client",
-    label: "Client",
-    description: "Can view and approve posts for their workspace"
   }
 ];
 

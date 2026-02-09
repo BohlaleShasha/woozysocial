@@ -7,10 +7,8 @@ import { baseURL } from "../../utils/constants";
 import "./WorkspaceTeamProvisionModal.css";
 
 const ROLES = [
-  { value: "admin", label: "Admin" },
-  { value: "editor", label: "Editor" },
-  { value: "view_only", label: "View Only" },
-  { value: "client", label: "Client" }
+  { value: "member", label: "Member" },
+  { value: "viewer", label: "Viewer" }
 ];
 
 export const WorkspaceTeamProvisionModal = ({

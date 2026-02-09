@@ -13,7 +13,7 @@ const {
   isServiceConfigured
 } = require("../_utils");
 
-const VALID_ROLES = ['admin', 'editor', 'view_only', 'client'];
+const VALID_ROLES = ['member', 'viewer'];
 
 module.exports = async function handler(req, res) {
   setCors(res);
@@ -63,7 +63,7 @@ module.exports = async function handler(req, res) {
       // Verify inviter is owner/admin of workspace
       const { data: membership, error: membershipError } = await supabase
         .from('workspace_members')
-        .select('role')
+        .select('role, can_manage_team')
         .eq('workspace_id', workspaceId)
         .eq('user_id', invitedBy)
         .single();
@@ -72,8 +72,8 @@ module.exports = async function handler(req, res) {
         logError('workspace.invite.checkMembership', membershipError, { workspaceId, invitedBy });
       }
 
-      if (!membership || !['owner', 'admin'].includes(membership.role)) {
-        return sendError(res, "Only owners and admins can invite members", ErrorCodes.FORBIDDEN);
+      if (!membership || (membership.role !== 'owner' && !membership.can_manage_team)) {
+        return sendError(res, "You don't have permission to invite members", ErrorCodes.FORBIDDEN);
       }
 
       // Check for existing pending invitation
@@ -95,7 +95,7 @@ module.exports = async function handler(req, res) {
       const inviteData = {
         workspace_id: workspaceId,
         email: email.toLowerCase(),
-        role: role || 'editor',
+        role: role || 'member',
         invited_by: invitedBy,
         status: 'pending',
         invited_at: new Date().toISOString(),
@@ -163,7 +163,7 @@ module.exports = async function handler(req, res) {
 
         const inviterName = inviterData?.full_name || inviterData?.email || 'A team member';
         const workspaceName = workspace?.name || 'a workspace';
-        const assignedRole = role || 'editor';
+        const assignedRole = role || 'member';
         // Use APP_URL environment variable for invitation links (must be frontend domain)
         const appUrl = (process.env.APP_URL || 'https://woozysocial.com').trim();
         const inviteLink = `${appUrl}/accept-invite?token=${invitation.invite_token}`;
@@ -324,10 +324,10 @@ module.exports = async function handler(req, res) {
         return sendError(res, "Invitation not found", ErrorCodes.NOT_FOUND);
       }
 
-      // Verify user is owner/admin
+      // Verify user has team management permission
       const { data: membership, error: membershipError } = await supabase
         .from('workspace_members')
-        .select('role')
+        .select('role, can_manage_team')
         .eq('workspace_id', invitation.workspace_id)
         .eq('user_id', userId)
         .single();
@@ -336,8 +336,8 @@ module.exports = async function handler(req, res) {
         logError('workspace.invite.delete.checkMembership', membershipError, { userId });
       }
 
-      if (!membership || !['owner', 'admin'].includes(membership.role)) {
-        return sendError(res, "Only owners and admins can cancel invitations", ErrorCodes.FORBIDDEN);
+      if (!membership || (membership.role !== 'owner' && !membership.can_manage_team)) {
+        return sendError(res, "You don't have permission to cancel invitations", ErrorCodes.FORBIDDEN);
       }
 
       const { error } = await supabase
