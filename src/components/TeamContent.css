@@ -22,6 +22,91 @@
   margin: 0;
 }
 
+/* Tab bar for Workspace Team / Agency Roster */
+.team-tab-bar {
+  display: flex;
+  gap: 0;
+  margin-bottom: 24px;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+}
+
+.team-tab {
+  padding: 12px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: #7c3aed;
+  opacity: 0.6;
+  font-family: inherit;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  margin-bottom: -2px;
+}
+
+.team-tab:hover {
+  opacity: 0.8;
+}
+
+.team-tab.active {
+  opacity: 1;
+  border-bottom-color: #7c3aed;
+}
+
+/* Permission toggle checkboxes */
+.member-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.permission-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #7c3aed;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-label input[type="checkbox"] {
+  accent-color: #7c3aed;
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+/* Dark mode for tab bar and toggles */
+[data-theme="dark"] .team-tab-bar,
+.dark .team-tab-bar {
+  border-bottom-color: #4b5563;
+}
+
+[data-theme="dark"] .team-tab,
+.dark .team-tab {
+  color: #e5e7eb;
+}
+
+[data-theme="dark"] .team-tab.active,
+.dark .team-tab.active {
+  border-bottom-color: #7c3aed;
+}
+
+[data-theme="dark"] .toggle-label,
+.dark .toggle-label {
+  color: #e5e7eb;
+}
+
 .team-section {
   background-color: #ffffff;
   border: 2px solid rgba(0, 0, 0, 0.4);

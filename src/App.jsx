@@ -161,7 +161,7 @@ function App() {
                             <Route path="/engagement" element={<Navigate to="/social-inbox?tab=comments" replace />} />
                             <Route path="/social-inbox" element={<UnifiedInboxContent />} />
                             <Route path="/team" element={<TeamContent />} />
-                            <Route path="/agency-team" element={<AgencyTeamContent />} />
+                            <Route path="/agency-team" element={<Navigate to="/team" replace />} />
                             <Route path="/approvals" element={<Approvals />} />
                             <Route path="/notifications" element={<Notifications />} />
                             <Route path="/settings" element={<SettingsContent />} />

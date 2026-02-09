@@ -41,6 +41,8 @@ module.exports = async function handler(req, res) {
       .from('workspace_members')
       .select(`
         role,
+        can_approve_posts,
+        can_manage_team,
         workspace:workspaces(
           id,
           name,
@@ -80,7 +82,11 @@ module.exports = async function handler(req, res) {
       })
       .map(m => ({
         ...m.workspace,
-        membership: { role: m.role }
+        membership: {
+          role: m.role,
+          can_approve_posts: m.can_approve_posts || false,
+          can_manage_team: m.can_manage_team || false
+        }
       }));
 
     return sendSuccess(res, {

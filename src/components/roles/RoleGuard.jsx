@@ -10,7 +10,7 @@ import { TEAM_ROLES } from '../../utils/constants';
  * Can check for specific permissions or required roles.
  *
  * @param {string} permission - Permission name to check (e.g., 'canManageTeam')
- * @param {string[]} allowedRoles - Array of roles allowed to access (e.g., ['owner', 'admin'])
+ * @param {string[]} allowedRoles - Array of roles allowed to access (e.g., ['owner', 'member'])
  * @param {ReactNode} children - Content to render if permission is granted
  * @param {string} fallbackType - Type of fallback: 'hide' | 'message' | 'disabled'
  * @param {string} fallbackMessage - Custom message when access is denied

@@ -83,11 +83,22 @@ const TIER_CONFIG = {
 
 const TEAM_ROLES = {
   OWNER: 'owner',
-  ADMIN: 'admin',
-  EDITOR: 'editor',
-  CLIENT: 'client',
-  VIEW_ONLY: 'view_only'
+  MEMBER: 'member',
+  VIEWER: 'viewer'
 };
+
+// Maps legacy 5-role values to new 3-role model
+const LEGACY_ROLE_MAP = {
+  admin: 'member',
+  editor: 'member',
+  client: 'viewer',
+  view_only: 'viewer'
+};
+
+function normalizeRole(role) {
+  if (!role) return 'viewer';
+  return LEGACY_ROLE_MAP[role] || role;
+}
 
 const ROLE_PERMISSIONS = {
   owner: {
@@ -100,17 +111,7 @@ const ROLE_PERMISSIONS = {
     canDeleteAllPosts: true,
     canDeleteWorkspace: true
   },
-  admin: {
-    canManageTeam: true,
-    canManageSettings: true,
-    canDeletePosts: true,
-    canApprovePosts: true,
-    canCreatePosts: true,
-    canEditAllPosts: true,
-    canDeleteAllPosts: true,
-    canDeleteWorkspace: false
-  },
-  editor: {
+  member: {
     canManageTeam: false,
     canManageSettings: false,
     canDeletePosts: false,
@@ -120,17 +121,7 @@ const ROLE_PERMISSIONS = {
     canDeleteAllPosts: false,
     canDeleteWorkspace: false
   },
-  client: {
-    canManageTeam: false,
-    canManageSettings: false,
-    canDeletePosts: false,
-    canApprovePosts: true,
-    canCreatePosts: false,
-    canEditAllPosts: false,
-    canDeleteAllPosts: false,
-    canDeleteWorkspace: false
-  },
-  view_only: {
+  viewer: {
     canManageTeam: false,
     canManageSettings: false,
     canDeletePosts: false,
@@ -151,7 +142,8 @@ const ROLE_PERMISSIONS = {
  */
 function hasPermission(role, permissionName) {
   if (!role) return false;
-  const permissions = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.view_only;
+  const normalized = normalizeRole(role);
+  const permissions = ROLE_PERMISSIONS[normalized] || ROLE_PERMISSIONS.viewer;
   return permissions[permissionName] === true;
 }
 
@@ -190,7 +182,8 @@ function canInviteTeamMember(tier, currentCount) {
  * Check if user can perform action on a post
  */
 function canPerformPostAction(role, action, isOwnPost = false) {
-  const permissions = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.view_only;
+  const normalized = normalizeRole(role);
+  const permissions = ROLE_PERMISSIONS[normalized] || ROLE_PERMISSIONS.viewer;
 
   switch (action) {
     case 'edit':
@@ -278,7 +271,17 @@ function checkPermission(member, permissionName) {
     return { success: false, error: 'Invalid member data', code: 'INVALID_MEMBER' };
   }
 
-  const allowed = hasPermission(member.role, permissionName);
+  let allowed = false;
+  const role = normalizeRole(member.role);
+
+  // For toggle-based permissions, check DB columns directly
+  if (permissionName === 'canApprovePosts') {
+    allowed = role === 'owner' || member.can_approve_posts === true;
+  } else if (permissionName === 'canManageTeam') {
+    allowed = role === 'owner' || member.can_manage_team === true;
+  } else {
+    allowed = hasPermission(role, permissionName);
+  }
 
   if (!allowed) {
     return {
@@ -335,6 +338,8 @@ module.exports = {
   TIER_CONFIG,
   TEAM_ROLES,
   ROLE_PERMISSIONS,
+  LEGACY_ROLE_MAP,
+  normalizeRole,
   hasPermission,
   hasFeature,
   canCreateWorkspace,

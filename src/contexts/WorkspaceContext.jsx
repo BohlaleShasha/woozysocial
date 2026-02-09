@@ -5,6 +5,7 @@ import { safeFetch, normalizeApiResponse } from '../utils/api';
 import {
   baseURL,
   TEAM_ROLES,
+  normalizeRole,
   getRoleConfig,
   hasPermission,
   hasRoleTabAccess,
@@ -327,21 +328,42 @@ export const WorkspaceProvider = ({ children }) => {
     }
   }, [user]);
 
-  // Get current user's role
-  const userRole = workspaceMembership?.role || TEAM_ROLES.VIEW_ONLY;
+  // Get current user's role (normalized to 3-role model)
+  const rawRole = workspaceMembership?.role || TEAM_ROLES.VIEWER;
+  const userRole = normalizeRole(rawRole);
   const roleConfig = getRoleConfig(userRole);
 
-  // Check if user has a specific permission
+  // DB toggle values from workspace membership
+  const canApprove = workspaceMembership
+    ? (userRole === TEAM_ROLES.OWNER || workspaceMembership.can_approve_posts === true)
+    : false;
+  const canManageTeam = workspaceMembership
+    ? (userRole === TEAM_ROLES.OWNER || workspaceMembership.can_manage_team === true)
+    : false;
+
+  // Check if user has a specific permission (toggle-aware)
   const hasRolePermission = useCallback((permissionName) => {
     if (!workspaceMembership) return false;
-    return hasPermission(userRole, permissionName);
-  }, [userRole, workspaceMembership]);
 
-  // Check if user can access a specific tab
+    // Toggle-based permissions — check DB columns
+    if (permissionName === 'canApprovePosts') return canApprove;
+    if (permissionName === 'canManageTeam') return canManageTeam;
+
+    // All other permissions — static role lookup
+    return hasPermission(userRole, permissionName);
+  }, [userRole, workspaceMembership, canApprove, canManageTeam]);
+
+  // Check if user can access a specific tab (toggle-aware)
   const canAccessTab = useCallback((tabName) => {
     if (!workspaceMembership) return false;
+
+    // Approval-related tabs are dynamic based on can_approve toggle
+    if (tabName === 'approvals' || tabName === 'client/approvals' || tabName === 'client/approved') {
+      return canApprove;
+    }
+
     return hasRoleTabAccess(userRole, tabName);
-  }, [userRole, workspaceMembership]);
+  }, [userRole, workspaceMembership, canApprove]);
 
   // Check if user can perform action on a post
   const canEditPost = useCallback((postCreatorId) => {
@@ -355,8 +377,8 @@ export const WorkspaceProvider = ({ children }) => {
   }, [userRole, user]);
 
   const canApprovePost = useCallback(() => {
-    return canPerformPostAction(userRole, 'approve');
-  }, [userRole]);
+    return canApprove;
+  }, [canApprove]);
 
   const canCreatePost = useCallback(() => {
     return canPerformPostAction(userRole, 'create');
@@ -368,7 +390,7 @@ export const WorkspaceProvider = ({ children }) => {
 
     switch (action) {
       case 'manageTeam':
-        return hasPermission(userRole, 'canManageTeam');
+        return canManageTeam;
       case 'manageSettings':
         return hasPermission(userRole, 'canManageSettings');
       case 'deletePosts':
@@ -380,11 +402,9 @@ export const WorkspaceProvider = ({ children }) => {
       default:
         return false;
     }
-  }, [userRole, workspaceMembership]);
+  }, [userRole, workspaceMembership, canManageTeam]);
 
-  // Check if user is a client (view_only/client role) - used for routing to client portal
-  // IMPORTANT: Only treat as client if we actually have workspace membership data
-  // This prevents false positives when data hasn't loaded yet (default role is VIEW_ONLY)
+  // Check if user is a viewer (client portal) — only when membership data is loaded
   const isClient = workspaceMembership ? checkIsClientRole(userRole) : false;
   const isAdmin = checkIsAdminRole(userRole);
   const isOwner = userRole === TEAM_ROLES.OWNER;
@@ -439,6 +459,10 @@ export const WorkspaceProvider = ({ children }) => {
     isAdmin,
     isOwner,
     isClientRole: isClient, // Legacy alias
+
+    // Toggle-based permissions
+    canApprove,
+    canManageTeam,
 
     // Permission checks
     hasRolePermission,

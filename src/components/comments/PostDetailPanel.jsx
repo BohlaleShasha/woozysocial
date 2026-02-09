@@ -46,13 +46,12 @@ export const PostDetailPanel = ({
   currentIndex = 0,
   onNavigatePost
 }) => {
-  const { workspaceMembership, activeWorkspace } = useWorkspace();
+  const { workspaceMembership, activeWorkspace, canApprove } = useWorkspace();
   const navigate = useNavigate();
   const { invalidatePosts } = useInvalidateQueries();
   const toast = useToast();
   const commentInputRef = useRef(null);
-  const canApprove = ['owner', 'admin', 'client'].includes(workspaceMembership?.role);
-  const canDelete = ['owner', 'admin'].includes(workspaceMembership?.role);
+  const canDelete = workspaceMembership?.role === 'owner';
 
   // Delete modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);

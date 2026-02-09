@@ -138,7 +138,7 @@ export const AcceptInvite = () => {
 
       // Success! Redirect to team page (or dashboard for clients)
       const displayMessage = message || `You have successfully joined ${invitation.workspace?.name || 'the workspace'}!`;
-      const redirectPath = invitation.role === 'client' ? '/client/dashboard' : '/team';
+      const redirectPath = invitation.role === 'viewer' ? '/client/dashboard' : '/team';
       navigate(redirectPath, { state: { message: displayMessage } });
     } catch (error) {
       console.error('Error accepting invitation:', error);

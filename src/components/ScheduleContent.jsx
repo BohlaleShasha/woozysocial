@@ -32,7 +32,7 @@ const APPROVAL_STATUS = {
 
 export const ScheduleContent = () => {
   const { user, profile, hasActiveProfile, subscriptionStatus, subscriptionTier, isWhitelisted } = useAuth();
-  const { activeWorkspace, workspaceMembership } = useWorkspace();
+  const { activeWorkspace, workspaceMembership, canApprove } = useWorkspace();
 
   // Check if user has access (multi-workspace support)
   // User has access if: active profile, whitelisted, active subscription, or workspace has profile
@@ -52,9 +52,7 @@ export const ScheduleContent = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const { invalidatePosts } = useInvalidateQueries();
 
-  // Check if user is a client (can approve/reject)
-  const isClient = workspaceMembership?.role === 'client';
-  const canApprove = isClient || workspaceMembership?.role === 'owner' || workspaceMembership?.role === 'admin';
+
 
   // Check if subscription tier has approval workflows feature
   const hasApprovalWorkflows = hasFeature(subscriptionTier, 'approvalWorkflows');

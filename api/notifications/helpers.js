@@ -76,7 +76,7 @@ async function sendWorkspaceInviteNotification(supabase, { email, workspaceId, w
       workspace_id: workspaceId,
       type: 'workspace_invite',
       title: 'Workspace Invitation',
-      message: `You've been invited to join ${workspaceName} as ${role === 'view_only' ? 'a viewer' : `an ${role}`}.`,
+      message: `You've been invited to join ${workspaceName} as a ${role}.`,
       actor_id: inviterId,
       metadata: { inviteToken, role },
       read: false
@@ -113,10 +113,13 @@ async function sendRoleChangedNotification(supabase, { userId, workspaceId, work
   try {
     const roleLabels = {
       'owner': 'Owner',
-      'admin': 'Admin',
-      'editor': 'Editor',
+      'member': 'Member',
+      'viewer': 'Viewer',
+      // Legacy fallbacks
+      'admin': 'Member',
+      'editor': 'Member',
       'view_only': 'Viewer',
-      'client': 'Client'
+      'client': 'Viewer'
     };
 
     await supabase.from('notifications').insert({
@@ -196,7 +199,7 @@ async function sendNewCommentNotification(supabase, { postId, workspaceId, comme
         .from('workspace_members')
         .select('user_id')
         .eq('workspace_id', workspaceId)
-        .in('role', ['owner', 'admin', 'client'])
+        .or('role.eq.owner,can_approve_posts.eq.true')
         .neq('user_id', commenterId);
 
       approvers?.forEach(approver => {
@@ -247,12 +250,12 @@ async function sendPostScheduledNotification(supabase, { postId, workspaceId, sc
 
     const workspaceName = workspace?.name || 'Unknown Workspace';
 
-    // Notify workspace admins/owners (excluding the creator)
+    // Notify workspace owners and team managers (excluding the creator)
     const { data: admins, error: queryError } = await supabase
       .from('workspace_members')
       .select('user_id, role')
       .eq('workspace_id', workspaceId)
-      .in('role', ['owner', 'admin'])
+      .or('role.eq.owner,can_manage_team.eq.true')
       .neq('user_id', createdByUserId);
 
     console.log('[sendPostScheduledNotification] Query completed. Error:', queryError, 'Data:', admins);
@@ -388,12 +391,12 @@ async function sendMemberRemovedNotification(supabase, { removedUserId, workspac
  */
 async function sendSocialAccountLinkedNotification(supabase, { workspaceId, platform, linkedByUserId, linkedByName }) {
   try {
-    // Notify workspace admins/owners (except the person who linked it)
+    // Notify workspace owners and team managers (except the person who linked it)
     const { data: admins } = await supabase
       .from('workspace_members')
       .select('user_id')
       .eq('workspace_id', workspaceId)
-      .in('role', ['owner', 'admin'])
+      .or('role.eq.owner,can_manage_team.eq.true')
       .neq('user_id', linkedByUserId);
 
     if (!admins || admins.length === 0) return;
@@ -429,12 +432,12 @@ async function sendSocialAccountLinkedNotification(supabase, { workspaceId, plat
  */
 async function sendSocialAccountUnlinkedNotification(supabase, { workspaceId, platform, unlinkedByUserId, unlinkedByName }) {
   try {
-    // Notify workspace admins/owners (except the person who unlinked it)
+    // Notify workspace owners and team managers (except the person who unlinked it)
     const { data: admins } = await supabase
       .from('workspace_members')
       .select('user_id')
       .eq('workspace_id', workspaceId)
-      .in('role', ['owner', 'admin'])
+      .or('role.eq.owner,can_manage_team.eq.true')
       .neq('user_id', unlinkedByUserId);
 
     if (!admins || admins.length === 0) return;
@@ -470,12 +473,12 @@ async function sendSocialAccountUnlinkedNotification(supabase, { workspaceId, pl
  */
 async function sendPostFailedNotification(supabase, { postId, workspaceId, createdByUserId, platforms, errorMessage }) {
   try {
-    // Get workspace admins/owners to notify
+    // Get workspace owners and members to notify
     const { data: admins } = await supabase
       .from('workspace_members')
       .select('user_id')
       .eq('workspace_id', workspaceId)
-      .in('role', ['owner', 'admin', 'editor']);
+      .in('role', ['owner', 'member']);
 
     if (!admins || admins.length === 0) return;
 
@@ -506,12 +509,12 @@ async function sendPostFailedNotification(supabase, { postId, workspaceId, creat
  */
 async function sendPostPublishedNotification(supabase, { postId, workspaceId, createdByUserId, platforms }) {
   try {
-    // Notify workspace admins/owners (except the person who posted)
+    // Notify workspace owners and team managers (except the person who posted)
     const { data: admins } = await supabase
       .from('workspace_members')
       .select('user_id')
       .eq('workspace_id', workspaceId)
-      .in('role', ['owner', 'admin'])
+      .or('role.eq.owner,can_manage_team.eq.true')
       .neq('user_id', createdByUserId);
 
     if (!admins || admins.length === 0) return;
@@ -551,13 +554,12 @@ async function sendApprovalRequestNotification(supabase, { workspaceId, postId, 
 
     const workspaceName = workspace?.name || 'Unknown Workspace';
 
-    // Get all members who can approve posts (owner, admin, client)
-    // Exclude editors as they create posts but can't approve them
+    // Get all members who can approve posts (owner + anyone with can_approve_posts toggle)
     const { data: approvers, error: queryError } = await supabase
       .from('workspace_members')
       .select('user_id, role')
       .eq('workspace_id', workspaceId)
-      .in('role', ['owner', 'admin', 'client']);
+      .or('role.eq.owner,can_approve_posts.eq.true');
 
     console.log('[sendApprovalRequestNotification] Query completed. Error:', queryError, 'Data:', approvers);
 
@@ -668,12 +670,12 @@ async function sendPostUpdatedNotification(supabase, { postId, workspaceId, upda
 
     if (!post) return;
 
-    // Get all approvers (admin, client, owner) in the workspace, except the person who updated
+    // Get all approvers in the workspace, except the person who updated
     const { data: approvers } = await supabase
       .from('workspace_members')
       .select('user_id')
       .eq('workspace_id', workspaceId)
-      .in('role', ['owner', 'admin', 'client'])
+      .or('role.eq.owner,can_approve_posts.eq.true')
       .neq('user_id', updatedByUserId);
 
     if (!approvers || approvers.length === 0) return;

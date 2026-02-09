@@ -180,10 +180,13 @@ export const AgencyTeamContent = () => {
 
   const getRoleLabel = (role) => {
     const labels = {
-      admin: 'Admin',
-      editor: 'Editor',
-      view_only: 'View Only',
-      client: 'Client'
+      member: 'Member',
+      viewer: 'Viewer',
+      // Legacy fallbacks
+      admin: 'Member',
+      editor: 'Member',
+      view_only: 'Viewer',
+      client: 'Viewer'
     };
     return labels[role] || role;
   };
@@ -283,10 +286,8 @@ export const AgencyTeamContent = () => {
                       value={member.default_role}
                       onChange={(e) => handleUpdateRole(member.id, e.target.value)}
                     >
-                      <option value="admin">Admin</option>
-                      <option value="editor">Editor</option>
-                      <option value="view_only">View Only</option>
-                      <option value="client">Client</option>
+                      <option value="member">Member</option>
+                      <option value="viewer">Viewer</option>
                     </select>
                     <button
                       className="edit-button"
