@@ -56,8 +56,8 @@ export const TeamContent = () => {
   // Direct permission check — don't rely solely on RoleGuard/cache
   const canManageMembers = isOwner || canManageTeam;
 
-  // Show Agency Roster tab for agency tier users who are owner or can manage team
-  const showAgencyTab = subscriptionTier === 'agency' && canManageMembers;
+  // Agency Roster is owner-only — it spans all workspaces, not just the current one
+  const showAgencyTab = subscriptionTier === 'agency' && isOwner;
 
   // Refresh functions that invalidate cache
   const fetchTeamMembers = () => {
