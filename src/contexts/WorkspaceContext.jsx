@@ -111,7 +111,7 @@ export const WorkspaceProvider = ({ children }) => {
       if (workspaces.length > 0) {
         const lastWorkspace = workspaces.find(w => w.id === responseData.lastWorkspaceId);
         const workspace = lastWorkspace || workspaces[0];
-        const membership = workspace.membership || { role: 'owner' };
+        const membership = workspace.membership || { role: 'viewer', can_approve_posts: false, can_manage_team: false };
 
         setActiveWorkspace(workspace);
         setWorkspaceMembership(membership);

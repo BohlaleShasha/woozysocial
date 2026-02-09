@@ -1,13 +1,12 @@
 /**
  * TeamContent Component - Manages workspace team members, invitations, and agency roster
  */
-import React, { useState, lazy, Suspense } from "react";
+import React, { useState, useCallback, lazy, Suspense } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useWorkspace } from "../contexts/WorkspaceContext";
 import { useTeamMembers, usePendingInvites, useInvalidateQueries } from "../hooks/useQueries";
 import { InviteMemberModal } from "./InviteMemberModal";
 import TeamMemberLimitGate from "./subscription/TeamMemberLimitGate";
-import RoleGuard from "./roles/RoleGuard";
 import { baseURL, normalizeRole } from "../utils/constants";
 import "./TeamContent.css";
 
@@ -51,8 +50,14 @@ export const TeamContent = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('team'); // 'team' or 'agency'
 
+  // Optimistic toggle state: { [memberId_permName]: boolean }
+  const [optimisticToggles, setOptimisticToggles] = useState({});
+
+  // Direct permission check — don't rely solely on RoleGuard/cache
+  const canManageMembers = isOwner || canManageTeam;
+
   // Show Agency Roster tab for agency tier users who are owner or can manage team
-  const showAgencyTab = subscriptionTier === 'agency' && (isOwner || canManageTeam);
+  const showAgencyTab = subscriptionTier === 'agency' && canManageMembers;
 
   // Refresh functions that invalidate cache
   const fetchTeamMembers = () => {
@@ -218,7 +223,11 @@ export const TeamContent = () => {
     }
   };
 
-  const handleTogglePermission = async (memberId, permName, value) => {
+  const handleTogglePermission = useCallback(async (memberId, permName, value) => {
+    // Optimistic update — toggle immediately in the UI
+    const optimisticKey = `${memberId}_${permName}`;
+    setOptimisticToggles(prev => ({ ...prev, [optimisticKey]: value }));
+
     try {
       const response = await fetch(`${baseURL}/api/workspaces/${activeWorkspace.id}/update-member`, {
         method: 'POST',
@@ -238,12 +247,31 @@ export const TeamContent = () => {
         throw new Error(data.error || 'Failed to update permission');
       }
 
-      fetchTeamMembers();
+      // Refetch to sync with server, then clear optimistic state
+      await refetchTeamMembers();
+      setOptimisticToggles(prev => {
+        const next = { ...prev };
+        delete next[optimisticKey];
+        return next;
+      });
     } catch (error) {
       console.error('Error toggling permission:', error);
+      // Revert optimistic update
+      setOptimisticToggles(prev => {
+        const next = { ...prev };
+        delete next[optimisticKey];
+        return next;
+      });
       alert(error.message || 'Failed to update permission');
     }
-  };
+  }, [activeWorkspace?.id, user?.id, refetchTeamMembers]);
+
+  // Get toggle value: prefer optimistic state, fall back to server data
+  const getToggleValue = useCallback((memberId, permName, serverValue) => {
+    const key = `${memberId}_${permName}`;
+    if (key in optimisticToggles) return optimisticToggles[key];
+    return serverValue || false;
+  }, [optimisticToggles]);
 
   const handleLeaveWorkspace = async () => {
     if (!window.confirm('Are you sure you want to leave this workspace? You will need to be invited again to rejoin.')) {
@@ -315,13 +343,15 @@ export const TeamContent = () => {
                 <h2 className="section-title">Team Members</h2>
                 <p className="section-subtitle">Invite and manage your team collaborators</p>
               </div>
-              <div className="header-buttons">
-                <TeamMemberLimitGate onAllowed={handleAddMember}>
-                  <button className="add-member-button">
-                    + Add Member
-                  </button>
-                </TeamMemberLimitGate>
-              </div>
+              {canManageMembers && (
+                <div className="header-buttons">
+                  <TeamMemberLimitGate onAllowed={handleAddMember}>
+                    <button className="add-member-button">
+                      + Add Member
+                    </button>
+                  </TeamMemberLimitGate>
+                </div>
+              )}
             </div>
 
             <div className="team-content">
@@ -375,8 +405,7 @@ export const TeamContent = () => {
                             >
                               Leave Workspace
                             </button>
-                          ) : (
-                            <RoleGuard permission="canManageTeam" fallbackType="hide">
+                          ) : canManageMembers ? (
                               <div className="member-controls">
                                 <select
                                   className="role-dropdown"
@@ -390,7 +419,7 @@ export const TeamContent = () => {
                                   <label className="toggle-label">
                                     <input
                                       type="checkbox"
-                                      checked={member.permissions?.can_approve_posts || false}
+                                      checked={getToggleValue(member.user_id, 'canApprovePosts', member.permissions?.can_approve_posts)}
                                       onChange={(e) => handleTogglePermission(member.user_id, 'canApprovePosts', e.target.checked)}
                                     />
                                     <span className="toggle-switch"></span>
@@ -399,7 +428,7 @@ export const TeamContent = () => {
                                   <label className="toggle-label">
                                     <input
                                       type="checkbox"
-                                      checked={member.permissions?.can_manage_team || false}
+                                      checked={getToggleValue(member.user_id, 'canManageTeam', member.permissions?.can_manage_team)}
                                       onChange={(e) => handleTogglePermission(member.user_id, 'canManageTeam', e.target.checked)}
                                     />
                                     <span className="toggle-switch"></span>
@@ -413,7 +442,8 @@ export const TeamContent = () => {
                                   Remove
                                 </button>
                               </div>
-                            </RoleGuard>
+                          ) : (
+                            <span className="member-role">{getRoleLabel(member.role)}</span>
                           )}
                         </div>
                       </div>
@@ -491,20 +521,24 @@ export const TeamContent = () => {
                         </div>
                         <div className="member-actions">
                           <span className="member-role pending-badge">{getRoleLabel(invite.role)}</span>
-                          <button
-                            className="resend-button"
-                            onClick={() => handleResendInvite(invite)}
-                            title="Resend invitation email"
-                          >
-                            Resend
-                          </button>
-                          <button
-                            className="cancel-button"
-                            onClick={() => handleCancelInvite(invite.id)}
-                            title="Cancel invitation"
-                          >
-                            Cancel
-                          </button>
+                          {canManageMembers && (
+                            <>
+                              <button
+                                className="resend-button"
+                                onClick={() => handleResendInvite(invite)}
+                                title="Resend invitation email"
+                              >
+                                Resend
+                              </button>
+                              <button
+                                className="cancel-button"
+                                onClick={() => handleCancelInvite(invite.id)}
+                                title="Cancel invitation"
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     );
